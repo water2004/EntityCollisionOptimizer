@@ -27,11 +27,20 @@ public final class VanillaEntityCollision {
             return false;
         }
     };
-    private static final ClassValue<Boolean> USE_VANILLA_ENTITY_PUSH = declaringClass(
-            "push",
-            Entity.class,
-            Entity.class
-    );
+    private static final ClassValue<Boolean> USE_VANILLA_ENTITY_PUSH = new ClassValue<>() {
+        @Override
+        protected Boolean computeValue(Class<?> type) {
+            for (Class<?> current = type; current != null; current = current.getSuperclass()) {
+                try {
+                    Class<?> owner = current.getDeclaredMethod("push", Entity.class).getDeclaringClass();
+                    // LivingEntity only adds a sleeping guard, which the native batch applies live.
+                    return owner == Entity.class || owner == LivingEntity.class;
+                } catch (NoSuchMethodException ignored) {
+                }
+            }
+            return false;
+        }
+    };
     private static final ClassValue<Boolean> USE_VANILLA_VECTOR_PUSH = declaringClass(
             "push",
             Entity.class,
@@ -94,20 +103,6 @@ public final class VanillaEntityCollision {
 
     public static boolean usesVanillaVectorPush(Entity entity) {
         return USE_VANILLA_VECTOR_PUSH.get(entity.getClass());
-    }
-
-    public static boolean pushHasNoEffect(
-            boolean sourceUsesVanillaDoPush,
-            LivingEntity source,
-            Entity target
-    ) {
-        if (!sourceUsesVanillaDoPush
-                || !usesVanillaEntityPush(target)) {
-            return false;
-        }
-        double deltaX = source.getX() - target.getX();
-        double deltaZ = source.getZ() - target.getZ();
-        return Math.max(Math.abs(deltaX), Math.abs(deltaZ)) < 0.009999999776482582;
     }
 
     private static ClassValue<Boolean> declaringClass(

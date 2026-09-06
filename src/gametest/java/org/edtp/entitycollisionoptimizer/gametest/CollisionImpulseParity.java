@@ -51,6 +51,13 @@ final class CollisionImpulseParity {
             }
             if (enabled) {
                 CollisionFrame.begin(level);
+                var result = CollisionFrame.queryPushable(source, source.getTeam(),
+                        org.edtp.entitycollisionoptimizer.collision.VanillaEntityCollision.collisionRule(source.getTeam()), true);
+                boolean covered = false;
+                for (int i = 0; i < result.size(); i++) {
+                    if (CollisionFrame.entity(source, result.get(i)) == target) covered = result.usesNativePush(i);
+                }
+                helper.assertTrue(covered, "ordinary zombie pair must use native impulse calculation");
             }
             ((LivingEntityInvoker) source).entityCollisionOptimizer$invokePushEntities();
             boolean immediateSync = target.needsSync;

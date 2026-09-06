@@ -1,60 +1,46 @@
 package org.edtp.entitycollisionoptimizer.mixin;
 
 import org.edtp.entitycollisionoptimizer.collision.CollisionCacheState;
-import org.edtp.entitycollisionoptimizer.collision.CollisionImpulseState;
+import org.edtp.entitycollisionoptimizer.collision.CollisionCacheEpochs;
 import org.edtp.entitycollisionoptimizer.natives.CollisionFrame;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.Pose;
 import net.minecraft.world.phys.AABB;
-import net.minecraft.world.phys.Vec3;
 import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(Entity.class)
-public abstract class EntityMixin implements CollisionCacheState, CollisionImpulseState {
-    @Shadow
-    private Vec3 deltaMovement;
-
-    @Shadow
-    private boolean needsSync;
-
+public abstract class EntityMixin implements CollisionCacheState {
     @Unique
     private long entityCollisionOptimizer$collisionRevision;
 
     @Unique
-    private double entityCollisionOptimizer$pendingCollisionX;
+    private long entityCollisionOptimizer$pushableEntityRevision = Long.MIN_VALUE;
 
     @Unique
-    private double entityCollisionOptimizer$pendingCollisionZ;
+    private long entityCollisionOptimizer$pushableBlockRevision = Long.MIN_VALUE;
+
+    @Unique
+    private boolean entityCollisionOptimizer$pushable;
 
     @Override
-    public void entityCollisionOptimizer$queueCollisionImpulse(double x, double z) {
-        entityCollisionOptimizer$pendingCollisionX += x;
-        entityCollisionOptimizer$pendingCollisionZ += z;
-    }
-
-    @Override
-    public void entityCollisionOptimizer$flushCollisionImpulse() {
-        double x = entityCollisionOptimizer$pendingCollisionX;
-        double z = entityCollisionOptimizer$pendingCollisionZ;
-        if (x == 0.0 && z == 0.0) {
-            return;
+    public boolean entityCollisionOptimizer$isPushableCached() {
+        long blocks = CollisionCacheEpochs.blockRevision();
+        if (entityCollisionOptimizer$pushableEntityRevision != entityCollisionOptimizer$collisionRevision
+                || entityCollisionOptimizer$pushableBlockRevision != blocks) {
+            entityCollisionOptimizer$pushable = ((Entity) (Object) this).isPushable();
+            entityCollisionOptimizer$pushableEntityRevision = entityCollisionOptimizer$collisionRevision;
+            entityCollisionOptimizer$pushableBlockRevision = blocks;
         }
-        entityCollisionOptimizer$pendingCollisionX = 0.0;
-        entityCollisionOptimizer$pendingCollisionZ = 0.0;
-        deltaMovement = deltaMovement.add(x, 0.0, z);
-        needsSync = true;
+        return entityCollisionOptimizer$pushable;
     }
 
-    @Inject(method = "getDeltaMovement", at = @At("HEAD"))
-    private void entityCollisionOptimizer$flushBeforeVelocityRead(
-            org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable<Vec3> cir
-    ) {
-        entityCollisionOptimizer$flushCollisionImpulse();
+    @Override
+    public void entityCollisionOptimizer$resetPushabilityCache() {
+        entityCollisionOptimizer$pushableEntityRevision = Long.MIN_VALUE;
     }
 
     @Override

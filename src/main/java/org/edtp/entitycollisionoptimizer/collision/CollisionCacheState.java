@@ -8,4 +8,8 @@ public interface CollisionCacheState {
     long entityCollisionOptimizer$collisionRevision();
 
     void entityCollisionOptimizer$invalidateCollisionCache();
+
+    boolean entityCollisionOptimizer$isPushableCached();
+
+    void entityCollisionOptimizer$resetPushabilityCache();
 }

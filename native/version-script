@@ -11,5 +11,6 @@
         invalidateCollisionMetadata;
         queryCollisionEntities;
         queryPushableEntities;
+        calculatePushImpulses;
     local: *;
 };

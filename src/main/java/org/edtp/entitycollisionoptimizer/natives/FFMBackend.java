@@ -42,6 +42,7 @@ public final class FFMBackend {
     private static MethodHandle invalidateMetadata;
     private static MethodHandle query;
     private static MethodHandle queryPushable;
+    private static MethodHandle calculateImpulses;
     private static final Set<Context> CONTEXTS = ConcurrentHashMap.newKeySet();
     private static volatile boolean initialized;
 
@@ -313,7 +314,7 @@ public final class FFMBackend {
                         sourceCollisionRule,
                         sourceUsesVanillaPush ? 1 : 0,
                         nativeContext.outputBuffer,
-                        nativeContext.impulseBuffer,
+                        nativeContext.nativePushBuffer,
                         nativeContext.outputCapacity
                 );
                 if (resultSize < 0 || resultSize > nativeContext.outputCapacity) {
@@ -333,6 +334,27 @@ public final class FFMBackend {
                 return result;
             } catch (Throwable failure) {
                 throw new IllegalStateException("FFM pushable collision query failed", failure);
+            }
+        }
+    }
+
+    public static void calculatePushImpulses(Context context, double sourceX, double sourceZ,
+                                              double[] positions, int count, double[] impulses) {
+        if (count < 0 || count > positions.length / 2 || count > impulses.length / 2) {
+            throw new IllegalArgumentException("Invalid native impulse batch size " + count);
+        }
+        synchronized (context) {
+            context.ensureOpen();
+            context.ensureOutputCapacity(count);
+            if (count == 0) return;
+            MemorySegment.copy(positions, 0, context.positionBuffer, JAVA_DOUBLE, 0, count * 2);
+            try {
+                int status = (int) calculateImpulses.invokeExact(sourceX, sourceZ,
+                        context.positionBuffer, count, context.impulseBuffer);
+                checkStatus("calculate native push impulses", status);
+                MemorySegment.copy(context.impulseBuffer, JAVA_DOUBLE, 0, impulses, 0, count * 2);
+            } catch (Throwable failure) {
+                throw new IllegalStateException("FFM push impulse calculation failed", failure);
             }
         }
     }
@@ -493,6 +515,10 @@ public final class FFMBackend {
                         JAVA_INT
                 )
         );
+        calculateImpulses = linker.downcallHandle(
+                library.find("calculatePushImpulses").orElseThrow(() -> missingSymbol("calculatePushImpulses")),
+                FunctionDescriptor.of(JAVA_INT, JAVA_DOUBLE, JAVA_DOUBLE, ADDRESS, JAVA_INT, ADDRESS)
+        );
     }
 
     private static void checkStatus(String operation, int status) {
@@ -544,6 +570,7 @@ public final class FFMBackend {
         invalidateMetadata = null;
         query = null;
         queryPushable = null;
+        calculateImpulses = null;
     }
 
     public static final class Context implements AutoCloseable {
@@ -551,6 +578,8 @@ public final class FFMBackend {
         private Arena outputArena;
         private MemorySegment outputBuffer = MemorySegment.NULL;
         private MemorySegment impulseBuffer = MemorySegment.NULL;
+        private MemorySegment positionBuffer = MemorySegment.NULL;
+        private MemorySegment nativePushBuffer = MemorySegment.NULL;
         private int outputCapacity;
         private final QueryResult queryResult = new QueryResult();
 
@@ -581,12 +610,14 @@ public final class FFMBackend {
                     Integer.BYTES
             );
             impulseBuffer = outputArena.allocate(
-                    (long) newCapacity * 4 * Double.BYTES,
+                    (long) newCapacity * 2 * Double.BYTES,
                     Double.BYTES
             );
+            positionBuffer = outputArena.allocate((long) newCapacity * 2 * Double.BYTES, Double.BYTES);
+            nativePushBuffer = outputArena.allocate((long) newCapacity * Integer.BYTES, Integer.BYTES);
             outputCapacity = newCapacity;
             queryResult.output = outputBuffer;
-            queryResult.impulses = impulseBuffer;
+            queryResult.nativePush = nativePushBuffer;
         }
 
         private synchronized void applyConfig() {
@@ -617,9 +648,11 @@ public final class FFMBackend {
                 }
                 outputBuffer = MemorySegment.NULL;
                 impulseBuffer = MemorySegment.NULL;
+                positionBuffer = MemorySegment.NULL;
+                nativePushBuffer = MemorySegment.NULL;
                 outputCapacity = 0;
                 queryResult.output = MemorySegment.NULL;
-                queryResult.impulses = MemorySegment.NULL;
+                queryResult.nativePush = MemorySegment.NULL;
                 CONTEXTS.remove(this);
             }
         }
@@ -627,7 +660,7 @@ public final class FFMBackend {
 
     public static final class QueryResult {
         private MemorySegment output = MemorySegment.NULL;
-        private MemorySegment impulses = MemorySegment.NULL;
+        private MemorySegment nativePush = MemorySegment.NULL;
         private int offset;
         private int size;
         private boolean metadataRequired;
@@ -660,34 +693,18 @@ public final class FFMBackend {
             return output.get(JAVA_INT, (long) (offset + index) * Integer.BYTES);
         }
 
-        public boolean hasNativeImpulse(int index) {
-            return !Double.isNaN(impulse(index, 0));
-        }
-
-        public double sourceImpulseX(int index) {
-            return impulse(index, 0);
-        }
-
-        public double sourceImpulseZ(int index) {
-            return impulse(index, 1);
-        }
-
-        public double targetImpulseX(int index) {
-            return impulse(index, 2);
-        }
-
-        public double targetImpulseZ(int index) {
-            return impulse(index, 3);
-        }
-
-        private double impulse(int index, int component) {
+        public boolean usesNativePush(int index) {
             if (index < 0 || index >= size) {
                 throw new IndexOutOfBoundsException(index);
             }
-            return impulses.get(
-                    JAVA_DOUBLE,
-                    ((long) index * 4 + component) * Double.BYTES
-            );
+            return nativePush.get(JAVA_INT, (long) index * Integer.BYTES) != 0;
+        }
+
+        void copyTo(int[] ids, int[] nativeFlags) {
+            if (metadataRequired) throw new IllegalStateException("Collision metadata is unresolved");
+            if (size == 0) return;
+            MemorySegment.copy(output, JAVA_INT, (long) offset * Integer.BYTES, ids, 0, size);
+            MemorySegment.copy(nativePush, JAVA_INT, 0, nativeFlags, 0, size);
         }
     }
 }

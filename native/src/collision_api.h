@@ -66,8 +66,12 @@ ECO_EXPORT int queryPushableEntities(
         int sourceCollisionRule,
         int sourceUsesVanillaPush,
         int* output,
-        double* impulseOutput,
+        int* nativePushOutput,
         int outputCapacity
+);
+
+ECO_EXPORT int calculatePushImpulses(
+        double sourceX, double sourceZ, const double* targetPositions, int count, double* impulses
 );
 
 }

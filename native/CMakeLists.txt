@@ -91,5 +91,6 @@ add_library(EntityCollisionOptimizer SHARED
         src/context_api.cpp
         src/metadata_api.cpp
         src/query_api.cpp
+        src/push_impulses.cpp
         src/spatial_index.cpp
 )

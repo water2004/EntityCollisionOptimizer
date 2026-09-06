@@ -1,8 +1,8 @@
 package org.edtp.entitycollisionoptimizer.collision;
 
 /**
- * Per-entity impulse accumulator used by the FFM collision frame. Native
- * queries preserve push ordering while coalescing the resulting Vec3 update.
+ * Lazy velocity storage used by native pushing. Each addition rounds immediately;
+ * only Vec3 allocation is deferred until observation or the end of the frame.
  */
 public interface CollisionImpulseState {
     void entityCollisionOptimizer$queueCollisionImpulse(double x, double z);

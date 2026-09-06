@@ -11,10 +11,4 @@ bool passesTeamRules(
         int targetTeamId,
         int targetRule
 ) noexcept;
-bool pushHasNoEffect(
-        const EntityMetadata& source,
-        const EntityMetadata& target,
-        bool sourceUsesVanillaPush
-) noexcept;
-
 } // namespace eco

@@ -2,9 +2,6 @@
 
 #include "spatial_index.h"
 
-#include <algorithm>
-#include <cmath>
-
 namespace eco {
 
 bool isInLookupSections(const Aabb& source, const EntityMetadata& target) noexcept {
@@ -35,19 +32,6 @@ bool passesTeamRules(
     }
     return (sourceRule != COLLISION_PUSH_OTHER_TEAMS
             && targetRule != COLLISION_PUSH_OTHER_TEAMS) || allied;
-}
-
-bool pushHasNoEffect(
-        const EntityMetadata& source,
-        const EntityMetadata& target,
-        bool sourceUsesVanillaPush
-) noexcept {
-    if (!sourceUsesVanillaPush || !target.vanillaEntityPush) {
-        return false;
-    }
-    const double deltaX = source.positionX - target.positionX;
-    const double deltaZ = source.positionZ - target.positionZ;
-    return std::max(std::abs(deltaX), std::abs(deltaZ)) < PUSH_EPSILON;
 }
 
 } // namespace eco

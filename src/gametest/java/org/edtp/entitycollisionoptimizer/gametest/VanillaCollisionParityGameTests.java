@@ -20,8 +20,10 @@ public final class VanillaCollisionParityGameTests {
     @GameTest(maxTicks = 200, padding = 48)
     public void impulseObservationParity(GameTestHelper helper) {
         CollisionImpulseParity.verify(helper);
+        NativeImpulseParity.verify(helper);
+        PushBatchParity.verify(helper);
         EntityCollisionOptimizer.LOGGER.info(
-                "ECO_PARITY_RESULT velocity_observations=5 result=passed"
+                "ECO_PARITY_RESULT velocity_observations=5 kernel_bitwise_pairs=225 arithmetic_sequences=4 nested_batches=2 sleep_phases=3 result=passed"
         );
         helper.succeed();
     }
@@ -48,7 +50,7 @@ public final class VanillaCollisionParityGameTests {
     public void concurrentLevelIsolation(GameTestHelper helper) {
         CollisionParity.verifyConcurrentLevelIsolation(helper);
         EntityCollisionOptimizer.LOGGER.info(
-                "ECO_PARITY_RESULT dimensions=3 concurrent_queries=9000 result=passed"
+                "ECO_PARITY_RESULT dimensions=3 concurrent_queries=13500 native_batches=4500 result=passed"
         );
         helper.succeed();
     }

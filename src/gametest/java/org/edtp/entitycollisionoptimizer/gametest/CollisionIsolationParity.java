@@ -77,7 +77,7 @@ final class CollisionIsolationParity {
         Vec3 position = new Vec3(coordinate, 64.0, coordinate);
         for (int index = 0; index < entityCount; index++) {
             Zombie zombie = new WorldlessPushableZombie(level);
-            zombie.setPos(position);
+            zombie.setPos(position.add(index * 0.03, 0, index * 0.02));
             CollisionFrame.addEntity(zombie);
             entities.add(zombie);
         }
@@ -123,6 +123,33 @@ final class CollisionIsolationParity {
                                     + "/" + pushable.nonPassengerCount()
                     );
                 }
+                verifyNativeBatch(group, source);
+            }
+        }
+    }
+
+    private static void verifyNativeBatch(LevelQueryGroup group, Zombie source) {
+        List<Zombie> entities = group.entities();
+        for (Zombie entity : entities) entity.setDeltaMovement(Vec3.ZERO);
+        for (Zombie target : entities) if (target != source) target.push(source);
+        Vec3[] expected = new Vec3[entities.size()];
+        for (int i = 0; i < entities.size(); i++) {
+            expected[i] = entities.get(i).getDeltaMovement();
+            entities.get(i).setDeltaMovement(Vec3.ZERO);
+        }
+        try (var batch = CollisionFrame.collectPushable(source, source.getTeam(),
+                VanillaEntityCollision.collisionRule(source.getTeam()), true)) {
+            for (int i = 0; i < batch.size(); i++) {
+                if (!batch.usesNativePush(i) || !entities.contains(batch.target(i))) {
+                    throw new AssertionError("Concurrent batch contains a foreign or non-native target");
+                }
+            }
+            batch.applyNativeRun(source, 0, batch.size());
+        }
+        for (int i = 0; i < entities.size(); i++) {
+            if (entities.get(i).getDeltaMovement().distanceToSqr(expected[i]) > 1.0E-24) {
+                throw new AssertionError("Concurrent native impulse buffer contamination in "
+                        + group.level().dimension().identifier());
             }
         }
     }

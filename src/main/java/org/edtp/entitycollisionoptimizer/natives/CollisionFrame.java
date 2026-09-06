@@ -14,6 +14,7 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.scores.PlayerTeam;
 import net.minecraft.world.scores.Team;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.IdentityHashMap;
@@ -106,6 +107,11 @@ public final class CollisionFrame {
         return frame == null ? null : frame.entity(nativeId);
     }
 
+    public static PushBatch collectPushable(LivingEntity source, PlayerTeam team,
+                                            Team.CollisionRule rule, boolean vanillaPush) {
+        return frameFor(source).collectPushable(source, team, rule, vanillaPush);
+    }
+
     public static boolean contains(Entity entity) {
         if (!(entity.level() instanceof ServerLevel level)) {
             return false;
@@ -138,6 +144,7 @@ public final class CollisionFrame {
         private final TempID ids = new TempID();
         private final FFMBackend.Context nativeContext = FFMBackend.createContext();
         private final IdentityHashMap<PlayerTeam, Integer> teamIds = new IdentityHashMap<>();
+        private final ArrayDeque<PushBatch> batchPool = new ArrayDeque<>();
         private long[] selectableEntityRevisions = new long[0];
         private long[] selectableBlockRevisions = new long[0];
         private byte[] selectableValues = new byte[0];
@@ -148,12 +155,14 @@ public final class CollisionFrame {
         private boolean active;
 
         synchronized void begin(ServerLevel level) {
+            flushPendingImpulses();
             ids.tickStart();
             teamIds.clear();
 
             List<Entity> entities = new ArrayList<>();
             for (Entity entity : level.getAllEntities()) {
                 if (!entity.isRemoved()) {
+                    ((CollisionCacheState) entity).entityCollisionOptimizer$resetPushabilityCache();
                     ids.addEntity(entity);
                     entities.add(entity);
                 }
@@ -187,7 +196,9 @@ public final class CollisionFrame {
         }
 
         synchronized void close() {
+            flushPendingImpulses();
             active = false;
+            batchPool.clear();
             nativeContext.close();
         }
 
@@ -297,6 +308,33 @@ public final class CollisionFrame {
             return ids.getEntity(nativeId);
         }
 
+        synchronized PushBatch collectPushable(LivingEntity source, PlayerTeam team,
+                                                Team.CollisionRule rule, boolean vanillaPush) {
+            FFMBackend.QueryResult result = queryPushable(source, team, rule, vanillaPush);
+            PushBatch batch = batchPool.pollFirst();
+            if (batch == null) {
+                batch = new PushBatch(nativeContext, this::recycle);
+            }
+            try {
+                batch.prepare(result);
+                for (int i = 0; i < batch.size(); i++) {
+                    Entity target = ids.getEntity(batch.id(i));
+                    if (target == null) {
+                        throw new IllegalStateException("Native collision query returned unknown entity " + batch.id(i));
+                    }
+                    batch.target(i, target);
+                }
+                return batch;
+            } catch (RuntimeException | Error failure) {
+                batch.close();
+                throw failure;
+            }
+        }
+
+        private synchronized void recycle(PushBatch batch) {
+            batchPool.addFirst(batch);
+        }
+
         synchronized boolean contains(Entity entity) {
             return active && ids.contains(entity);
         }
@@ -309,7 +347,8 @@ public final class CollisionFrame {
             if (selectableEntityRevisions[nativeId] != entityRevision
                     || selectableBlockRevisions[nativeId] != blockRevision) {
                 selectableValues[nativeId] = (byte) (
-                        !entity.isRemoved() && !entity.isSpectator() && entity.isPushable() ? 1 : 0
+                        !entity.isRemoved() && !entity.isSpectator()
+                                && ((CollisionCacheState) entity).entityCollisionOptimizer$isPushableCached() ? 1 : 0
                 );
                 selectableEntityRevisions[nativeId] = entityRevision;
                 selectableBlockRevisions[nativeId] = blockRevision;
