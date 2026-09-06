@@ -1,6 +1,8 @@
 repositories {
     ivy {
-        name = "GitHub Toolchain Release"
+        // Reuse the upstream cross-compilation toolchain. The archive contains
+        // compilers and sysroots only; this repository owns the native sources.
+        name = "Upstream Cross-Compilation Toolchain"
         url = "https://github.com/wiyuka-owo/AcceleratedRecoiling/releases/download"
         patternLayout {
             artifact "[revision]/[artifact].[ext]"
@@ -17,7 +19,7 @@ dependencies {
     cppToolchain "com.wiyuka.env:AcceleratedRecoiling-third-party:toolchain_20260601_0@zip"
 }
 
-def cppProjectDir = file("./AcceleratedRecoiling-third-party")
+def cppProjectDir = file("./native")
 def isWindows = System.getProperty("os.name").toLowerCase().contains("windows")
 
 def registerNativeTask = { String taskName, String targetName, String cmakeScriptName, String description ->
@@ -27,7 +29,7 @@ def registerNativeTask = { String taskName, String targetName, String cmakeScrip
         onlyIf { isWindows }
         workingDir = cppProjectDir
         def envScript = file("${cppProjectDir}/env/add_env.bat").absolutePath
-        def outputDir = file("${cppProjectDir}/out/${targetName}").absolutePath
+        def outputDir = file("${cppProjectDir}/out/entity-collision-optimizer/${targetName}").absolutePath
 
         commandLine 'cmd', '/c', "call \"${envScript}\" && " +
                 "call \"%AR_TOOLCHAIN%\\bin\\${cmakeScriptName}\" " +
@@ -71,18 +73,18 @@ def prepareNativeResources = tasks.register("prepareNativeResources", Sync) {
     into generatedNativeResources
 
     // Windows x64
-    from("${cppProjectDir}/out/win-x64/") {
-        include "*.dll"
+    from("${cppProjectDir}/out/entity-collision-optimizer/win-x64/") {
+        include "EntityCollisionOptimizer.dll"
         into "natives/windows-x64"
     }
     // Linux x64
-    from("${cppProjectDir}/out/linux-x64/") {
-        include "*.so"
+    from("${cppProjectDir}/out/entity-collision-optimizer/linux-x64/") {
+        include "libEntityCollisionOptimizer.so"
         into "natives/linux-x64"
     }
     // MacOS x64 (Intel)
-    from("${cppProjectDir}/out/macos-x64/") {
-        include "*.dylib"
+    from("${cppProjectDir}/out/entity-collision-optimizer/macos-x64/") {
+        include "libEntityCollisionOptimizer.dylib"
         into "natives/macos-x64"
     }
 }

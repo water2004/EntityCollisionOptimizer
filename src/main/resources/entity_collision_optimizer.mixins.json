@@ -1,0 +1,25 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "org.edtp.entitycollisionoptimizer.mixin",
+  "compatibilityLevel": "JAVA_25",
+  "mixins": [
+    "CreakingMixin",
+    "EntityMixin",
+    "LevelMixin",
+    "LivingEntityInvoker",
+    "LivingEntityMixin",
+    "PlayerTeamMixin",
+    "ScoreboardMixin",
+    "ServerPlayerMixin",
+    "ServerLevelMixin"
+  ],
+  "client": [
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "overwrites": {
+    "requireAnnotations": true
+  }
+}

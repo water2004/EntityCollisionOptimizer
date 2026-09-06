@@ -37,7 +37,7 @@ jobs:
       - name: Upload Mod artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: AcceleratedRecoiling-${{ github.ref_name }}-build-${{ github.run_number }}
+          name: EntityCollisionOptimizer-${{ github.ref_name }}-build-${{ github.run_number }}
           path: build/libs/*.jar
           retention-days: 14
 

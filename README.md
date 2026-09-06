@@ -1,6 +1,6 @@
-# 加速碰撞 (Accelerated Recoiling)
+# 实体碰撞优化 (Entity Collision Optimizer)
 
-Accelerated Recoiling 是一个面向 Fabric 服务器的实体碰撞优化模组。它使用 Java FFM 调用随模组发布的原生库，处理高密度实体的 AABB 碰撞候选计算。
+Entity Collision Optimizer 是一个面向 Fabric 服务器的实体碰撞优化模组。它使用 Java FFM 调用随模组发布的原生库，处理高密度实体的 AABB 碰撞候选计算。
 
 模组只接管服务端实体之间的推动候选查询与原版推动循环，不接管或修改实体碰撞数量上限。
 
@@ -40,7 +40,7 @@ ARM64 暂不作为正式原生后端支持范围；在不受支持的平台上�
 首次启动后会生成：
 
 ```text
-config/acceleratedrecoiling.json
+config/entity_collision_optimizer.json
 ```
 
 默认配置：
@@ -56,7 +56,7 @@ config/acceleratedrecoiling.json
 
 `gridSize` 是原生 X/Z 空间索引的格子边长，必须大于 `0`。实现始终返回所有相交候选，不包含候选上限、密度阈值、多线程开关或按密度分流的路径。
 
-可使用 `/acceleratedrecoiling` 或 `/togglefold` 查看、修改和保存配置。命令需要游戏管理员权限。
+可使用 `/entitycollisionoptimizer` 查看、修改和保存配置。命令需要游戏管理员权限。
 
 ## 行为与兼容性
 
@@ -108,8 +108,10 @@ config/acceleratedrecoiling.json
 ./gradlew.bat runGameTest -Pbenchmark
 ```
 
-结果会以 `AR_BENCHMARK_RESULT` 为前缀输出到日志。建议至少独立运行三次，并比较 `baseline_mean_mspt`、`optimized_mean_mspt` 与 `improvement_percent`。
+结果会以 `ECO_BENCHMARK_RESULT` 为前缀输出到日志。建议至少独立运行三次，并比较 `baseline_mean_mspt`、`optimized_mean_mspt` 与 `improvement_percent`。
 
 ## 许可证
 
 本项目使用 MIT License。
+
+项目源自 [Accelerated Recoiling](https://github.com/water2004/AcceleratedRecoiling)。原项目代码由 wiyuka 以 MIT License 发布；Entity Collision Optimizer 的后续重构与维护由 water2004 完成。

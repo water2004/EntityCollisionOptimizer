@@ -1,0 +1,15 @@
+{
+    global:
+        createCollisionContext;
+        destroyCollisionContext;
+        setCollisionGridSize;
+        beginCollisionFrame;
+        addCollisionEntity;
+        updateCollisionEntity;
+        updateCollisionEntityMetadata;
+        invalidateCollisionEntityMetadata;
+        invalidateCollisionMetadata;
+        queryCollisionEntities;
+        queryPushableEntities;
+    local: *;
+};

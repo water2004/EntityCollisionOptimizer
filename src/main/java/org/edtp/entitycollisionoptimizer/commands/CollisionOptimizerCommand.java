@@ -1,0 +1,212 @@
+package org.edtp.entitycollisionoptimizer.commands;
+
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonObject;
+import com.mojang.brigadier.CommandDispatcher;
+import com.mojang.brigadier.arguments.BoolArgumentType;
+import com.mojang.brigadier.arguments.IntegerArgumentType;
+import com.mojang.brigadier.builder.LiteralArgumentBuilder;
+import com.mojang.brigadier.context.CommandContext;
+import org.edtp.entitycollisionoptimizer.config.CollisionOptimizerConfig;
+import org.edtp.entitycollisionoptimizer.natives.FFMBackend;
+import net.minecraft.ChatFormatting;
+import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.commands.Commands;
+import net.minecraft.network.chat.Component;
+
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
+
+public class CollisionOptimizerCommand {
+    private static final String COMMAND = "entitycollisionoptimizer";
+    private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
+
+    public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
+        registerCommand(dispatcher, COMMAND);
+    }
+
+    private static void registerCommand(CommandDispatcher<CommandSourceStack> dispatcher, String name) {
+        LiteralArgumentBuilder<CommandSourceStack> baseCommand = Commands.literal(name)
+                .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS));
+
+        baseCommand.then(Commands.literal("check").executes(CollisionOptimizerCommand::checkConfig));
+        baseCommand.then(Commands.literal("save").executes(CollisionOptimizerCommand::save));
+        baseCommand.then(Commands.literal("updateConfig").executes(CollisionOptimizerCommand::updateConfig));
+
+        for (Field field : CollisionOptimizerConfig.class.getDeclaredFields()) {
+            int modifiers = field.getModifiers();
+            if (!Modifier.isStatic(modifiers) || Modifier.isFinal(modifiers)) continue;
+
+            field.setAccessible(true);
+            String fieldName = field.getName();
+            Class<?> type = field.getType();
+
+            LiteralArgumentBuilder<CommandSourceStack> fieldNode = Commands.literal(fieldName);
+
+            if (type == boolean.class) {
+                fieldNode.executes(ctx -> {
+                    try {
+                        boolean currentValue = field.getBoolean(null);
+                        return setFieldValue(ctx, field, !currentValue);
+                    } catch (IllegalAccessException e) {
+                        return 0;
+                    }
+                });
+
+                fieldNode.then(Commands.argument("value", BoolArgumentType.bool())
+                        .executes(ctx -> setFieldValue(ctx, field, BoolArgumentType.getBool(ctx, "value"))));
+
+            } else if (type == int.class) {
+                fieldNode.then(Commands.argument("value", IntegerArgumentType.integer(1))
+                        .executes(ctx -> setFieldValue(ctx, field, IntegerArgumentType.getInteger(ctx, "value"))));
+            }
+
+            baseCommand.then(fieldNode);
+        }
+
+        dispatcher.register(baseCommand);
+    }
+
+    private static int updateConfig(CommandContext<CommandSourceStack> context) {
+        FFMBackend.applyConfig();
+        context.getSource().sendSuccess(() -> Component.literal("FFM configuration applied"), false);
+        return 1;
+    }
+
+    private static int setFieldValue(CommandContext<CommandSourceStack> context, Field field, Object newValue) {
+        try {
+            field.set(null, newValue);
+            sendSuccessMessage(context.getSource(), field.getName(), newValue);
+            FFMBackend.applyConfig();
+            return 1;
+        } catch (IllegalAccessException e) {
+            context.getSource().sendFailure(Component.literal("Failed to modify config: " + e.getMessage()));
+            e.printStackTrace();
+            return 0;
+        }
+    }
+
+    private static void sendSuccessMessage(CommandSourceStack source, String configName, Object newValue) {
+        var message = Component.literal("Config ")
+                .withStyle(ChatFormatting.GRAY)
+                .append(Component.literal(configName)
+                        .withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD))
+                .append(Component.literal(" updated to ")
+                        .withStyle(ChatFormatting.GRAY));
+
+        if (newValue instanceof Boolean boolValue) {
+            message.append(Component.literal(String.valueOf(boolValue))
+                    .withStyle(boolValue ? ChatFormatting.GREEN : ChatFormatting.RED));
+        } else {
+            message.append(Component.literal(String.valueOf(newValue))
+                    .withStyle(ChatFormatting.AQUA));
+        }
+
+        source.sendSuccess(() -> message, false);
+    }
+
+    private static Component buildConfigLine(String configName, Object value) {
+        var line = Component.literal("  " + configName + ": ")
+                .withStyle(ChatFormatting.GRAY);
+
+        if (value instanceof Boolean boolValue) {
+            line.append(Component.literal(String.valueOf(boolValue))
+                    .withStyle(boolValue ? ChatFormatting.GREEN : ChatFormatting.RED, ChatFormatting.BOLD));
+        } else {
+            line.append(Component.literal(String.valueOf(value))
+                    .withStyle(ChatFormatting.AQUA, ChatFormatting.BOLD));
+        }
+
+        line.append("\n");
+        return line;
+    }
+
+    private static int checkConfig(CommandContext<CommandSourceStack> context) {
+        CommandSourceStack source = context.getSource();
+
+        var message = Component.literal("Entity Collision Optimizer")
+                .withStyle(ChatFormatting.AQUA);
+
+        message.append(Component.literal("\n--------------------\n")
+                .withStyle(ChatFormatting.DARK_GRAY));
+
+        String mode = CollisionOptimizerConfig.enableEntityCollision ? "FFM (enabled)" : "Vanilla (disabled)";
+        message.append(Component.literal("  Backend: ")
+                        .withStyle(ChatFormatting.GRAY))
+                .append(Component.literal(mode)
+                        .withStyle(
+                                CollisionOptimizerConfig.enableEntityCollision ? ChatFormatting.GREEN : ChatFormatting.YELLOW,
+                                ChatFormatting.BOLD
+                        ))
+                .append(Component.literal("\n  FFM initialized: ")
+                        .withStyle(ChatFormatting.GRAY))
+                .append(Component.literal(String.valueOf(FFMBackend.isInitialized()))
+                        .withStyle(FFMBackend.isInitialized() ? ChatFormatting.GREEN : ChatFormatting.DARK_GRAY))
+                .append("\n\n");
+
+        for (Field field : CollisionOptimizerConfig.class.getDeclaredFields()) {
+            int modifiers = field.getModifiers();
+            if (!Modifier.isStatic(modifiers) || Modifier.isFinal(modifiers)) continue;
+
+            field.setAccessible(true);
+            try {
+                Object value = field.get(null);
+                message.append(buildConfigLine(field.getName(), value));
+            } catch (IllegalAccessException e) {
+            }
+        }
+
+        message.append(Component.literal("--------------------")
+                .withStyle(ChatFormatting.DARK_GRAY));
+
+        source.sendSuccess(() -> message, false);
+        return 1;
+    }
+
+    private static int save(CommandContext<CommandSourceStack> context) {
+        CommandSourceStack source = context.getSource();
+        File targetFile = CollisionOptimizerConfig.getConfigFile();
+
+        JsonObject jsonObject = new JsonObject();
+
+        for (Field field : CollisionOptimizerConfig.class.getDeclaredFields()) {
+            int modifiers = field.getModifiers();
+            if (!Modifier.isStatic(modifiers) || Modifier.isFinal(modifiers)) continue;
+
+            field.setAccessible(true);
+            try {
+                Object value   = field.get(null);
+                String jsonKey = field.getName();
+                if      (value instanceof Boolean bool)  jsonObject.addProperty(jsonKey, bool);
+                else if (value instanceof Number number) jsonObject.addProperty(jsonKey, number);
+                else if (value instanceof String string) jsonObject.addProperty(jsonKey, string);
+
+            } catch (IllegalAccessException _) {
+            }
+        }
+
+        try (FileWriter writer = new FileWriter(targetFile)) {
+            GSON.toJson(jsonObject, writer);
+
+            var message = Component.literal("Config saved ")
+                    .withStyle(ChatFormatting.GREEN)
+                    .append(Component.literal(targetFile.getName())
+                            .withStyle(ChatFormatting.AQUA, ChatFormatting.BOLD));
+            source.sendSuccess(() -> message, false);
+            return 1;
+
+        } catch (IOException e) {
+            var message = Component.literal("Failed to save config file: ")
+                    .withStyle(ChatFormatting.RED)
+                    .append(Component.literal(e.getMessage())
+                            .withStyle(ChatFormatting.WHITE));
+            source.sendFailure(message);
+            e.printStackTrace();
+            return 0;
+        }
+    }
+}

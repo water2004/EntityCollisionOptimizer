@@ -19,7 +19,7 @@ loom {
         configureEach {
             vmArg "--enable-native-access=ALL-UNNAMED"
             if (providers.gradleProperty("benchmark").isPresent()) {
-                vmArg "-Dacceleratedrecoiling.runBenchmark=true"
+                vmArg "-Dentity_collision_optimizer.runBenchmark=true"
             }
             if (providers.gradleProperty("jfrOutput").isPresent()) {
                 vmArg "-XX:StartFlightRecording=filename=${file(providers.gradleProperty("jfrOutput").get()).absolutePath},settings=profile,dumponexit=true"
@@ -34,7 +34,7 @@ if (providers.gradleProperty("benchmark").isPresent()
     fabricApi {
         configureTests {
             createSourceSet = true
-            modId = "acceleratedrecoiling-gametest"
+            modId = "entity_collision_optimizer-gametest"
             enableGameTests = true
             eula = true
         }

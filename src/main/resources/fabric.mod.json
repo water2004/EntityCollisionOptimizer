@@ -1,20 +1,21 @@
 {
   "schemaVersion": 1,
-  "id": "acceleratedrecoiling",
+  "id": "entity_collision_optimizer",
   "version": "${version}",
-  "name": "AcceleratedRecoiling",
-  "description": "Accelerates server-side entity collision handling.",
-  "authors": ["wiyuka"],
+  "name": "Entity Collision Optimizer",
+  "description": "Accelerates server-side entity collisions while preserving vanilla behavior.",
+  "authors": ["water2004"],
+  "contributors": ["wiyuka"],
   "contact": {
-    "sources": "https://github.com/water2004/AcceleratedRecoiling",
-    "issues": "https://github.com/water2004/AcceleratedRecoiling/issues"
+    "sources": "https://github.com/water2004/EntityCollisionOptimizer",
+    "issues": "https://github.com/water2004/EntityCollisionOptimizer/issues"
   },
   "license": "MIT",
   "environment": "*",
   "entrypoints": {
-    "main": ["com.wiyuka.acceleratedrecoiling.AcceleratedRecoiling"]
+    "main": ["org.edtp.entitycollisionoptimizer.EntityCollisionOptimizer"]
   },
-  "mixins": ["acceleratedrecoiling.mixins.json"],
+  "mixins": ["entity_collision_optimizer.mixins.json"],
   "depends": {
     "fabricloader": ">=0.19.5",
     "minecraft": "~26.2",
