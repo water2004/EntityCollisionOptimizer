@@ -31,11 +31,11 @@ def registerNativeTask = { String taskName, String targetName, String cmakeScrip
 
         commandLine 'cmd', '/c', "call \"${envScript}\" && " +
                 "call \"%AR_TOOLCHAIN%\\bin\\${cmakeScriptName}\" " +
-                "-DCMAKE_BUILD_TYPE=Release -DAR_ENABLE_JNI=OFF \"${cppProjectDir.absolutePath}\" -B \"${outputDir}\" && " +
+                "-DCMAKE_BUILD_TYPE=Release \"${cppProjectDir.absolutePath}\" -B \"${outputDir}\" && " +
                 "call \"%AR_TOOLCHAIN%\\bin\\cmake-build.bat\" \"${outputDir}\""
 
         doFirst {
-            println "> 开始编译 ${description} (${targetName}, FFM only)"
+            println "> 开始编译 ${description} (${targetName}, FFM)"
         }
     }
 }
@@ -47,7 +47,13 @@ tasks.register("extractToolchain", Copy) {
         !new File(cppProjectDir, "env/add_env.bat").exists()
     }
 
-    from({ zipTree(configurations.cppToolchain.singleFile) })
+    from({ zipTree(configurations.cppToolchain.singleFile) }) {
+        // The release archive supplies compilers and sysroots only. Native
+        // project sources are versioned in this repository.
+        exclude "src/**"
+        exclude "CMakeLists.txt"
+        exclude "version-script"
+    }
     into cppProjectDir
     doLast {
         println "> 解压完成"

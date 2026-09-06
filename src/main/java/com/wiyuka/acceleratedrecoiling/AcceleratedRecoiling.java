@@ -3,6 +3,7 @@ package com.wiyuka.acceleratedrecoiling;
 import com.mojang.logging.LogUtils;
 import com.wiyuka.acceleratedrecoiling.commands.ToggleFoldCommand;
 import com.wiyuka.acceleratedrecoiling.config.FoldConfig;
+import com.wiyuka.acceleratedrecoiling.natives.CollisionFrame;
 import com.wiyuka.acceleratedrecoiling.natives.FFMBackend;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
@@ -18,6 +19,9 @@ public class AcceleratedRecoiling implements ModInitializer {
         FoldConfig.loadConfig();
         CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) ->
                 ToggleFoldCommand.register(dispatcher));
-        ServerLifecycleEvents.SERVER_STOPPING.register(server -> FFMBackend.destroy());
+        ServerLifecycleEvents.SERVER_STOPPING.register(server -> {
+            CollisionFrame.destroy();
+            FFMBackend.destroy();
+        });
     }
 }

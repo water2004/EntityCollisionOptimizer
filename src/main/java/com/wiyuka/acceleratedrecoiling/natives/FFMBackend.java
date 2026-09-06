@@ -3,6 +3,7 @@ package com.wiyuka.acceleratedrecoiling.natives;
 import com.wiyuka.acceleratedrecoiling.AcceleratedRecoiling;
 import com.wiyuka.acceleratedrecoiling.config.FoldConfig;
 import com.wiyuka.acceleratedrecoiling.ffm.FFM;
+import net.minecraft.world.phys.AABB;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -21,27 +22,28 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static java.lang.foreign.ValueLayout.ADDRESS;
-import static java.lang.foreign.ValueLayout.JAVA_FLOAT;
+import static java.lang.foreign.ValueLayout.JAVA_DOUBLE;
 import static java.lang.foreign.ValueLayout.JAVA_INT;
 
 /**
- * The single accelerated backend. When collision acceleration is disabled this
- * class is not called and Minecraft executes its original collision path.
+ * FFM bindings for the live native spatial index. There is deliberately no
+ * alternate accelerated backend or silent fallback.
  */
 public final class FFMBackend {
-    private static Linker linker;
     private static Arena nativeArena;
-    private static MethodHandle pushMethodHandle;
-    private static MethodHandle createCtxMethodHandle;
-    private static MethodHandle destroyCtxMethodHandle;
-    private static MethodHandle createCfgMethodHandle;
-    private static MethodHandle updateCfgMethodHandle;
-    private static MethodHandle destroyCfgMethodHandle;
+    private static MethodHandle createContextHandle;
+    private static MethodHandle destroyContextHandle;
+    private static MethodHandle beginFrame;
+    private static MethodHandle setGridSize;
+    private static MethodHandle addEntity;
+    private static MethodHandle updateEntity;
+    private static MethodHandle updateEntityMetadata;
+    private static MethodHandle invalidateEntityMetadata;
+    private static MethodHandle invalidateMetadata;
+    private static MethodHandle query;
+    private static MethodHandle queryPushable;
+    private static final Set<Context> CONTEXTS = ConcurrentHashMap.newKeySet();
     private static volatile boolean initialized;
-    private static int generation;
-
-    private static final Set<ThreadState> ALL_THREAD_STATES = ConcurrentHashMap.newKeySet();
-    private static final ThreadLocal<ThreadState> THREAD_STATE = new ThreadLocal<>();
 
     private FFMBackend() {
     }
@@ -57,7 +59,6 @@ public final class FFMBackend {
 
         try {
             loadNativeLibrary();
-            generation++;
             initialized = true;
             AcceleratedRecoiling.LOGGER.info("FFM collision backend initialized");
         } catch (Throwable failure) {
@@ -73,18 +74,258 @@ public final class FFMBackend {
         if (!initialized) {
             return;
         }
+        for (Context context : CONTEXTS) {
+            context.applyConfig();
+        }
+    }
 
-        for (ThreadState state : ALL_THREAD_STATES) {
+    public static Context createContext() {
+        ensureInitialized();
+        MemorySegment address = MemorySegment.NULL;
+        try {
+            address = (MemorySegment) createContextHandle.invokeExact();
+            if (address.equals(MemorySegment.NULL)) {
+                throw new IllegalStateException("Native library returned a null collision context");
+            }
+            int status = (int) setGridSize.invokeExact(address, FoldConfig.gridSize);
+            checkStatus("configure native collision grid", status);
+            Context context = new Context(address);
+            CONTEXTS.add(context);
+            return context;
+        } catch (Throwable failure) {
+            if (!address.equals(MemorySegment.NULL) && destroyContextHandle != null) {
+                try {
+                    destroyContextHandle.invokeExact(address);
+                } catch (Throwable cleanupFailure) {
+                    failure.addSuppressed(cleanupFailure);
+                }
+            }
+            throw new IllegalStateException("Failed to create an FFM collision context", failure);
+        }
+    }
+
+    public static void beginFrame(
+            Context nativeContext,
+            double[] aabbs,
+            double[] positions,
+            int[] sections,
+            int entityCount,
+            int gridSize
+    ) {
+        synchronized (nativeContext) {
+            nativeContext.ensureOpen();
+            nativeContext.ensureOutputCapacity(entityCount);
+            try (Arena arena = Arena.ofConfined()) {
+                MemorySegment aabbMemory = FFM.allocateArray(arena, aabbs);
+                MemorySegment positionMemory = FFM.allocateArray(arena, positions);
+                MemorySegment sectionMemory = FFM.allocateArray(arena, sections);
+                final int status;
+                try {
+                    status = (int) beginFrame.invokeExact(
+                            nativeContext.address,
+                            aabbMemory,
+                            positionMemory,
+                            sectionMemory,
+                            entityCount,
+                            gridSize
+                    );
+                } catch (Throwable failure) {
+                    throw new IllegalStateException("FFM beginFrame call failed", failure);
+                }
+                checkStatus("build native collision frame", status);
+            }
+        }
+    }
+
+    public static int addEntity(
+            Context nativeContext,
+            AABB box,
+            double positionX,
+            double positionZ,
+            int sectionX,
+            int sectionY,
+            int sectionZ
+    ) {
+        synchronized (nativeContext) {
+            nativeContext.ensureOpen();
             try {
-                updateCfgMethodHandle.invokeExact(
-                        state.configPtr,
-                        FoldConfig.maxCollision,
-                        FoldConfig.gridSize,
-                        FoldConfig.densityWindow,
-                        FoldConfig.maxThreads
+                int nativeId = (int) addEntity.invokeExact(
+                        nativeContext.address,
+                        box.minX,
+                        box.minY,
+                        box.minZ,
+                        box.maxX,
+                        box.maxY,
+                        box.maxZ,
+                        positionX,
+                        positionZ,
+                        sectionX,
+                        sectionY,
+                        sectionZ
                 );
+                if (nativeId < 0) {
+                    throw new IllegalStateException("Native collision index rejected an entity");
+                }
+                nativeContext.ensureOutputCapacity(nativeId + 1);
+                return nativeId;
             } catch (Throwable failure) {
-                throw new IllegalStateException("Failed to update the FFM collision configuration", failure);
+                throw new IllegalStateException("FFM addEntity call failed", failure);
+            }
+        }
+    }
+
+    public static void updateEntity(
+            Context nativeContext,
+            int nativeId,
+            AABB box,
+            double positionX,
+            double positionZ,
+            int sectionX,
+            int sectionY,
+            int sectionZ
+    ) {
+        synchronized (nativeContext) {
+            nativeContext.ensureOpen();
+            try {
+                int status = (int) updateEntity.invokeExact(
+                        nativeContext.address,
+                        nativeId,
+                        box.minX,
+                        box.minY,
+                        box.minZ,
+                        box.maxX,
+                        box.maxY,
+                        box.maxZ,
+                        positionX,
+                        positionZ,
+                        sectionX,
+                        sectionY,
+                        sectionZ
+                );
+                checkStatus("update native entity bounds", status);
+            } catch (Throwable failure) {
+                throw new IllegalStateException("FFM updateEntity call failed", failure);
+            }
+        }
+    }
+
+    public static void updateEntityMetadata(
+            Context nativeContext,
+            int nativeId,
+            boolean selectable,
+            boolean passenger,
+            boolean ordinaryLivingTarget,
+            int teamId,
+            int collisionRule
+    ) {
+        synchronized (nativeContext) {
+            nativeContext.ensureOpen();
+            try {
+                int status = (int) updateEntityMetadata.invokeExact(
+                        nativeContext.address,
+                        nativeId,
+                        selectable ? 1 : 0,
+                        passenger ? 1 : 0,
+                        ordinaryLivingTarget ? 1 : 0,
+                        teamId,
+                        collisionRule
+                );
+                checkStatus("update native entity collision metadata", status);
+            } catch (Throwable failure) {
+                throw new IllegalStateException("FFM updateEntityMetadata call failed", failure);
+            }
+        }
+    }
+
+    public static void invalidateEntityMetadata(Context nativeContext, int nativeId) {
+        synchronized (nativeContext) {
+            nativeContext.ensureOpen();
+            try {
+                int status = (int) invalidateEntityMetadata.invokeExact(nativeContext.address, nativeId);
+                checkStatus("invalidate native entity collision metadata", status);
+            } catch (Throwable failure) {
+                throw new IllegalStateException("FFM invalidateEntityMetadata call failed", failure);
+            }
+        }
+    }
+
+    public static void invalidateMetadata(Context nativeContext, int mask) {
+        synchronized (nativeContext) {
+            nativeContext.ensureOpen();
+            try {
+                int status = (int) invalidateMetadata.invokeExact(nativeContext.address, mask);
+                checkStatus("invalidate native collision metadata", status);
+            } catch (Throwable failure) {
+                throw new IllegalStateException("FFM invalidateMetadata call failed", failure);
+            }
+        }
+    }
+
+    public static QueryResult query(Context nativeContext, int sourceId, int entityCount) {
+        synchronized (nativeContext) {
+            nativeContext.ensureOpen();
+            nativeContext.ensureOutputCapacity(entityCount);
+            try {
+                int resultSize = (int) query.invokeExact(
+                        nativeContext.address,
+                        sourceId,
+                        nativeContext.outputBuffer,
+                        nativeContext.outputCapacity
+                );
+                if (resultSize < 0 || resultSize > nativeContext.outputCapacity) {
+                    throw new IllegalStateException("Native collision query returned invalid size " + resultSize);
+                }
+                QueryResult result = nativeContext.queryResult;
+                result.offset = 0;
+                result.size = resultSize;
+                result.metadataRequired = false;
+                result.pushableCount = 0;
+                result.nonPassengerCount = 0;
+                return result;
+            } catch (Throwable failure) {
+                throw new IllegalStateException("FFM collision query failed", failure);
+            }
+        }
+    }
+
+    public static QueryResult queryPushable(
+            Context nativeContext,
+            int sourceId,
+            int sourceTeamId,
+            int sourceCollisionRule,
+            boolean sourceUsesVanillaPush,
+            int entityCount
+    ) {
+        synchronized (nativeContext) {
+            nativeContext.ensureOpen();
+            nativeContext.ensureOutputCapacity(entityCount);
+            try {
+                int resultSize = (int) queryPushable.invokeExact(
+                        nativeContext.address,
+                        sourceId,
+                        sourceTeamId,
+                        sourceCollisionRule,
+                        sourceUsesVanillaPush ? 1 : 0,
+                        nativeContext.outputBuffer,
+                        nativeContext.outputCapacity
+                );
+                if (resultSize < 0 || resultSize > nativeContext.outputCapacity) {
+                    throw new IllegalStateException(
+                            "Native pushable collision query returned invalid size " + resultSize
+                    );
+                }
+                QueryResult result = nativeContext.queryResult;
+                result.offset = 3;
+                result.size = resultSize;
+                result.metadataRequired = nativeContext.outputBuffer.get(JAVA_INT, 0) != 0;
+                result.pushableCount = nativeContext.outputBuffer.get(JAVA_INT, Integer.BYTES);
+                result.nonPassengerCount = nativeContext.outputBuffer.get(
+                        JAVA_INT,
+                        (long) Integer.BYTES * 2
+                );
+                return result;
+            } catch (Throwable failure) {
+                throw new IllegalStateException("FFM pushable collision query failed", failure);
             }
         }
     }
@@ -94,60 +335,20 @@ public final class FFMBackend {
             return;
         }
 
-        initialized = false;
-        for (ThreadState state : ALL_THREAD_STATES) {
-            state.destroy();
+        try {
+            for (Context context : Set.copyOf(CONTEXTS)) {
+                context.close();
+            }
+        } finally {
+            initialized = false;
+            resetHandles();
         }
-        ALL_THREAD_STATES.clear();
-        THREAD_STATE.remove();
-        resetHandles();
     }
 
-    public static PushResult push(double[] aabbs, int entityCount) {
+    private static void ensureInitialized() {
         if (!initialized) {
             initialize();
         }
-
-        ThreadState state = threadState();
-        try (Arena tempArena = Arena.ofConfined()) {
-            int resultCapacity = Math.multiplyExact(
-                    entityCount,
-                    FoldConfig.effectiveMaxCollision(entityCount)
-            );
-            MemorySegment aabbMemory = FFM.allocateArray(tempArena, aabbs);
-            PushResult result = state.allocateOutput(resultCapacity);
-
-            final int collisionCount;
-            try {
-                collisionCount = (int) pushMethodHandle.invokeExact(
-                        aabbMemory,
-                        result.segmentA,
-                        result.segmentB,
-                        entityCount,
-                        result.segmentDensity,
-                        state.context,
-                        state.configPtr
-                );
-            } catch (Throwable failure) {
-                throw new IllegalStateException("FFM collision call failed", failure);
-            }
-
-            if (collisionCount < 0) {
-                throw new IllegalStateException("FFM collision call returned invalid result size " + collisionCount);
-            }
-            result.size = collisionCount;
-            return result;
-        }
-    }
-
-    private static ThreadState threadState() {
-        ThreadState state = THREAD_STATE.get();
-        if (state == null || state.generation != generation) {
-            state = new ThreadState(generation);
-            THREAD_STATE.set(state);
-            ALL_THREAD_STATES.add(state);
-        }
-        return state;
     }
 
     private static void loadNativeLibrary() throws IOException {
@@ -175,42 +376,118 @@ public final class FFMBackend {
                 extractedLibrary.getAbsolutePath()
         );
 
-        linker = Linker.nativeLinker();
+        Linker linker = Linker.nativeLinker();
         nativeArena = Arena.global();
         SymbolLookup library = SymbolLookup.libraryLookup(extractedLibrary.getAbsolutePath(), nativeArena);
-        pushMethodHandle = linker.downcallHandle(
-                library.find("push").orElseThrow(() -> missingSymbol("push")),
+        createContextHandle = linker.downcallHandle(
+                library.find("createCollisionContext").orElseThrow(() -> missingSymbol("createCollisionContext")),
+                FunctionDescriptor.of(ADDRESS)
+        );
+        destroyContextHandle = linker.downcallHandle(
+                library.find("destroyCollisionContext").orElseThrow(() -> missingSymbol("destroyCollisionContext")),
+                FunctionDescriptor.ofVoid(ADDRESS)
+        );
+        beginFrame = linker.downcallHandle(
+                library.find("beginCollisionFrame").orElseThrow(() -> missingSymbol("beginCollisionFrame")),
                 FunctionDescriptor.of(
                         JAVA_INT,
                         ADDRESS,
                         ADDRESS,
                         ADDRESS,
+                        ADDRESS,
                         JAVA_INT,
-                        ADDRESS,
-                        ADDRESS,
-                        ADDRESS
+                        JAVA_INT
                 )
         );
-        createCtxMethodHandle = linker.downcallHandle(
-                library.find("createCtx").orElseThrow(() -> missingSymbol("createCtx")),
-                FunctionDescriptor.of(ADDRESS)
+        setGridSize = linker.downcallHandle(
+                library.find("setCollisionGridSize").orElseThrow(() -> missingSymbol("setCollisionGridSize")),
+                FunctionDescriptor.of(JAVA_INT, ADDRESS, JAVA_INT)
         );
-        destroyCtxMethodHandle = linker.downcallHandle(
-                library.find("destroyCtx").orElseThrow(() -> missingSymbol("destroyCtx")),
-                FunctionDescriptor.ofVoid(ADDRESS)
+        addEntity = linker.downcallHandle(
+                library.find("addCollisionEntity").orElseThrow(() -> missingSymbol("addCollisionEntity")),
+                FunctionDescriptor.of(
+                        JAVA_INT,
+                        ADDRESS,
+                        JAVA_DOUBLE,
+                        JAVA_DOUBLE,
+                        JAVA_DOUBLE,
+                        JAVA_DOUBLE,
+                        JAVA_DOUBLE,
+                        JAVA_DOUBLE,
+                        JAVA_DOUBLE,
+                        JAVA_DOUBLE,
+                        JAVA_INT,
+                        JAVA_INT,
+                        JAVA_INT
+                )
         );
-        createCfgMethodHandle = linker.downcallHandle(
-                library.find("createCfg").orElseThrow(() -> missingSymbol("createCfg")),
-                FunctionDescriptor.of(ADDRESS, JAVA_INT, JAVA_INT, JAVA_INT, JAVA_INT)
+        updateEntity = linker.downcallHandle(
+                library.find("updateCollisionEntity").orElseThrow(() -> missingSymbol("updateCollisionEntity")),
+                FunctionDescriptor.of(
+                        JAVA_INT,
+                        ADDRESS,
+                        JAVA_INT,
+                        JAVA_DOUBLE,
+                        JAVA_DOUBLE,
+                        JAVA_DOUBLE,
+                        JAVA_DOUBLE,
+                        JAVA_DOUBLE,
+                        JAVA_DOUBLE,
+                        JAVA_DOUBLE,
+                        JAVA_DOUBLE,
+                        JAVA_INT,
+                        JAVA_INT,
+                        JAVA_INT
+                )
         );
-        updateCfgMethodHandle = linker.downcallHandle(
-                library.find("updateCfg").orElseThrow(() -> missingSymbol("updateCfg")),
-                FunctionDescriptor.ofVoid(ADDRESS, JAVA_INT, JAVA_INT, JAVA_INT, JAVA_INT)
+        updateEntityMetadata = linker.downcallHandle(
+                library.find("updateCollisionEntityMetadata")
+                        .orElseThrow(() -> missingSymbol("updateCollisionEntityMetadata")),
+                FunctionDescriptor.of(
+                        JAVA_INT,
+                        ADDRESS,
+                        JAVA_INT,
+                        JAVA_INT,
+                        JAVA_INT,
+                        JAVA_INT,
+                        JAVA_INT,
+                        JAVA_INT
+                )
         );
-        destroyCfgMethodHandle = linker.downcallHandle(
-                library.find("destroyCfg").orElseThrow(() -> missingSymbol("destroyCfg")),
-                FunctionDescriptor.ofVoid(ADDRESS)
+        invalidateEntityMetadata = linker.downcallHandle(
+                library.find("invalidateCollisionEntityMetadata")
+                        .orElseThrow(() -> missingSymbol("invalidateCollisionEntityMetadata")),
+                FunctionDescriptor.of(JAVA_INT, ADDRESS, JAVA_INT)
         );
+        invalidateMetadata = linker.downcallHandle(
+                library.find("invalidateCollisionMetadata")
+                        .orElseThrow(() -> missingSymbol("invalidateCollisionMetadata")),
+                FunctionDescriptor.of(JAVA_INT, ADDRESS, JAVA_INT)
+        );
+        query = linker.downcallHandle(
+                library.find("queryCollisionEntities").orElseThrow(() -> missingSymbol("queryCollisionEntities")),
+                FunctionDescriptor.of(JAVA_INT, ADDRESS, JAVA_INT, ADDRESS, JAVA_INT)
+        );
+        queryPushable = linker.downcallHandle(
+                library.find("queryPushableEntities")
+                        .orElseThrow(() -> missingSymbol("queryPushableEntities")),
+                FunctionDescriptor.of(
+                        JAVA_INT,
+                        ADDRESS,
+                        JAVA_INT,
+                        JAVA_INT,
+                        JAVA_INT,
+                        JAVA_INT,
+                        ADDRESS,
+                        JAVA_INT
+                )
+        );
+    }
+
+    private static void checkStatus(String operation, int status) {
+        if (status != 0) {
+            throw new IllegalStateException("Failed to " + operation + "; native status=" + status);
+        }
     }
 
     private static IllegalStateException missingSymbol(String symbol) {
@@ -243,105 +520,124 @@ public final class FFMBackend {
     }
 
     private static void resetHandles() {
-        linker = null;
+        CONTEXTS.clear();
         nativeArena = null;
-        pushMethodHandle = null;
-        createCtxMethodHandle = null;
-        destroyCtxMethodHandle = null;
-        createCfgMethodHandle = null;
-        updateCfgMethodHandle = null;
-        destroyCfgMethodHandle = null;
+        createContextHandle = null;
+        destroyContextHandle = null;
+        beginFrame = null;
+        setGridSize = null;
+        addEntity = null;
+        updateEntity = null;
+        updateEntityMetadata = null;
+        invalidateEntityMetadata = null;
+        invalidateMetadata = null;
+        query = null;
+        queryPushable = null;
     }
 
-    public static final class PushResult {
-        private MemorySegment segmentA;
-        private MemorySegment segmentB;
-        private MemorySegment segmentDensity;
-        private int size;
+    public static final class Context implements AutoCloseable {
+        private MemorySegment address;
+        private Arena outputArena;
+        private MemorySegment outputBuffer = MemorySegment.NULL;
+        private int outputCapacity;
+        private final QueryResult queryResult = new QueryResult();
 
-        private PushResult() {
+        private Context(MemorySegment address) {
+            this.address = address;
         }
 
-        private void update(MemorySegment a, MemorySegment b, MemorySegment density) {
-            segmentA = a;
-            segmentB = b;
-            segmentDensity = density;
+        private void ensureOpen() {
+            if (address.equals(MemorySegment.NULL)) {
+                throw new IllegalStateException("FFM collision context is closed");
+            }
+        }
+
+        private void ensureOutputCapacity(int requiredElements) {
+            if (requiredElements <= outputCapacity) {
+                return;
+            }
+            int newCapacity = Math.max(
+                    requiredElements,
+                    outputCapacity + (outputCapacity >> 1) + 256
+            );
+            if (outputArena != null) {
+                outputArena.close();
+            }
+            outputArena = Arena.ofShared();
+            outputBuffer = outputArena.allocate(
+                    (long) (newCapacity + 3) * Integer.BYTES,
+                    Integer.BYTES
+            );
+            outputCapacity = newCapacity;
+            queryResult.output = outputBuffer;
+        }
+
+        private synchronized void applyConfig() {
+            ensureOpen();
+            try {
+                int status = (int) setGridSize.invokeExact(address, FoldConfig.gridSize);
+                checkStatus("configure native collision grid", status);
+            } catch (Throwable failure) {
+                throw new IllegalStateException("Failed to update the FFM collision configuration", failure);
+            }
+        }
+
+        @Override
+        public synchronized void close() {
+            if (address.equals(MemorySegment.NULL)) {
+                return;
+            }
+            MemorySegment closingAddress = address;
+            address = MemorySegment.NULL;
+            try {
+                destroyContextHandle.invokeExact(closingAddress);
+            } catch (Throwable failure) {
+                throw new IllegalStateException("Failed to destroy an FFM collision context", failure);
+            } finally {
+                if (outputArena != null) {
+                    outputArena.close();
+                    outputArena = null;
+                }
+                outputBuffer = MemorySegment.NULL;
+                outputCapacity = 0;
+                queryResult.output = MemorySegment.NULL;
+                CONTEXTS.remove(this);
+            }
+        }
+    }
+
+    public static final class QueryResult {
+        private MemorySegment output = MemorySegment.NULL;
+        private int offset;
+        private int size;
+        private boolean metadataRequired;
+        private int pushableCount;
+        private int nonPassengerCount;
+
+        private QueryResult() {
         }
 
         public int size() {
             return size;
         }
 
-        public int getA(int index) {
-            return segmentA.get(JAVA_INT, (long) index * Integer.BYTES);
+        public boolean metadataRequired() {
+            return metadataRequired;
         }
 
-        public int getB(int index) {
-            return segmentB.get(JAVA_INT, (long) index * Integer.BYTES);
+        public int pushableCount() {
+            return pushableCount;
         }
 
-        public float getDensity(int index) {
-            return segmentDensity.get(JAVA_FLOAT, (long) index * Float.BYTES);
-        }
-    }
-
-    private static final class ThreadState {
-        private final int generation;
-        private final MemorySegment context;
-        private final MemorySegment configPtr;
-        private final PushResult result = new PushResult();
-        private Arena bufferArena;
-        private MemorySegment bufferA;
-        private MemorySegment bufferB;
-        private MemorySegment densityBuffer;
-        private long byteCapacity;
-
-        private ThreadState(int generation) {
-            this.generation = generation;
-            try {
-                context = (MemorySegment) createCtxMethodHandle.invokeExact();
-                configPtr = (MemorySegment) createCfgMethodHandle.invokeExact(
-                        FoldConfig.maxCollision,
-                        FoldConfig.gridSize,
-                        FoldConfig.densityWindow,
-                        FoldConfig.maxThreads
-                );
-            } catch (Throwable failure) {
-                throw new IllegalStateException("Failed to create FFM collision state", failure);
-            }
-
-            if (context.equals(MemorySegment.NULL) || configPtr.equals(MemorySegment.NULL)) {
-                throw new IllegalStateException("Native library returned a null FFM collision state");
-            }
+        public int nonPassengerCount() {
+            return nonPassengerCount;
         }
 
-        private PushResult allocateOutput(int elementCapacity) {
-            long requiredBytes = Math.max(1024L, (long) elementCapacity * Integer.BYTES);
-            if (requiredBytes > byteCapacity) {
-                if (bufferArena != null) {
-                    bufferArena.close();
-                }
-                bufferArena = Arena.ofConfined();
-                bufferA = bufferArena.allocate(requiredBytes);
-                bufferB = bufferArena.allocate(requiredBytes);
-                densityBuffer = bufferArena.allocate(requiredBytes);
-                byteCapacity = requiredBytes;
+        public int get(int index) {
+            if (index < 0 || index >= size) {
+                throw new IndexOutOfBoundsException(index);
             }
-            result.update(bufferA, bufferB, densityBuffer);
-            return result;
-        }
-
-        private void destroy() {
-            if (bufferArena != null) {
-                bufferArena.close();
-                bufferArena = null;
-            }
-            try {
-                destroyCtxMethodHandle.invokeExact(context);
-                destroyCfgMethodHandle.invokeExact(configPtr);
-            } catch (Throwable failure) {
-                throw new IllegalStateException("Failed to destroy FFM collision state", failure);
-            }
+            return output.get(JAVA_INT, (long) (offset + index) * Integer.BYTES);
         }
     }
 }

@@ -1,41 +1,56 @@
 package com.wiyuka.acceleratedrecoiling.natives;
 
-import com.wiyuka.acceleratedrecoiling.api.ICustomData;
 import net.minecraft.world.entity.Entity;
 
 import java.util.Arrays;
+import java.util.IdentityHashMap;
 
-public class TempID {
+/** Entity IDs local to one level's native collision frame. */
+final class TempID {
+    private Entity[] frameSnapshot = new Entity[10_000];
+    private final IdentityHashMap<Entity, Integer> ids = new IdentityHashMap<>();
+    private int currentIndex;
 
-    private static Entity[] frameSnapshot = new Entity[10000];
-    public static int currentIndex = 0;
-
-    public static void tickStart() {
+    void tickStart() {
         if (currentIndex > 0) {
             Arrays.fill(frameSnapshot, 0, currentIndex, null);
         }
+        ids.clear();
         currentIndex = 0;
     }
 
-    public static void addEntity(Entity e) {
+    int addEntity(Entity entity) {
         if (currentIndex >= frameSnapshot.length) {
             resize();
         }
         int tempId = currentIndex++;
-        frameSnapshot[tempId] = e;
-         ((ICustomData)e).setNativeId(tempId);
+        frameSnapshot[tempId] = entity;
+        ids.put(entity, tempId);
+        return tempId;
     }
 
-    public static Entity getEntity(int id) {
-        if (id < 0 || id >= currentIndex) return null;
+    Entity getEntity(int id) {
+        if (id < 0 || id >= currentIndex) {
+            return null;
+        }
         return frameSnapshot[id];
     }
-    public static int getId(Entity e) {
-        return ((ICustomData)e).getNativeId();
+
+    int getId(Entity entity) {
+        Integer id = ids.get(entity);
+        return id == null ? -1 : id;
     }
 
-    private static void resize() {
-        // 扩容 1.5 倍
+    boolean contains(Entity entity) {
+        int id = getId(entity);
+        return id >= 0 && id < currentIndex && frameSnapshot[id] == entity;
+    }
+
+    int size() {
+        return currentIndex;
+    }
+
+    private void resize() {
         int newSize = frameSnapshot.length + (frameSnapshot.length >> 1);
         frameSnapshot = Arrays.copyOf(frameSnapshot, newSize);
     }

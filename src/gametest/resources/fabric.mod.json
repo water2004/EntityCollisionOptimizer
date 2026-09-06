@@ -6,7 +6,8 @@
   "environment": "server",
   "entrypoints": {
     "fabric-gametest": [
-      "com.wiyuka.acceleratedrecoiling.gametest.ZombieCollisionBenchmark"
+      "com.wiyuka.acceleratedrecoiling.gametest.ZombieCollisionBenchmark",
+      "com.wiyuka.acceleratedrecoiling.gametest.VanillaCollisionParityGameTests"
     ]
   },
   "depends": {

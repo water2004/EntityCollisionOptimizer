@@ -1,7 +1,9 @@
 package com.wiyuka.acceleratedrecoiling.mixin;
 
-import com.wiyuka.acceleratedrecoiling.api.ICustomData;
+import com.wiyuka.acceleratedrecoiling.collision.CollisionCacheState;
+import com.wiyuka.acceleratedrecoiling.natives.CollisionFrame;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.Pose;
 import net.minecraft.world.phys.AABB;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
@@ -10,58 +12,69 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(Entity.class)
-public abstract class EntityMixin implements ICustomData {
-    private double bbMinX = 0.0;
-    private double bbMinY = 0.0;
-    private double bbMinZ = 0.0;
-    private double bbMaxX = 0.0;
-    private double bbMaxY = 0.0;
-    private double bbMaxZ = 0.0;
-    private float density = 0.0f;
-
+public abstract class EntityMixin implements CollisionCacheState {
     @Unique
-    private int nativeId = -1;
+    private long acceleratedRecoiling$collisionRevision;
 
     @Override
-    public int getNativeId() {
-        return nativeId;
+    public long acceleratedRecoiling$collisionRevision() {
+        return acceleratedRecoiling$collisionRevision;
     }
 
     @Override
-    public void setNativeId(int nativeId) {
-        this.nativeId = nativeId;
-    }
-
-    @Override
-    public void setDensity(float density) {
-        this.density = density;
-    }
-
-    @Override
-    public float getDensity() {
-        return density;
-    }
-
-    @Override
-    public final void extractionBoundingBox(double[] doubleArray, int offset, double inflate) {
-        doubleArray[offset + 0] = (double) this.bbMinX - inflate;
-        doubleArray[offset + 1] = (double) this.bbMinY - inflate;
-        doubleArray[offset + 2] = (double) this.bbMinZ - inflate;
-        doubleArray[offset + 3] = (double) this.bbMaxX + inflate;
-        doubleArray[offset + 4] = (double) this.bbMaxY + inflate;
-        doubleArray[offset + 5] = (double) this.bbMaxZ + inflate;
+    public void acceleratedRecoiling$invalidateCollisionCache() {
+        acceleratedRecoiling$collisionRevision++;
+        CollisionFrame.invalidateEntity((Entity) (Object) this);
     }
 
     @Inject(
             method = "setBoundingBox(Lnet/minecraft/world/phys/AABB;)V",
             at = @At("RETURN")
     )
-    private void onSetBoundingBox(AABB bb, CallbackInfo ci) {
-        this.bbMinX = bb.minX;
-        this.bbMinY = bb.minY;
-        this.bbMinZ = bb.minZ;
-        this.bbMaxX = bb.maxX;
-        this.bbMaxY = bb.maxY;
-        this.bbMaxZ = bb.maxZ;
+    private void acceleratedRecoiling$onSetBoundingBox(AABB boundingBox, CallbackInfo ci) {
+        Entity self = (Entity) (Object) this;
+        acceleratedRecoiling$collisionRevision++;
+        CollisionFrame.updateBoundingBox(self, boundingBox);
+    }
+
+    @Inject(method = "setRemoved", at = @At("RETURN"))
+    private void acceleratedRecoiling$onSetRemoved(
+            Entity.RemovalReason reason,
+            CallbackInfo ci
+    ) {
+        acceleratedRecoiling$invalidateCollisionCache();
+    }
+
+    @Inject(method = "unsetRemoved", at = @At("RETURN"))
+    private void acceleratedRecoiling$onUnsetRemoved(CallbackInfo ci) {
+        acceleratedRecoiling$invalidateCollisionCache();
+    }
+
+    @Inject(method = "setSharedFlag", at = @At("RETURN"))
+    private void acceleratedRecoiling$onSetSharedFlag(
+            int flag,
+            boolean value,
+            CallbackInfo ci
+    ) {
+        if (flag == 7) {
+            acceleratedRecoiling$invalidateCollisionCache();
+        }
+    }
+
+    @Inject(method = "setPose", at = @At("RETURN"))
+    private void acceleratedRecoiling$onSetPose(Pose pose, CallbackInfo ci) {
+        acceleratedRecoiling$invalidateCollisionCache();
+    }
+
+    @Inject(method = "addPassenger", at = @At("RETURN"))
+    private void acceleratedRecoiling$onAddPassenger(Entity passenger, CallbackInfo ci) {
+        acceleratedRecoiling$invalidateCollisionCache();
+        ((CollisionCacheState) passenger).acceleratedRecoiling$invalidateCollisionCache();
+    }
+
+    @Inject(method = "removePassenger", at = @At("RETURN"))
+    private void acceleratedRecoiling$onRemovePassenger(Entity passenger, CallbackInfo ci) {
+        acceleratedRecoiling$invalidateCollisionCache();
+        ((CollisionCacheState) passenger).acceleratedRecoiling$invalidateCollisionCache();
     }
 }

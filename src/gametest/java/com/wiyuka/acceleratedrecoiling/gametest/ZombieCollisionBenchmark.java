@@ -2,7 +2,7 @@ package com.wiyuka.acceleratedrecoiling.gametest;
 
 import com.wiyuka.acceleratedrecoiling.AcceleratedRecoiling;
 import com.wiyuka.acceleratedrecoiling.config.FoldConfig;
-import com.wiyuka.acceleratedrecoiling.natives.CollisionMapData;
+import com.wiyuka.acceleratedrecoiling.natives.CollisionFrame;
 import com.wiyuka.acceleratedrecoiling.natives.FFMBackend;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
@@ -10,13 +10,14 @@ import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.monster.zombie.Zombie;
-import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 
 /**
  * Opt-in integration benchmark. Run with {@code ./gradlew runGameTest -Pbenchmark}.
@@ -32,6 +33,10 @@ public final class ZombieCollisionBenchmark {
 
     @GameTest(maxTicks = 1_200, padding = 2)
     public void stackedZombies(GameTestHelper helper) {
+        if (!Boolean.getBoolean("acceleratedrecoiling.runBenchmark")) {
+            helper.succeed();
+            return;
+        }
         if (activeRun != null) {
             helper.fail("A collision benchmark is already running");
             return;
@@ -49,8 +54,6 @@ public final class ZombieCollisionBenchmark {
         }
 
         activeRun = new BenchmarkRun(zombies, anchor);
-        FoldConfig.maxCollision = 0;
-        FFMBackend.applyConfig();
         int expectedPairs = ENTITY_COUNT * (ENTITY_COUNT - 1) / 2;
         int detectedPairs = detectAllPairs(zombies);
         if (detectedPairs != expectedPairs) {
@@ -60,7 +63,7 @@ public final class ZombieCollisionBenchmark {
         }
         AcceleratedRecoiling.LOGGER.info(
                 "AR_BENCHMARK_START entities={} scenario=stacked_zombies samples_per_mode=400 "
-                        + "max_collision=0(unlimited) verified_pairs={} profile_mode={}",
+                        + "verified_pairs={} profile_mode={}",
                 ENTITY_COUNT,
                 detectedPairs,
                 activeRun.profileMode
@@ -89,7 +92,7 @@ public final class ZombieCollisionBenchmark {
         Phase phase = run.phases[run.phaseIndex];
         FoldConfig.enableEntityCollision = phase.optimized;
         if (phase.optimized && !run.directedEdgesVerified) {
-            CollisionMapData.resetLastNonEmptyDirectedEdgeCount();
+            run.directedEdgesVerified = false;
         }
         for (Zombie zombie : run.zombies) {
             if (!zombie.isRemoved()) {
@@ -102,19 +105,27 @@ public final class ZombieCollisionBenchmark {
     }
 
     private static int detectAllPairs(List<Zombie> zombies) {
-        double[] boxes = new double[zombies.size() * 6];
-        for (int i = 0; i < zombies.size(); i++) {
-            Zombie zombie = zombies.get(i);
-            AABB box = zombie.getBoundingBox().inflate(1.0E-7);
-            int boxOffset = i * 6;
-            boxes[boxOffset] = box.minX;
-            boxes[boxOffset + 1] = box.minY;
-            boxes[boxOffset + 2] = box.minZ;
-            boxes[boxOffset + 3] = box.maxX;
-            boxes[boxOffset + 4] = box.maxY;
-            boxes[boxOffset + 5] = box.maxZ;
+        return detectDirectedEdges(zombies) / 2;
+    }
+
+    private static int detectDirectedEdges(List<Zombie> zombies) {
+        Set<Zombie> expectedTargets = Collections.newSetFromMap(new IdentityHashMap<>());
+        expectedTargets.addAll(zombies);
+        CollisionFrame.begin((net.minecraft.server.level.ServerLevel) zombies.getFirst().level());
+        try {
+            int directedEdges = 0;
+            for (Zombie zombie : zombies) {
+                FFMBackend.QueryResult result = CollisionFrame.query(zombie);
+                for (int index = 0; index < result.size(); index++) {
+                    if (expectedTargets.contains(CollisionFrame.entity(zombie, result.get(index)))) {
+                        directedEdges++;
+                    }
+                }
+            }
+            return directedEdges;
+        } finally {
+            CollisionFrame.end((net.minecraft.server.level.ServerLevel) zombies.getFirst().level());
         }
-        return FFMBackend.push(boxes, zombies.size()).size();
     }
 
     private static void onTickEnd(MinecraftServer server) {
@@ -127,7 +138,7 @@ public final class ZombieCollisionBenchmark {
         double elapsedMs = (System.nanoTime() - run.tickStartedAt) / 1_000_000.0;
         if (phase.optimized && !run.directedEdgesVerified) {
             int expectedDirectedEdges = ENTITY_COUNT * (ENTITY_COUNT - 1);
-            int actualDirectedEdges = CollisionMapData.lastNonEmptyDirectedEdgeCount();
+            int actualDirectedEdges = detectDirectedEdges(run.zombies);
             if (actualDirectedEdges != expectedDirectedEdges) {
                 throw new IllegalStateException("Optimized collision map contained "
                         + actualDirectedEdges + " directed edges; expected " + expectedDirectedEdges);
@@ -161,7 +172,6 @@ public final class ZombieCollisionBenchmark {
         private final List<Zombie> zombies;
         private final Vec3 anchor;
         private final boolean originalCollisionSetting;
-        private final int originalMaxCollision;
         private final boolean profileOnly;
         private final boolean profileOptimized;
         private final String profileMode;
@@ -179,7 +189,6 @@ public final class ZombieCollisionBenchmark {
             this.zombies = zombies;
             this.anchor = anchor;
             this.originalCollisionSetting = FoldConfig.enableEntityCollision;
-            this.originalMaxCollision = FoldConfig.maxCollision;
             this.profileMode = System.getenv().getOrDefault("AR_BENCHMARK_PROFILE", "off");
             this.profileOnly = "optimized".equalsIgnoreCase(profileMode)
                     || "baseline".equalsIgnoreCase(profileMode);
@@ -203,8 +212,6 @@ public final class ZombieCollisionBenchmark {
 
         private void finish() {
             FoldConfig.enableEntityCollision = originalCollisionSetting;
-            FoldConfig.maxCollision = originalMaxCollision;
-            FFMBackend.applyConfig();
 
             if (profileOnly) {
                 Stats profile = Stats.of(profileOptimized ? optimizedSamples : baselineSamples);

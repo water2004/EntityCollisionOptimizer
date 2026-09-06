@@ -4,4 +4,11 @@
 /build/classes/java/main/
 /run/
 /.idea/
-/AcceleratedRecoiling-third-party/
+/AcceleratedRecoiling-third-party/*
+!/AcceleratedRecoiling-third-party/CMakeLists.txt
+!/AcceleratedRecoiling-third-party/version-script
+!/AcceleratedRecoiling-third-party/src/
+/AcceleratedRecoiling-third-party/src/*
+!/AcceleratedRecoiling-third-party/src/entity_data.cpp
+!/AcceleratedRecoiling-third-party/src/entity_data.h
+!/AcceleratedRecoiling-third-party/src/export.h

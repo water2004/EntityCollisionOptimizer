@@ -11,4 +11,8 @@ public final class FFM {
     public static MemorySegment allocateArray(Arena arena, double[] array) {
         return arena.allocateFrom(ValueLayout.JAVA_DOUBLE, array);
     }
+
+    public static MemorySegment allocateArray(Arena arena, int[] array) {
+        return arena.allocateFrom(ValueLayout.JAVA_INT, array);
+    }
 }

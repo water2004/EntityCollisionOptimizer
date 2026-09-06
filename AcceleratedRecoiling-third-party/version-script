@@ -1,0 +1,11 @@
+{
+    global:
+        createCollisionContext;
+        destroyCollisionContext;
+        setCollisionGridSize;
+        beginCollisionFrame;
+        addCollisionEntity;
+        updateCollisionEntity;
+        queryCollisionEntities;
+    local: *;
+};

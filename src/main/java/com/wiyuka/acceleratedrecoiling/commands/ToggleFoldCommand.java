@@ -63,7 +63,7 @@ public class ToggleFoldCommand {
                         .executes(ctx -> setFieldValue(ctx, field, BoolArgumentType.getBool(ctx, "value"))));
 
             } else if (type == int.class) {
-                fieldNode.then(Commands.argument("value", IntegerArgumentType.integer())
+                fieldNode.then(Commands.argument("value", IntegerArgumentType.integer(1))
                         .executes(ctx -> setFieldValue(ctx, field, IntegerArgumentType.getInteger(ctx, "value"))));
             }
 

@@ -18,12 +18,19 @@ loom {
     runs {
         configureEach {
             vmArg "--enable-native-access=ALL-UNNAMED"
+            if (providers.gradleProperty("benchmark").isPresent()) {
+                vmArg "-Dacceleratedrecoiling.runBenchmark=true"
+            }
+            if (providers.gradleProperty("jfrOutput").isPresent()) {
+                vmArg "-XX:StartFlightRecording=filename=${file(providers.gradleProperty("jfrOutput").get()).absolutePath},settings=profile,dumponexit=true"
+            }
         }
     }
 }
 
 // The 1000-entity benchmark is opt-in so normal builds do not start a game server.
-if (providers.gradleProperty("benchmark").isPresent()) {
+if (providers.gradleProperty("benchmark").isPresent()
+        || providers.gradleProperty("parity").isPresent()) {
     fabricApi {
         configureTests {
             createSourceSet = true
@@ -38,6 +45,12 @@ dependencies {
     minecraft "com.mojang:minecraft:${project.minecraft_version}"
     implementation "net.fabricmc:fabric-loader:${project.loader_version}"
     implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+    if (providers.gradleProperty("compatModsDir").isPresent()) {
+        runtimeOnly fileTree(
+                dir: providers.gradleProperty("compatModsDir").get(),
+                include: ["*.jar"]
+        )
+    }
 }
 
 def modVersion = version.toString()
