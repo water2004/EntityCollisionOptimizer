@@ -42,7 +42,7 @@ bool pushHasNoEffect(
         const EntityMetadata& target,
         bool sourceUsesVanillaPush
 ) noexcept {
-    if (!sourceUsesVanillaPush || !target.ordinaryLivingTarget) {
+    if (!sourceUsesVanillaPush || !target.vanillaEntityPush) {
         return false;
     }
     const double deltaX = source.positionX - target.positionX;

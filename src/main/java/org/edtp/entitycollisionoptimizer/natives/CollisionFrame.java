@@ -2,6 +2,7 @@ package org.edtp.entitycollisionoptimizer.natives;
 
 import org.edtp.entitycollisionoptimizer.collision.CollisionCacheEpochs;
 import org.edtp.entitycollisionoptimizer.collision.CollisionCacheState;
+import org.edtp.entitycollisionoptimizer.collision.CollisionImpulseState;
 import org.edtp.entitycollisionoptimizer.collision.VanillaEntityCollision;
 import org.edtp.entitycollisionoptimizer.config.CollisionOptimizerConfig;
 import net.minecraft.core.BlockPos;
@@ -9,8 +10,6 @@ import net.minecraft.core.SectionPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.monster.Shulker;
-import net.minecraft.world.entity.monster.cubemob.AbstractCubeMob;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.scores.PlayerTeam;
 import net.minecraft.world.scores.Team;
@@ -183,6 +182,7 @@ public final class CollisionFrame {
         }
 
         synchronized void end() {
+            flushPendingImpulses();
             active = false;
         }
 
@@ -261,6 +261,7 @@ public final class CollisionFrame {
             synchronizeGlobalInvalidations();
 
             int sourceId = ids.getId(source);
+            refreshNativeMetadata(sourceId, source);
             int sourceTeamId = teamId(sourceTeam);
             int sourceRuleId = collisionRuleId(sourceRule);
             FFMBackend.QueryResult result;
@@ -350,12 +351,22 @@ public final class CollisionFrame {
                     nativeId,
                     isSelectable(nativeId, entity),
                     entity.isPassenger(),
-                    entity instanceof LivingEntity
-                            && !(entity instanceof Shulker)
-                            && !(entity instanceof AbstractCubeMob),
+                    entity.isVehicle(),
+                    entity.noPhysics,
+                    VanillaEntityCollision.usesVanillaEntityPush(entity),
+                    VanillaEntityCollision.usesVanillaVectorPush(entity),
                     teamId(targetTeam),
                     collisionRuleId(VanillaEntityCollision.collisionRule(targetTeam))
             );
+        }
+
+        private void flushPendingImpulses() {
+            for (int nativeId = 0; nativeId < ids.size(); nativeId++) {
+                Entity entity = ids.getEntity(nativeId);
+                if (entity != null) {
+                    ((CollisionImpulseState) entity).entityCollisionOptimizer$flushCollisionImpulse();
+                }
+            }
         }
 
         private int teamId(PlayerTeam team) {

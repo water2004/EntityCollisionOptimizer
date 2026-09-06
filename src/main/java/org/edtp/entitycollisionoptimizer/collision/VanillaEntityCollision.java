@@ -2,8 +2,6 @@ package org.edtp.entitycollisionoptimizer.collision;
 
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.monster.Shulker;
-import net.minecraft.world.entity.monster.cubemob.AbstractCubeMob;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.scores.PlayerTeam;
 import net.minecraft.world.scores.Team;
@@ -29,6 +27,18 @@ public final class VanillaEntityCollision {
             return false;
         }
     };
+    private static final ClassValue<Boolean> USE_VANILLA_ENTITY_PUSH = declaringClass(
+            "push",
+            Entity.class,
+            Entity.class
+    );
+    private static final ClassValue<Boolean> USE_VANILLA_VECTOR_PUSH = declaringClass(
+            "push",
+            Entity.class,
+            double.class,
+            double.class,
+            double.class
+    );
 
     private VanillaEntityCollision() {
     }
@@ -78,19 +88,47 @@ public final class VanillaEntityCollision {
         return USE_VANILLA_DO_PUSH.get(source.getClass());
     }
 
+    public static boolean usesVanillaEntityPush(Entity entity) {
+        return USE_VANILLA_ENTITY_PUSH.get(entity.getClass());
+    }
+
+    public static boolean usesVanillaVectorPush(Entity entity) {
+        return USE_VANILLA_VECTOR_PUSH.get(entity.getClass());
+    }
+
     public static boolean pushHasNoEffect(
             boolean sourceUsesVanillaDoPush,
             LivingEntity source,
             Entity target
     ) {
         if (!sourceUsesVanillaDoPush
-                || !(target instanceof LivingEntity)
-                || target instanceof Shulker
-                || target instanceof AbstractCubeMob) {
+                || !usesVanillaEntityPush(target)) {
             return false;
         }
         double deltaX = source.getX() - target.getX();
         double deltaZ = source.getZ() - target.getZ();
         return Math.max(Math.abs(deltaX), Math.abs(deltaZ)) < 0.009999999776482582;
+    }
+
+    private static ClassValue<Boolean> declaringClass(
+            String methodName,
+            Class<?> expectedOwner,
+            Class<?>... parameterTypes
+    ) {
+        return new ClassValue<>() {
+            @Override
+            protected Boolean computeValue(Class<?> type) {
+                Class<?> current = type;
+                while (current != null) {
+                    try {
+                        return current.getDeclaredMethod(methodName, parameterTypes).getDeclaringClass()
+                                == expectedOwner;
+                    } catch (NoSuchMethodException ignored) {
+                        current = current.getSuperclass();
+                    }
+                }
+                return false;
+            }
+        };
     }
 }

@@ -1,6 +1,7 @@
 package org.edtp.entitycollisionoptimizer.mixin;
 
 import org.edtp.entitycollisionoptimizer.collision.VanillaEntityCollision;
+import org.edtp.entitycollisionoptimizer.collision.CollisionImpulseState;
 import org.edtp.entitycollisionoptimizer.compat.CarpetCompatibility;
 import org.edtp.entitycollisionoptimizer.config.CollisionOptimizerConfig;
 import org.edtp.entitycollisionoptimizer.natives.CollisionFrame;
@@ -79,7 +80,25 @@ public abstract class LivingEntityMixin {
 
         for (int index = 0; index < actionableCount; index++) {
             Entity target = entityCollisionOptimizer$pushableTargets[index];
-            doPush(target);
+            if (candidates.hasNativeImpulse(index)
+                    && !self.noPhysics
+                    && !target.noPhysics
+                    && !self.isPassenger()
+                    && !target.isPassenger()
+                    && !self.isVehicle()
+                    && !target.isVehicle()
+                    && !self.isPassengerOfSameVehicle(target)) {
+                ((CollisionImpulseState) self).entityCollisionOptimizer$queueCollisionImpulse(
+                        candidates.sourceImpulseX(index),
+                        candidates.sourceImpulseZ(index)
+                );
+                ((CollisionImpulseState) target).entityCollisionOptimizer$queueCollisionImpulse(
+                        candidates.targetImpulseX(index),
+                        candidates.targetImpulseZ(index)
+                );
+            } else {
+                doPush(target);
+            }
             entityCollisionOptimizer$pushableTargets[index] = null;
         }
     }

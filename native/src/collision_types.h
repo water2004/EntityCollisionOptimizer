@@ -26,7 +26,10 @@ struct EntityMetadata {
     int collisionRule = 0;
     bool selectable = false;
     bool passenger = false;
-    bool ordinaryLivingTarget = false;
+    bool vehicle = false;
+    bool noPhysics = false;
+    bool vanillaEntityPush = false;
+    bool vanillaVectorPush = false;
     bool selectableValid = false;
     bool teamValid = false;
 };

@@ -49,7 +49,10 @@ ECO_EXPORT int updateCollisionEntityMetadata(
         int entityId,
         int selectable,
         int passenger,
-        int ordinaryLivingTarget,
+        int vehicle,
+        int noPhysics,
+        int vanillaEntityPush,
+        int vanillaVectorPush,
         int teamId,
         int collisionRule
 );
@@ -63,6 +66,7 @@ ECO_EXPORT int queryPushableEntities(
         int sourceCollisionRule,
         int sourceUsesVanillaPush,
         int* output,
+        double* impulseOutput,
         int outputCapacity
 );
 

@@ -5,7 +5,9 @@
 #include "spatial_index.h"
 
 #include <algorithm>
+#include <cmath>
 #include <cstddef>
+#include <limits>
 
 int queryCollisionEntities(void* contextPointer, int sourceId, int* output, int outputCapacity) {
     if (contextPointer == nullptr || sourceId < 0 || output == nullptr || outputCapacity < 0) {
@@ -52,9 +54,11 @@ int queryPushableEntities(
         int sourceCollisionRule,
         int sourceUsesVanillaPush,
         int* output,
+        double* impulseOutput,
         int outputCapacity
 ) {
-    if (contextPointer == nullptr || sourceId < 0 || output == nullptr || outputCapacity < 0
+    if (contextPointer == nullptr || sourceId < 0 || output == nullptr
+            || impulseOutput == nullptr || outputCapacity < 0
             || sourceCollisionRule < eco::COLLISION_ALWAYS
             || sourceCollisionRule > eco::COLLISION_PUSH_OTHER_TEAMS) {
         return -1;
@@ -117,7 +121,36 @@ int queryPushableEntities(
                     if (actionableCount >= outputCapacity) {
                         return -2;
                     }
-                    output[3 + actionableCount++] = candidateId;
+                    output[3 + actionableCount] = candidateId;
+                    double* impulses = impulseOutput
+                            + static_cast<std::size_t>(actionableCount) * 4;
+                    const bool nativeImpulse = sourceUsesVanillaPush != 0
+                            && sourceMetadata.vanillaVectorPush
+                            && target.vanillaEntityPush
+                            && target.vanillaVectorPush
+                            && !sourceMetadata.passenger
+                            && !sourceMetadata.vehicle
+                            && !target.passenger
+                            && !target.vehicle;
+                    if (!nativeImpulse) {
+                        impulses[0] = std::numeric_limits<double>::quiet_NaN();
+                        impulses[1] = 0.0;
+                        impulses[2] = 0.0;
+                        impulses[3] = 0.0;
+                    } else {
+                        const double deltaX = sourceMetadata.positionX - target.positionX;
+                        const double deltaZ = sourceMetadata.positionZ - target.positionZ;
+                        const double maximum = std::max(std::abs(deltaX), std::abs(deltaZ));
+                        const double root = std::sqrt(maximum);
+                        const double scale = std::min(1.0, 1.0 / root) * 0.05000000074505806;
+                        const double impulseX = deltaX / root * scale;
+                        const double impulseZ = deltaZ / root * scale;
+                        impulses[0] = sourceMetadata.selectable ? impulseX : 0.0;
+                        impulses[1] = sourceMetadata.selectable ? impulseZ : 0.0;
+                        impulses[2] = -impulseX;
+                        impulses[3] = -impulseZ;
+                    }
+                    ++actionableCount;
                 }
             }
         }

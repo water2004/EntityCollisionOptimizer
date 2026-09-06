@@ -9,7 +9,10 @@ int updateCollisionEntityMetadata(
         int entityId,
         int selectable,
         int passenger,
-        int ordinaryLivingTarget,
+        int vehicle,
+        int noPhysics,
+        int vanillaEntityPush,
+        int vanillaVectorPush,
         int teamId,
         int collisionRule
 ) {
@@ -24,7 +27,10 @@ int updateCollisionEntityMetadata(
         eco::EntityMetadata& metadata = context.metadata[entityId];
         metadata.selectable = selectable != 0;
         metadata.passenger = passenger != 0;
-        metadata.ordinaryLivingTarget = ordinaryLivingTarget != 0;
+        metadata.vehicle = vehicle != 0;
+        metadata.noPhysics = noPhysics != 0;
+        metadata.vanillaEntityPush = vanillaEntityPush != 0;
+        metadata.vanillaVectorPush = vanillaVectorPush != 0;
         metadata.teamId = teamId;
         metadata.collisionRule = collisionRule;
         metadata.selectableValid = true;

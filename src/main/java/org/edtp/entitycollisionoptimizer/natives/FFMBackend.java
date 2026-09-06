@@ -214,7 +214,10 @@ public final class FFMBackend {
             int nativeId,
             boolean selectable,
             boolean passenger,
-            boolean ordinaryLivingTarget,
+            boolean vehicle,
+            boolean noPhysics,
+            boolean vanillaEntityPush,
+            boolean vanillaVectorPush,
             int teamId,
             int collisionRule
     ) {
@@ -226,7 +229,10 @@ public final class FFMBackend {
                         nativeId,
                         selectable ? 1 : 0,
                         passenger ? 1 : 0,
-                        ordinaryLivingTarget ? 1 : 0,
+                        vehicle ? 1 : 0,
+                        noPhysics ? 1 : 0,
+                        vanillaEntityPush ? 1 : 0,
+                        vanillaVectorPush ? 1 : 0,
                         teamId,
                         collisionRule
                 );
@@ -307,6 +313,7 @@ public final class FFMBackend {
                         sourceCollisionRule,
                         sourceUsesVanillaPush ? 1 : 0,
                         nativeContext.outputBuffer,
+                        nativeContext.impulseBuffer,
                         nativeContext.outputCapacity
                 );
                 if (resultSize < 0 || resultSize > nativeContext.outputCapacity) {
@@ -451,6 +458,9 @@ public final class FFMBackend {
                         JAVA_INT,
                         JAVA_INT,
                         JAVA_INT,
+                        JAVA_INT,
+                        JAVA_INT,
+                        JAVA_INT,
                         JAVA_INT
                 )
         );
@@ -478,6 +488,7 @@ public final class FFMBackend {
                         JAVA_INT,
                         JAVA_INT,
                         JAVA_INT,
+                        ADDRESS,
                         ADDRESS,
                         JAVA_INT
                 )
@@ -539,6 +550,7 @@ public final class FFMBackend {
         private MemorySegment address;
         private Arena outputArena;
         private MemorySegment outputBuffer = MemorySegment.NULL;
+        private MemorySegment impulseBuffer = MemorySegment.NULL;
         private int outputCapacity;
         private final QueryResult queryResult = new QueryResult();
 
@@ -568,8 +580,13 @@ public final class FFMBackend {
                     (long) (newCapacity + 3) * Integer.BYTES,
                     Integer.BYTES
             );
+            impulseBuffer = outputArena.allocate(
+                    (long) newCapacity * 4 * Double.BYTES,
+                    Double.BYTES
+            );
             outputCapacity = newCapacity;
             queryResult.output = outputBuffer;
+            queryResult.impulses = impulseBuffer;
         }
 
         private synchronized void applyConfig() {
@@ -599,8 +616,10 @@ public final class FFMBackend {
                     outputArena = null;
                 }
                 outputBuffer = MemorySegment.NULL;
+                impulseBuffer = MemorySegment.NULL;
                 outputCapacity = 0;
                 queryResult.output = MemorySegment.NULL;
+                queryResult.impulses = MemorySegment.NULL;
                 CONTEXTS.remove(this);
             }
         }
@@ -608,6 +627,7 @@ public final class FFMBackend {
 
     public static final class QueryResult {
         private MemorySegment output = MemorySegment.NULL;
+        private MemorySegment impulses = MemorySegment.NULL;
         private int offset;
         private int size;
         private boolean metadataRequired;
@@ -638,6 +658,36 @@ public final class FFMBackend {
                 throw new IndexOutOfBoundsException(index);
             }
             return output.get(JAVA_INT, (long) (offset + index) * Integer.BYTES);
+        }
+
+        public boolean hasNativeImpulse(int index) {
+            return !Double.isNaN(impulse(index, 0));
+        }
+
+        public double sourceImpulseX(int index) {
+            return impulse(index, 0);
+        }
+
+        public double sourceImpulseZ(int index) {
+            return impulse(index, 1);
+        }
+
+        public double targetImpulseX(int index) {
+            return impulse(index, 2);
+        }
+
+        public double targetImpulseZ(int index) {
+            return impulse(index, 3);
+        }
+
+        private double impulse(int index, int component) {
+            if (index < 0 || index >= size) {
+                throw new IndexOutOfBoundsException(index);
+            }
+            return impulses.get(
+                    JAVA_DOUBLE,
+                    ((long) index * 4 + component) * Double.BYTES
+            );
         }
     }
 }
