@@ -6,6 +6,78 @@ import net.minecraft.gametest.framework.GameTestHelper;
 
 public final class VanillaCollisionParityGameTests {
     @GameTest(maxTicks = 200, padding = 48)
+    public void playerInteractions(GameTestHelper helper) {
+        PlayerInteractionParity.verify(helper);
+        helper.succeed();
+    }
+
+    @GameTest(maxTicks = 200, padding = 48)
+    public void mixedEntityInteractions(GameTestHelper helper) {
+        MixedEntityInteractionParity.verify(helper);
+        helper.succeed();
+    }
+
+    @GameTest(maxTicks = 200, padding = 48)
+    public void thrownProjectiles(GameTestHelper helper) {
+        ProjectileInteractionParity.verify(helper);
+        helper.succeed();
+    }
+
+    @GameTest(maxTicks = 200, padding = 48)
+    public void explosionInteractions(GameTestHelper helper) {
+        ExplosionInteractionParity.verify(helper);
+        helper.succeed();
+    }
+
+    @GameTest(maxTicks = 200, padding = 48)
+    public void machineClearances(GameTestHelper helper) {
+        MachineClearanceParity.verify(helper);
+        helper.succeed();
+    }
+
+    @GameTest(maxTicks = 200, padding = 48)
+    public void fluidInteractions(GameTestHelper helper) {
+        FluidInteractionParity.verify(helper);
+        helper.succeed();
+    }
+
+    @GameTest(maxTicks = 200, padding = 48)
+    public void irregularInteractions(GameTestHelper helper) {
+        IrregularMovementParity.verify(helper);
+        helper.succeed();
+    }
+
+    @GameTest(maxTicks = 200, padding = 48)
+    public void surfaceInteractions(GameTestHelper helper) {
+        SurfaceInteractionParity.verify(helper);
+        helper.succeed();
+    }
+
+    @GameTest(maxTicks = 200, padding = 48)
+    public void pistonInteractions(GameTestHelper helper) {
+        PistonInteractionParity.verify(helper);
+        helper.succeed();
+    }
+
+    @GameTest(maxTicks = 200, padding = 48)
+    public void liveTeamContract(GameTestHelper helper) {
+        CollisionContractParity.teams(helper);
+        helper.succeed();
+    }
+
+    @GameTest(maxTicks = 200, padding = 48)
+    public void orderedEntityContract(GameTestHelper helper) {
+        CollisionContractParity.order(helper);
+        helper.succeed();
+    }
+
+    @GameTest(maxTicks = 200, padding = 48)
+    public void canonicalVelocityContract(GameTestHelper helper) {
+        CollisionContractParity.visibility(helper);
+        helper.succeed();
+    }
+
+    @GameTest(maxTicks = 200, padding = 48)
     public void orderedBlockShapes(GameTestHelper helper) {
         BlockShapeParity.verify(helper);
         helper.succeed();

@@ -5,7 +5,7 @@ import net.minecraft.world.entity.monster.zombie.Zombie;
 import net.minecraft.world.level.gamerules.GameRules;
 import net.minecraft.world.phys.Vec3;
 import org.edtp.entitycollisionoptimizer.config.CollisionOptimizerConfig;
-import org.edtp.entitycollisionoptimizer.mixin.LivingEntityInvoker;
+import org.edtp.entitycollisionoptimizer.gametest.mixin.LivingEntityTestInvoker;
 import org.edtp.entitycollisionoptimizer.natives.CollisionFrame;
 
 import static org.edtp.entitycollisionoptimizer.gametest.CollisionTestSupport.*;
@@ -59,7 +59,7 @@ final class CollisionImpulseParity {
                 }
                 helper.assertTrue(covered, "ordinary zombie pair must use native impulse calculation");
             }
-            ((LivingEntityInvoker) source).entityCollisionOptimizer$invokePushEntities();
+            ((LivingEntityTestInvoker) source).entityCollisionOptimizer$invokePushEntities();
             boolean immediateSync = target.needsSync;
             switch (scenario) {
                 case 0 -> target.setDeltaMovement(new Vec3(0.75, 0.5, -0.25));

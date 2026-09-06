@@ -10,7 +10,7 @@ import net.minecraft.world.scores.PlayerTeam;
 import net.minecraft.world.scores.Scoreboard;
 import net.minecraft.world.scores.Team;
 import org.edtp.entitycollisionoptimizer.config.CollisionOptimizerConfig;
-import org.edtp.entitycollisionoptimizer.mixin.LivingEntityInvoker;
+import org.edtp.entitycollisionoptimizer.gametest.mixin.LivingEntityTestInvoker;
 import org.edtp.entitycollisionoptimizer.natives.CollisionFrame;
 
 import java.util.ArrayList;
@@ -105,7 +105,7 @@ final class CollisionMediumDensityParity {
             CollisionOptimizerConfig.enableEntityCollision = false;
             for (Zombie source : vanilla) {
                 if (source.isAlive()) {
-                    ((LivingEntityInvoker) source).entityCollisionOptimizer$invokePushEntities();
+                    ((LivingEntityTestInvoker) source).entityCollisionOptimizer$invokePushEntities();
                 }
             }
 
@@ -113,7 +113,7 @@ final class CollisionMediumDensityParity {
             CollisionFrame.begin(level);
             for (Zombie source : accelerated) {
                 if (source.isAlive()) {
-                    ((LivingEntityInvoker) source).entityCollisionOptimizer$invokePushEntities();
+                    ((LivingEntityTestInvoker) source).entityCollisionOptimizer$invokePushEntities();
                 }
             }
 

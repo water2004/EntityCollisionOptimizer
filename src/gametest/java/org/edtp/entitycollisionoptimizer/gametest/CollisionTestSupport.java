@@ -113,6 +113,7 @@ final class CollisionTestSupport {
         Connection connection = new Connection(PacketFlow.SERVERBOUND);
         new EmbeddedChannel(connection);
         helper.getLevel().getServer().getPlayerList().placeNewPlayer(connection, player, cookie);
+        player.connection.handleAcceptPlayerLoad(new net.minecraft.network.protocol.game.ServerboundPlayerLoadedPacket());
         player.setGameMode(gameType);
         Vec3 absolutePosition = helper.absoluteVec(position);
         player.teleportTo(absolutePosition.x, absolutePosition.y, absolutePosition.z);

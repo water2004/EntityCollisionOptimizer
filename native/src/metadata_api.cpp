@@ -14,7 +14,8 @@ int updateCollisionEntityMetadata(
         int vanillaEntityPush,
         int vanillaVectorPush,
         int teamId,
-        int collisionRule
+        int collisionRule,
+        std::int64_t sectionOrder
 ) {
     if (contextPointer == nullptr || entityId < 0) {
         return -1;
@@ -33,6 +34,7 @@ int updateCollisionEntityMetadata(
         metadata.vanillaVectorPush = vanillaVectorPush != 0;
         metadata.teamId = teamId;
         metadata.collisionRule = collisionRule;
+        metadata.sectionOrder = sectionOrder;
         metadata.selectableValid = true;
         metadata.teamValid = true;
         return 0;

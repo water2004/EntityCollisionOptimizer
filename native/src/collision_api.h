@@ -1,6 +1,7 @@
 #pragma once
 
 #include "export.h"
+#include <cstdint>
 
 extern "C" {
 
@@ -54,7 +55,8 @@ ECO_EXPORT int updateCollisionEntityMetadata(
         int vanillaEntityPush,
         int vanillaVectorPush,
         int teamId,
-        int collisionRule
+        int collisionRule,
+        std::int64_t sectionOrder
 );
 ECO_EXPORT int invalidateCollisionEntityMetadata(void* context, int entityId);
 ECO_EXPORT int invalidateCollisionMetadata(void* context, int mask);

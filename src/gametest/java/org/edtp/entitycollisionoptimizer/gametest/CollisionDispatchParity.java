@@ -20,7 +20,7 @@ import net.minecraft.world.entity.monster.warden.Warden;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.phys.Vec3;
 import org.edtp.entitycollisionoptimizer.config.CollisionOptimizerConfig;
-import org.edtp.entitycollisionoptimizer.mixin.LivingEntityInvoker;
+import org.edtp.entitycollisionoptimizer.gametest.mixin.LivingEntityTestInvoker;
 import org.edtp.entitycollisionoptimizer.natives.CollisionFrame;
 
 import java.util.List;
@@ -165,11 +165,11 @@ final class CollisionDispatchParity {
 
             CollisionFrame.end(level);
             CollisionOptimizerConfig.enableEntityCollision = false;
-            ((LivingEntityInvoker) vanillaSource).entityCollisionOptimizer$invokePushEntities();
+            ((LivingEntityTestInvoker) vanillaSource).entityCollisionOptimizer$invokePushEntities();
 
             CollisionOptimizerConfig.enableEntityCollision = true;
             CollisionFrame.begin(level);
-            ((LivingEntityInvoker) acceleratedSource).entityCollisionOptimizer$invokePushEntities();
+            ((LivingEntityTestInvoker) acceleratedSource).entityCollisionOptimizer$invokePushEntities();
 
             assertEntityOutcomeMatches(helper, vanillaSource, acceleratedSource, "source: " + scenario);
             assertEntityOutcomeMatches(helper, vanillaTarget, acceleratedTarget, "target: " + scenario);

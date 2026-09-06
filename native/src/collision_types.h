@@ -22,6 +22,7 @@ struct EntityMetadata {
     std::int64_t sectionX = 0;
     std::int64_t sectionY = 0;
     std::int64_t sectionZ = 0;
+    std::int64_t sectionOrder = 0;
     int teamId = -1;
     int collisionRule = 0;
     bool selectable = false;

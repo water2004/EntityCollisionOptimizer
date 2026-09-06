@@ -5,6 +5,11 @@
   "plugin": "org.edtp.entitycollisionoptimizer.gametest.mixin.GameTestMixinPlugin",
   "compatibilityLevel": "JAVA_25",
   "mixins": [
+    "AttackStrengthAccessor",
+    "WindChargeTestInvoker",
+    "LivingEntityTestInvoker",
+    "EntityMovementTestInvoker",
+    "EntityVelocityAccessor",
     "RangedAttributeAccessor",
     "PistonProgressAccessor",
     "MovementScanMixin",

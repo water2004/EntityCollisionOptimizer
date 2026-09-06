@@ -1,5 +1,7 @@
 # 实体批量推动（2026-09-07）
 
+本文是提交 `c7c5185` 的历史记录，不代表最新实现。后续 [兼容性修复](compatibility-parity-2026-09-07.md) 已移除延迟速度状态，并恢复原版候选顺序；下述性能数据属于旧实现，不能作为新版性能结论。
+
 ## 问题与实现
 
 上一提交 `2cd0cb4` 已接管移动碰撞，但普通僵尸没有进入旧 native 冲量分支：资格判断只接受 `Entity.push(Entity)`，遗漏了 `LivingEntity.push(Entity)` 的睡眠检查包装。新增资格断言在修复前确实失败（`eco-push-coverage-before.log`），不是仅凭没有报错认定 native 得到了测试。

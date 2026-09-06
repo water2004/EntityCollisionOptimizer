@@ -12,7 +12,7 @@ import net.minecraft.world.entity.monster.zombie.Zombie;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.phys.Vec3;
 import org.edtp.entitycollisionoptimizer.config.CollisionOptimizerConfig;
-import org.edtp.entitycollisionoptimizer.mixin.LivingEntityInvoker;
+import org.edtp.entitycollisionoptimizer.gametest.mixin.LivingEntityTestInvoker;
 import org.edtp.entitycollisionoptimizer.natives.CollisionFrame;
 
 import java.util.List;
@@ -48,7 +48,7 @@ final class CollisionSpecialTransitionParity {
         try {
             CollisionFrame.end(level);
             CollisionOptimizerConfig.enableEntityCollision = false;
-            ((LivingEntityInvoker) vanillaSource).entityCollisionOptimizer$invokePushEntities();
+            ((LivingEntityTestInvoker) vanillaSource).entityCollisionOptimizer$invokePushEntities();
             player.setGameMode(transitionedMode);
             helper.assertValueEqual(
                     player.gameMode(),
@@ -56,7 +56,7 @@ final class CollisionSpecialTransitionParity {
                     initialMode + " -> " + transitionedMode + " vanilla mode transition"
             );
             zeroVelocities(List.of(vanillaSource, player));
-            ((LivingEntityInvoker) vanillaSource).entityCollisionOptimizer$invokePushEntities();
+            ((LivingEntityTestInvoker) vanillaSource).entityCollisionOptimizer$invokePushEntities();
             Vec3 vanillaSourceVelocity = vanillaSource.getDeltaMovement();
             Vec3 vanillaPlayerVelocity = player.getDeltaMovement();
 
@@ -69,7 +69,7 @@ final class CollisionSpecialTransitionParity {
 
             CollisionOptimizerConfig.enableEntityCollision = true;
             CollisionFrame.begin(level);
-            ((LivingEntityInvoker) acceleratedSource).entityCollisionOptimizer$invokePushEntities();
+            ((LivingEntityTestInvoker) acceleratedSource).entityCollisionOptimizer$invokePushEntities();
             player.setGameMode(transitionedMode);
             helper.assertValueEqual(
                     player.gameMode(),
@@ -77,7 +77,7 @@ final class CollisionSpecialTransitionParity {
                     initialMode + " -> " + transitionedMode + " accelerated mode transition"
             );
             zeroVelocities(List.of(acceleratedSource, player));
-            ((LivingEntityInvoker) acceleratedSource).entityCollisionOptimizer$invokePushEntities();
+            ((LivingEntityTestInvoker) acceleratedSource).entityCollisionOptimizer$invokePushEntities();
 
             String scenario = initialMode + " -> " + transitionedMode;
             assertVectorEqual(
@@ -140,17 +140,17 @@ final class CollisionSpecialTransitionParity {
 
             CollisionFrame.end(level);
             CollisionOptimizerConfig.enableEntityCollision = false;
-            ((LivingEntityInvoker) vanillaSource).entityCollisionOptimizer$invokePushEntities();
+            ((LivingEntityTestInvoker) vanillaSource).entityCollisionOptimizer$invokePushEntities();
             vanillaTarget.setPose(transitionedPose);
             zeroVelocities(List.of(vanillaSource, vanillaTarget));
-            ((LivingEntityInvoker) vanillaSource).entityCollisionOptimizer$invokePushEntities();
+            ((LivingEntityTestInvoker) vanillaSource).entityCollisionOptimizer$invokePushEntities();
 
             CollisionOptimizerConfig.enableEntityCollision = true;
             CollisionFrame.begin(level);
-            ((LivingEntityInvoker) acceleratedSource).entityCollisionOptimizer$invokePushEntities();
+            ((LivingEntityTestInvoker) acceleratedSource).entityCollisionOptimizer$invokePushEntities();
             acceleratedTarget.setPose(transitionedPose);
             zeroVelocities(List.of(acceleratedSource, acceleratedTarget));
-            ((LivingEntityInvoker) acceleratedSource).entityCollisionOptimizer$invokePushEntities();
+            ((LivingEntityTestInvoker) acceleratedSource).entityCollisionOptimizer$invokePushEntities();
 
             String scenario = initiallyEmerging
                     ? "warden emerging -> standing"
@@ -213,17 +213,17 @@ final class CollisionSpecialTransitionParity {
 
             CollisionFrame.end(level);
             CollisionOptimizerConfig.enableEntityCollision = false;
-            ((LivingEntityInvoker) vanillaSource).entityCollisionOptimizer$invokePushEntities();
+            ((LivingEntityTestInvoker) vanillaSource).entityCollisionOptimizer$invokePushEntities();
             transitionHorsePassenger(vanillaTarget, vanillaPassenger, initiallyMounted);
             zeroVelocities(List.of(vanillaSource, vanillaTarget, vanillaPassenger));
-            ((LivingEntityInvoker) vanillaSource).entityCollisionOptimizer$invokePushEntities();
+            ((LivingEntityTestInvoker) vanillaSource).entityCollisionOptimizer$invokePushEntities();
 
             CollisionOptimizerConfig.enableEntityCollision = true;
             CollisionFrame.begin(level);
-            ((LivingEntityInvoker) acceleratedSource).entityCollisionOptimizer$invokePushEntities();
+            ((LivingEntityTestInvoker) acceleratedSource).entityCollisionOptimizer$invokePushEntities();
             transitionHorsePassenger(acceleratedTarget, acceleratedPassenger, initiallyMounted);
             zeroVelocities(List.of(acceleratedSource, acceleratedTarget, acceleratedPassenger));
-            ((LivingEntityInvoker) acceleratedSource).entityCollisionOptimizer$invokePushEntities();
+            ((LivingEntityTestInvoker) acceleratedSource).entityCollisionOptimizer$invokePushEntities();
 
             String scenario = initiallyMounted ? "horse mounted -> unmounted" : "horse unmounted -> mounted";
             assertEntityOutcomeMatches(helper, vanillaSource, acceleratedSource, scenario + " source");

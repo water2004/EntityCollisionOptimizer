@@ -6,7 +6,7 @@ import net.minecraft.world.entity.monster.zombie.Zombie;
 import net.minecraft.world.level.gamerules.GameRules;
 import net.minecraft.world.phys.Vec3;
 import org.edtp.entitycollisionoptimizer.config.CollisionOptimizerConfig;
-import org.edtp.entitycollisionoptimizer.mixin.LivingEntityInvoker;
+import org.edtp.entitycollisionoptimizer.gametest.mixin.LivingEntityTestInvoker;
 import org.edtp.entitycollisionoptimizer.natives.CollisionFrame;
 
 import java.util.ArrayList;
@@ -41,12 +41,12 @@ final class CollisionCrammingParity {
 
             CollisionOptimizerConfig.enableEntityCollision = false;
             vanillaSource.getRandom().setSeed(seed);
-            ((LivingEntityInvoker) vanillaSource).entityCollisionOptimizer$invokePushEntities();
+            ((LivingEntityTestInvoker) vanillaSource).entityCollisionOptimizer$invokePushEntities();
 
             CollisionOptimizerConfig.enableEntityCollision = true;
             acceleratedSource.getRandom().setSeed(seed);
             CollisionFrame.begin(level);
-            ((LivingEntityInvoker) acceleratedSource).entityCollisionOptimizer$invokePushEntities();
+            ((LivingEntityTestInvoker) acceleratedSource).entityCollisionOptimizer$invokePushEntities();
 
             helper.assertValueEqual(
                     acceleratedSource.getHealth(),
@@ -98,12 +98,12 @@ final class CollisionCrammingParity {
 
             CollisionOptimizerConfig.enableEntityCollision = false;
             vanillaSource.getRandom().setSeed(seed);
-            ((LivingEntityInvoker) vanillaSource).entityCollisionOptimizer$invokePushEntities();
+            ((LivingEntityTestInvoker) vanillaSource).entityCollisionOptimizer$invokePushEntities();
 
             CollisionOptimizerConfig.enableEntityCollision = true;
             acceleratedSource.getRandom().setSeed(seed);
             CollisionFrame.begin(level);
-            ((LivingEntityInvoker) acceleratedSource).entityCollisionOptimizer$invokePushEntities();
+            ((LivingEntityTestInvoker) acceleratedSource).entityCollisionOptimizer$invokePushEntities();
 
             helper.assertValueEqual(
                     acceleratedSource.getHealth(),
@@ -153,13 +153,13 @@ final class CollisionCrammingParity {
             CollisionOptimizerConfig.enableEntityCollision = false;
             zeroVelocities(entities);
             vanillaSource.getRandom().setSeed(seed);
-            ((LivingEntityInvoker) vanillaSource).entityCollisionOptimizer$invokePushEntities();
+            ((LivingEntityTestInvoker) vanillaSource).entityCollisionOptimizer$invokePushEntities();
 
             CollisionOptimizerConfig.enableEntityCollision = true;
             zeroVelocities(entities);
             acceleratedSource.getRandom().setSeed(seed);
             CollisionFrame.begin(level);
-            ((LivingEntityInvoker) acceleratedSource).entityCollisionOptimizer$invokePushEntities();
+            ((LivingEntityTestInvoker) acceleratedSource).entityCollisionOptimizer$invokePushEntities();
 
             helper.assertValueEqual(
                     acceleratedSource.getHealth(),

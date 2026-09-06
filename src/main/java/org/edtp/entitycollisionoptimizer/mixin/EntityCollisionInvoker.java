@@ -21,6 +21,4 @@ public interface EntityCollisionInvoker {
         throw new AssertionError("Mixin invoker was not applied");
     }
 
-    @Invoker("collide")
-    Vec3 eco$collide(Vec3 movement);
 }

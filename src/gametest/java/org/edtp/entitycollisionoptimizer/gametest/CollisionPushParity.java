@@ -14,7 +14,7 @@ import net.minecraft.world.scores.PlayerTeam;
 import net.minecraft.world.scores.Scoreboard;
 import net.minecraft.world.scores.Team;
 import org.edtp.entitycollisionoptimizer.config.CollisionOptimizerConfig;
-import org.edtp.entitycollisionoptimizer.mixin.LivingEntityInvoker;
+import org.edtp.entitycollisionoptimizer.gametest.mixin.LivingEntityTestInvoker;
 import org.edtp.entitycollisionoptimizer.natives.CollisionFrame;
 
 import java.util.List;
@@ -52,13 +52,13 @@ final class CollisionPushParity {
         try {
             CollisionOptimizerConfig.enableEntityCollision = false;
             zeroVelocities(entities);
-            ((LivingEntityInvoker) source).entityCollisionOptimizer$invokePushEntities();
+            ((LivingEntityTestInvoker) source).entityCollisionOptimizer$invokePushEntities();
             List<Vec3> vanilla = velocities(entities);
 
             CollisionOptimizerConfig.enableEntityCollision = true;
             zeroVelocities(entities);
             CollisionFrame.begin(helper.getLevel());
-            ((LivingEntityInvoker) source).entityCollisionOptimizer$invokePushEntities();
+            ((LivingEntityTestInvoker) source).entityCollisionOptimizer$invokePushEntities();
             List<Vec3> accelerated = velocities(entities);
 
             for (int index = 0; index < entities.size(); index++) {
@@ -95,7 +95,7 @@ final class CollisionPushParity {
         try {
             zeroVelocities(List.of(player, vanillaSource));
             CollisionOptimizerConfig.enableEntityCollision = false;
-            ((LivingEntityInvoker) vanillaSource).entityCollisionOptimizer$invokePushEntities();
+            ((LivingEntityTestInvoker) vanillaSource).entityCollisionOptimizer$invokePushEntities();
             Vec3 vanillaPlayerVelocity = player.getDeltaMovement();
             Vec3 vanillaSourceVelocity = vanillaSource.getDeltaMovement();
 
@@ -105,7 +105,7 @@ final class CollisionPushParity {
             acceleratedSource.setDeltaMovement(Vec3.ZERO);
             CollisionOptimizerConfig.enableEntityCollision = true;
             CollisionFrame.begin(level);
-            ((LivingEntityInvoker) acceleratedSource).entityCollisionOptimizer$invokePushEntities();
+            ((LivingEntityTestInvoker) acceleratedSource).entityCollisionOptimizer$invokePushEntities();
 
             assertVectorEqual(
                     helper,
@@ -145,7 +145,7 @@ final class CollisionPushParity {
             zeroVelocities(List.of(player, vanillaSource));
             CollisionFrame.end(level);
             CollisionOptimizerConfig.enableEntityCollision = false;
-            ((LivingEntityInvoker) vanillaSource).entityCollisionOptimizer$invokePushEntities();
+            ((LivingEntityTestInvoker) vanillaSource).entityCollisionOptimizer$invokePushEntities();
             Vec3 vanillaPlayerVelocity = player.getDeltaMovement();
             Vec3 vanillaSourceVelocity = vanillaSource.getDeltaMovement();
 
@@ -156,7 +156,7 @@ final class CollisionPushParity {
             acceleratedSource.setDeltaMovement(Vec3.ZERO);
             CollisionOptimizerConfig.enableEntityCollision = true;
             CollisionFrame.begin(level);
-            ((LivingEntityInvoker) acceleratedSource).entityCollisionOptimizer$invokePushEntities();
+            ((LivingEntityTestInvoker) acceleratedSource).entityCollisionOptimizer$invokePushEntities();
 
             assertVectorEqual(
                     helper,

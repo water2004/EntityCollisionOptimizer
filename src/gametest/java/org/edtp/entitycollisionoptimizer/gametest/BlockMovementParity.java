@@ -17,7 +17,7 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import org.edtp.entitycollisionoptimizer.EntityCollisionOptimizer;
 import org.edtp.entitycollisionoptimizer.config.CollisionOptimizerConfig;
-import org.edtp.entitycollisionoptimizer.mixin.EntityCollisionInvoker;
+import org.edtp.entitycollisionoptimizer.gametest.mixin.EntityMovementTestInvoker;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -81,12 +81,12 @@ final class BlockMovementParity {
 
     private static int compare(GameTestHelper helper, Entity entity, Vec3 requested, String label) {
         CollisionOptimizerConfig.enableEntityCollision = false;
-        Vec3 expected = ((EntityCollisionInvoker) entity).eco$collide(requested);
+        Vec3 expected = ((EntityMovementTestInvoker) entity).eco$collide(requested);
         CollisionOptimizerConfig.enableEntityCollision = true;
         MovementTakeoverCoverage.begin();
         Vec3 actual;
         try {
-            actual = ((EntityCollisionInvoker) entity).eco$collide(requested);
+            actual = ((EntityMovementTestInvoker) entity).eco$collide(requested);
         } finally {
             MovementTakeoverCoverage.end(helper);
         }

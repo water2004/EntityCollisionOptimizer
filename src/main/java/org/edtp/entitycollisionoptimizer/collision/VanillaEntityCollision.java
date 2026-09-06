@@ -12,6 +12,13 @@ import net.minecraft.world.scores.Team;
  * or predicate replacement.
  */
 public final class VanillaEntityCollision {
+    private static final ClassValue<Boolean> SCOREBOARD_TEAM = declaringClass("getTeam", Entity.class);
+
+    /** Only Entity's scoreboard lookup is revision-cached; derived vanilla teams are read live. */
+    public static boolean usesScoreboardTeam(Entity entity) {
+        return SCOREBOARD_TEAM.get(entity.getClass());
+    }
+
     private static final ClassValue<Boolean> USE_VANILLA_DO_PUSH = new ClassValue<>() {
         @Override
         protected Boolean computeValue(Class<?> type) {

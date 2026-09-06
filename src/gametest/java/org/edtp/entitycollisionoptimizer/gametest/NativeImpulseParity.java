@@ -3,7 +3,6 @@ package org.edtp.entitycollisionoptimizer.gametest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.entity.monster.zombie.Zombie;
 import net.minecraft.world.phys.Vec3;
-import org.edtp.entitycollisionoptimizer.collision.CollisionImpulseState;
 import org.edtp.entitycollisionoptimizer.natives.FFMBackend;
 
 import static org.edtp.entitycollisionoptimizer.gametest.CollisionTestSupport.spawnZombie;
@@ -44,47 +43,56 @@ final class NativeImpulseParity {
                 target.setDeltaMovement(initial);
                 source.needsSync = target.needsSync = false;
                 if (!Double.isNaN(impulses[2 * i])) {
-                    queue(target, -impulses[2 * i], -impulses[2 * i + 1]);
-                    queue(source, impulses[2 * i], impulses[2 * i + 1]);
+                    target.push(-impulses[2 * i], 0, -impulses[2 * i + 1]);
+                    source.push(impulses[2 * i], 0, impulses[2 * i + 1]);
                 }
                 exact(helper, source.getDeltaMovement(), expectedSource, "kernel source " + i);
                 exact(helper, target.getDeltaMovement(), expectedTarget, "kernel target " + i);
                 helper.assertValueEqual(source.needsSync, expectedSourceSync, "kernel source sync " + i);
                 helper.assertValueEqual(target.needsSync, expectedTargetSync, "kernel target sync " + i);
             }
-            verifyArithmetic(helper, source, target);
+            verifyArithmetic(helper, context, source, target);
         } finally {
             source.discard();
             target.discard();
         }
     }
 
-    private static void verifyArithmetic(GameTestHelper helper, Zombie oracle, Zombie nativeEntity) {
+    private static void verifyArithmetic(GameTestHelper helper, FFMBackend.Context context, Zombie source, Zombie target) {
         Vec3[] initial = {Vec3.ZERO, new Vec3(0x1.0p53, -0.0, 0x1.0p53),
                 new Vec3(Double.MAX_VALUE, 0, Double.MAX_VALUE), new Vec3(1, 2, 3)};
-        double[][] pushes = {{0.5, -0.25, -0.5, 0.25},
-                {1, 1, 1, 1, -0x1.0p53, -0x1.0p53},
-                {Double.MAX_VALUE, Double.MAX_VALUE, -Double.MAX_VALUE, -Double.MAX_VALUE},
-                {Double.NaN, 0.5, 0.5, Double.POSITIVE_INFINITY, 0.25, -0.125}};
+        double[] positions = {0.125, -0.25, -0.125, 0.25, 1.5, -2, -1.5, 2, 0, 0};
+        int count = positions.length / 2;
+        double[] impulses = new double[positions.length];
+        FFMBackend.calculatePushImpulses(context, source.getX(), source.getZ(), positions, count, impulses);
         for (int scenario = 0; scenario < initial.length; scenario++) {
-            oracle.setDeltaMovement(initial[scenario]);
-            nativeEntity.setDeltaMovement(initial[scenario]);
-            oracle.needsSync = nativeEntity.needsSync = false;
-            for (int i = 0; i < pushes[scenario].length; i += 2) {
-                double x = pushes[scenario][i], z = pushes[scenario][i + 1];
-                oracle.push(x, 0, z);
-                queue(nativeEntity, x, z);
-                helper.assertValueEqual(nativeEntity.needsSync, oracle.needsSync, "arithmetic immediate sync");
+            source.setDeltaMovement(initial[scenario]);
+            target.setDeltaMovement(initial[scenario]);
+            source.needsSync = target.needsSync = false;
+            Vec3[] expectedSource = new Vec3[count], expectedTarget = new Vec3[count];
+            boolean[] expectedSourceSync = new boolean[count], expectedTargetSync = new boolean[count];
+            for (int i = 0; i < count; i++) {
+                target.setPos(positions[2 * i], source.getY(), positions[2 * i + 1]);
+                target.push(source);
+                expectedSource[i] = source.getDeltaMovement();
+                expectedTarget[i] = target.getDeltaMovement();
+                expectedSourceSync[i] = source.needsSync;
+                expectedTargetSync[i] = target.needsSync;
             }
-            // A consumer may reset sync without reading velocity; materialization must not re-enable it.
-            oracle.needsSync = nativeEntity.needsSync = false;
-            exact(helper, nativeEntity.getDeltaMovement(), oracle.getDeltaMovement(), "arithmetic " + scenario);
-            helper.assertTrue(!nativeEntity.needsSync, "velocity observation must not resurrect sync");
+            source.setDeltaMovement(initial[scenario]);
+            target.setDeltaMovement(initial[scenario]);
+            source.needsSync = target.needsSync = false;
+            for (int i = 0; i < count; i++) {
+                if (!Double.isNaN(impulses[2 * i])) {
+                    target.push(-impulses[2 * i], 0, -impulses[2 * i + 1]);
+                    source.push(impulses[2 * i], 0, impulses[2 * i + 1]);
+                }
+                exact(helper, source.getDeltaMovement(), expectedSource[i], "native accumulation source " + scenario + "/" + i);
+                exact(helper, target.getDeltaMovement(), expectedTarget[i], "native accumulation target " + scenario + "/" + i);
+                helper.assertValueEqual(source.needsSync, expectedSourceSync[i], "accumulation source sync");
+                helper.assertValueEqual(target.needsSync, expectedTargetSync[i], "accumulation target sync");
+            }
         }
-    }
-
-    private static void queue(Zombie entity, double x, double z) {
-        ((CollisionImpulseState) entity).entityCollisionOptimizer$queueCollisionImpulse(x, z);
     }
 
     static void exact(GameTestHelper helper, Vec3 actual, Vec3 expected, String label) {

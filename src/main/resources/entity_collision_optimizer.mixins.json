@@ -6,11 +6,10 @@
   "mixins": [
     "CreakingMixin",
     "EntityMixin",
-    "EntityImpulseMixin",
+    "EntitySectionMixin",
     "EntityMovementMixin",
     "EntityCollisionInvoker",
     "LevelMixin",
-    "LivingEntityInvoker",
     "LivingEntityMixin",
     "LivingEntityStateMixin",
     "PlayerTeamMixin",

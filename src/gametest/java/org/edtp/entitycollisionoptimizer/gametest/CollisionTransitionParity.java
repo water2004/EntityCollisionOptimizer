@@ -10,7 +10,7 @@ import net.minecraft.world.scores.PlayerTeam;
 import net.minecraft.world.scores.Scoreboard;
 import net.minecraft.world.scores.Team;
 import org.edtp.entitycollisionoptimizer.config.CollisionOptimizerConfig;
-import org.edtp.entitycollisionoptimizer.mixin.LivingEntityInvoker;
+import org.edtp.entitycollisionoptimizer.gametest.mixin.LivingEntityTestInvoker;
 import org.edtp.entitycollisionoptimizer.natives.CollisionFrame;
 
 import java.util.List;
@@ -100,17 +100,17 @@ final class CollisionTransitionParity {
 
             CollisionFrame.end(level);
             CollisionOptimizerConfig.enableEntityCollision = false;
-            ((LivingEntityInvoker) vanillaSource).entityCollisionOptimizer$invokePushEntities();
+            ((LivingEntityTestInvoker) vanillaSource).entityCollisionOptimizer$invokePushEntities();
             transition.apply(level, vanillaTarget);
             zeroVelocities(List.of(vanillaSource, vanillaTarget));
-            ((LivingEntityInvoker) vanillaSource).entityCollisionOptimizer$invokePushEntities();
+            ((LivingEntityTestInvoker) vanillaSource).entityCollisionOptimizer$invokePushEntities();
 
             CollisionOptimizerConfig.enableEntityCollision = true;
             CollisionFrame.begin(level);
-            ((LivingEntityInvoker) acceleratedSource).entityCollisionOptimizer$invokePushEntities();
+            ((LivingEntityTestInvoker) acceleratedSource).entityCollisionOptimizer$invokePushEntities();
             transition.apply(level, acceleratedTarget);
             zeroVelocities(List.of(acceleratedSource, acceleratedTarget));
-            ((LivingEntityInvoker) acceleratedSource).entityCollisionOptimizer$invokePushEntities();
+            ((LivingEntityTestInvoker) acceleratedSource).entityCollisionOptimizer$invokePushEntities();
 
             assertEntityOutcomeMatches(helper, vanillaSource, acceleratedSource, scenario + " source");
             assertEntityOutcomeMatches(helper, vanillaTarget, acceleratedTarget, scenario + " target");
@@ -159,23 +159,23 @@ final class CollisionTransitionParity {
 
             CollisionFrame.end(level);
             CollisionOptimizerConfig.enableEntityCollision = false;
-            ((LivingEntityInvoker) vanillaSource).entityCollisionOptimizer$invokePushEntities();
+            ((LivingEntityTestInvoker) vanillaSource).entityCollisionOptimizer$invokePushEntities();
             scoreboard.addPlayerToTeam(
                     vanillaTarget.getScoreboardName(),
                     initiallyBlocked ? vanillaAllowed : vanillaBlocked
             );
             zeroVelocities(List.of(vanillaSource, vanillaTarget));
-            ((LivingEntityInvoker) vanillaSource).entityCollisionOptimizer$invokePushEntities();
+            ((LivingEntityTestInvoker) vanillaSource).entityCollisionOptimizer$invokePushEntities();
 
             CollisionOptimizerConfig.enableEntityCollision = true;
             CollisionFrame.begin(level);
-            ((LivingEntityInvoker) acceleratedSource).entityCollisionOptimizer$invokePushEntities();
+            ((LivingEntityTestInvoker) acceleratedSource).entityCollisionOptimizer$invokePushEntities();
             scoreboard.addPlayerToTeam(
                     acceleratedTarget.getScoreboardName(),
                     initiallyBlocked ? acceleratedAllowed : acceleratedBlocked
             );
             zeroVelocities(List.of(acceleratedSource, acceleratedTarget));
-            ((LivingEntityInvoker) acceleratedSource).entityCollisionOptimizer$invokePushEntities();
+            ((LivingEntityTestInvoker) acceleratedSource).entityCollisionOptimizer$invokePushEntities();
 
             String scenario = initiallyBlocked ? "team never -> always" : "team always -> never";
             assertEntityOutcomeMatches(helper, vanillaSource, acceleratedSource, scenario + " source");

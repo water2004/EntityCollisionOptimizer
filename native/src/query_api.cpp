@@ -115,8 +115,6 @@ int queryPushableEntities(
                     return -2;
                 }
                 output[3 + actionableCount] = candidateId;
-                nativePushOutput[actionableCount] = sourceUsesVanillaPush != 0
-                        && sourceMetadata.vanillaVectorPush && target.vanillaEntityPush && target.vanillaVectorPush;
                 ++actionableCount;
             }
         }
@@ -134,6 +132,23 @@ int queryPushableEntities(
         output[0] = 0;
         output[1] = pushableCount;
         output[2] = nonPassengerCount;
+        // Vanilla traverses packed section keys, then each section's insertion-ordered storage.
+        // Y/Z are unsigned fields in SectionPos's signed long; X carries the sign bit.
+        std::sort(output + 3, output + 3 + actionableCount, [&context](int a, int b) {
+            const auto& left = context.metadata[a];
+            const auto& right = context.metadata[b];
+            if (left.sectionX != right.sectionX) return left.sectionX < right.sectionX;
+            const auto lz = left.sectionZ & 0x3fffff, rz = right.sectionZ & 0x3fffff;
+            if (lz != rz) return lz < rz;
+            const auto ly = left.sectionY & 0xfffff, ry = right.sectionY & 0xfffff;
+            if (ly != ry) return ly < ry;
+            return left.sectionOrder < right.sectionOrder;
+        });
+        for (int i = 0; i < actionableCount; ++i) {
+            const auto& target = context.metadata[output[3 + i]];
+            nativePushOutput[i] = sourceUsesVanillaPush != 0 && sourceMetadata.vanillaVectorPush
+                    && target.vanillaEntityPush && target.vanillaVectorPush;
+        }
         return actionableCount;
     } catch (...) {
         return -3;

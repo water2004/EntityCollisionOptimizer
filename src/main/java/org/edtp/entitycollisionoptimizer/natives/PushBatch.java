@@ -3,7 +3,6 @@ package org.edtp.entitycollisionoptimizer.natives;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import org.edtp.entitycollisionoptimizer.collision.CollisionCacheState;
-import org.edtp.entitycollisionoptimizer.collision.CollisionImpulseState;
 import org.edtp.entitycollisionoptimizer.collision.CollisionSleepingState;
 
 import java.util.Arrays;
@@ -75,10 +74,10 @@ public final class PushBatch implements AutoCloseable {
         }
         // LivingEntity.doPush calls target.push(source): the target receives its impulse first.
         if (!target.isVehicle() && ((CollisionCacheState) target).entityCollisionOptimizer$isPushableCached()) {
-            ((CollisionImpulseState) target).entityCollisionOptimizer$queueCollisionImpulse(-x, -z);
+            target.push(-x, 0.0, -z);
         }
         if (!source.isVehicle() && ((CollisionCacheState) source).entityCollisionOptimizer$isPushableCached()) {
-            ((CollisionImpulseState) source).entityCollisionOptimizer$queueCollisionImpulse(x, z);
+            source.push(x, 0.0, z);
         }
     }
 

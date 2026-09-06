@@ -24,6 +24,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import static java.lang.foreign.ValueLayout.ADDRESS;
 import static java.lang.foreign.ValueLayout.JAVA_DOUBLE;
 import static java.lang.foreign.ValueLayout.JAVA_INT;
+import static java.lang.foreign.ValueLayout.JAVA_LONG;
 
 /**
  * FFM bindings for the live native spatial index. There is deliberately no
@@ -220,7 +221,8 @@ public final class FFMBackend {
             boolean vanillaEntityPush,
             boolean vanillaVectorPush,
             int teamId,
-            int collisionRule
+            int collisionRule,
+            long sectionOrder
     ) {
         synchronized (nativeContext) {
             nativeContext.ensureOpen();
@@ -235,7 +237,8 @@ public final class FFMBackend {
                         vanillaEntityPush ? 1 : 0,
                         vanillaVectorPush ? 1 : 0,
                         teamId,
-                        collisionRule
+                        collisionRule,
+                        sectionOrder
                 );
                 checkStatus("update native entity collision metadata", status);
             } catch (Throwable failure) {
@@ -483,7 +486,8 @@ public final class FFMBackend {
                         JAVA_INT,
                         JAVA_INT,
                         JAVA_INT,
-                        JAVA_INT
+                        JAVA_INT,
+                        JAVA_LONG
                 )
         );
         invalidateEntityMetadata = linker.downcallHandle(

@@ -5,7 +5,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.monster.zombie.Zombie;
 import net.minecraft.world.phys.Vec3;
 import org.edtp.entitycollisionoptimizer.config.CollisionOptimizerConfig;
-import org.edtp.entitycollisionoptimizer.mixin.LivingEntityInvoker;
+import org.edtp.entitycollisionoptimizer.gametest.mixin.LivingEntityTestInvoker;
 import org.edtp.entitycollisionoptimizer.natives.CollisionFrame;
 
 import java.util.ArrayList;
@@ -52,7 +52,7 @@ final class CollisionRepeatedFrameParity {
                 CollisionOptimizerConfig.enableEntityCollision = false;
                 for (Zombie source : vanilla) {
                     if (source.isAlive()) {
-                        ((LivingEntityInvoker) source).entityCollisionOptimizer$invokePushEntities();
+                        ((LivingEntityTestInvoker) source).entityCollisionOptimizer$invokePushEntities();
                     }
                 }
 
@@ -68,7 +68,7 @@ final class CollisionRepeatedFrameParity {
                 }
                 for (Zombie source : accelerated) {
                     if (source.isAlive()) {
-                        ((LivingEntityInvoker) source).entityCollisionOptimizer$invokePushEntities();
+                        ((LivingEntityTestInvoker) source).entityCollisionOptimizer$invokePushEntities();
                     }
                 }
 
