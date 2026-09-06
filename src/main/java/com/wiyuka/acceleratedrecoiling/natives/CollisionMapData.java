@@ -1,72 +1,96 @@
 package com.wiyuka.acceleratedrecoiling.natives;
 
-import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
-import it.unimi.dsi.fastutil.ints.IntArrayList;
-import net.minecraft.client.renderer.chunk.SectionCompiler;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.level.Level;
 
-import java.util.AbstractList;
-import java.util.Collections;
-import java.util.List;
+import java.util.Arrays;
 
-public class CollisionMapData {
-    private static final Int2ObjectOpenHashMap<IntArrayList> collisionMap = new Int2ObjectOpenHashMap<>(10000);
+/**
+ * Reusable compressed sparse row storage for the directed collision graph.
+ */
+public final class CollisionMapData {
+    private static int[] collisionCounts = new int[1024];
+    private static int[] collisionStarts = new int[1025];
+    private static int[] writeCursors = new int[1024];
+    private static int[] collisionTargets = new int[1024];
+    private static int entityCount;
+    private static int directedEdgeCount;
+    private static int lastNonEmptyDirectedEdgeCount;
 
-//    private static final IntArrayList[] collisionMap = new IntArrayList[256];
-
-    public static void putCollision(int idA, int idB) {
-        addSingle(idA, idB);
-        addSingle(idB, idA);
+    private CollisionMapData() {
     }
 
-    private static void addSingle(int source, int target) {
-        IntArrayList list = collisionMap.get(source);
-        if (list == null) {
-            list = new IntArrayList();
-            collisionMap.put(source, list);
-        }
-        list.add(target);
+    public static void beginFrame(int newEntityCount) {
+        ensureEntityCapacity(newEntityCount);
+        Arrays.fill(collisionCounts, 0, newEntityCount, 0);
+        entityCount = newEntityCount;
+        directedEdgeCount = 0;
     }
 
-    public static void clear() {
-        collisionMap.clear();
+    public static void countCollision(int source) {
+        collisionCounts[source]++;
     }
 
-    public static List<Entity> getCollisionList(Entity source, Level level) {
-        IntArrayList ids = collisionMap.get(TempID.getId(source));
-        if (ids == null || ids.isEmpty()) return Collections.emptyList();
-        return new EntityListView(ids, level, source);
+    public static void sealCounts() {
+        collisionStarts[0] = 0;
+        for (int source = 0; source < entityCount; source++) {
+            collisionStarts[source + 1] = collisionStarts[source] + collisionCounts[source];
+        }
+        directedEdgeCount = collisionStarts[entityCount];
+        ensureTargetCapacity(directedEdgeCount);
+        System.arraycopy(collisionStarts, 0, writeCursors, 0, entityCount);
     }
 
-    private static class EntityListView extends AbstractList<Entity> {
-        private final IntArrayList ids;
-        private final Level level;
-        private final Entity source;
+    public static void addCollision(int source, int target) {
+        collisionTargets[writeCursors[source]++] = target;
+    }
 
-        public EntityListView(IntArrayList ids, Level level, Entity source) {
-            this.ids = ids;
-            this.level = level;
-            this.source = source;
-        }
+    public static int directedEdgeCount() {
+        return directedEdgeCount;
+    }
 
-        @Override
-        public Entity get(int index) {
-            int entityId = ids.getInt(index);
-//            Entity target = level.getEntity(entityId);
-            Entity target = TempID.getEntity(entityId);
-            if(target == null) return source;
-            return target;
+    public static void finishFrame() {
+        if (directedEdgeCount != 0) {
+            lastNonEmptyDirectedEdgeCount = directedEdgeCount;
         }
+    }
 
-        @Override
-        public int size() {
-            return ids.size();
-        }
+    public static void resetLastNonEmptyDirectedEdgeCount() {
+        lastNonEmptyDirectedEdgeCount = 0;
+    }
 
-        @Override
-        public boolean isEmpty() {
-            return ids.isEmpty();
+    public static int lastNonEmptyDirectedEdgeCount() {
+        return lastNonEmptyDirectedEdgeCount;
+    }
+
+    public static int getCollisionStart(Entity source) {
+        int sourceId = TempID.getId(source);
+        return sourceId < 0 || sourceId >= entityCount ? 0 : collisionStarts[sourceId];
+    }
+
+    public static int getCollisionEnd(Entity source) {
+        int sourceId = TempID.getId(source);
+        return sourceId < 0 || sourceId >= entityCount ? 0 : collisionStarts[sourceId + 1];
+    }
+
+    public static int[] collisionTargets() {
+        return collisionTargets;
+    }
+
+    private static void ensureEntityCapacity(int required) {
+        if (required <= collisionCounts.length) {
+            return;
         }
+        int newSize = Math.max(required, collisionCounts.length + (collisionCounts.length >> 1));
+        collisionCounts = Arrays.copyOf(collisionCounts, newSize);
+        collisionStarts = Arrays.copyOf(collisionStarts, newSize + 1);
+        writeCursors = Arrays.copyOf(writeCursors, newSize);
+    }
+
+    private static void ensureTargetCapacity(int required) {
+        if (required <= collisionTargets.length) {
+            return;
+        }
+        int grown = collisionTargets.length + (collisionTargets.length >> 1);
+        collisionTargets = Arrays.copyOf(collisionTargets, Math.max(required, grown));
     }
 }

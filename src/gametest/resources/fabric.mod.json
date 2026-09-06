@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "id": "acceleratedrecoiling-gametest",
+  "version": "1.0.0",
+  "name": "Accelerated Recoiling GameTest",
+  "environment": "server",
+  "entrypoints": {
+    "fabric-gametest": [
+      "com.wiyuka.acceleratedrecoiling.gametest.ZombieCollisionBenchmark"
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=0.19.5",
+    "fabric-api": "*",
+    "minecraft": "~26.2",
+    "acceleratedrecoiling": "*"
+  }
+}

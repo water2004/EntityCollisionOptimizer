@@ -6,7 +6,6 @@ public interface ICustomData {
     void setNativeId(int id);
 
     void extractionBoundingBox(double[] doubleArray, int offset, double inflate);
-    void extractionPosition(double[] doubleArray, int offset);
 
     void setDensity(float i);
 

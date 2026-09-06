@@ -1,13 +1,8 @@
 package com.wiyuka.acceleratedrecoiling.natives;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
 import com.wiyuka.acceleratedrecoiling.AcceleratedRecoiling;
 import com.wiyuka.acceleratedrecoiling.config.FoldConfig;
 import com.wiyuka.acceleratedrecoiling.ffm.FFM;
-import org.slf4j.Logger;
 
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -21,309 +16,332 @@ import java.lang.foreign.Linker;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.SymbolLookup;
 import java.lang.invoke.MethodHandle;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicLong;
 
-import static java.lang.foreign.ValueLayout.*;
+import static java.lang.foreign.ValueLayout.ADDRESS;
+import static java.lang.foreign.ValueLayout.JAVA_FLOAT;
+import static java.lang.foreign.ValueLayout.JAVA_INT;
 
-public class FFMBackend implements INativeBackend {
+/**
+ * The single accelerated backend. When collision acceleration is disabled this
+ * class is not called and Minecraft executes its original collision path.
+ */
+public final class FFMBackend {
     private static Linker linker;
     private static Arena nativeArena;
-    private static MethodHandle pushMethodHandle = null;
-    private static MethodHandle createCtxMethodHandle = null;
-    private static MethodHandle destroyCtxMethodHandle = null;
-    private static MethodHandle createCfgMethodHandle = null;
-
-    private static MethodHandle updateCfgMethodHandle = null;
-    private static MethodHandle destroyCfgMethodHandle = null;
-
-    private static final AtomicLong maxSizeTouched = new AtomicLong(-1);
-
-    @Override
-    public String getName() {
-        return "FFM";
-    }
-
-    static class PushResultFFM implements com.wiyuka.acceleratedrecoiling.natives.PushResult {
-        private MemorySegment segmentA;
-        private MemorySegment segmentB;
-        private MemorySegment segmentDensity;
-
-        private PushResultFFM() {}
-        void update(MemorySegment a, MemorySegment b, MemorySegment density) {
-            this.segmentA = a;
-            this.segmentB = b;
-            this.segmentDensity = density;
-        }
-        @Override
-        public int getA(int index) {
-            return segmentA.get(JAVA_INT, (long) index * Integer.BYTES);
-        }
-        @Override
-        public int getB(int index) {
-            return segmentB.get(JAVA_INT, (long) index * Integer.BYTES);
-        }
-        @Override
-        public float getDensity(int index) {
-            return segmentDensity.get(JAVA_FLOAT, (long) index * Float.BYTES);
-        }
-        @Override
-        public void copyATo(int[] dest, int length) {
-            MemorySegment.copy(segmentA, JAVA_INT, 0, dest, 0, length);
-        }
-        @Override
-        public void copyBTo(int[] dest, int length) {
-            MemorySegment.copy(segmentB, JAVA_INT, 0, dest, 0, length);
-        }
-        @Override
-        public void copyDensityTo(float[] dest, int length) {
-            MemorySegment.copy(segmentDensity, JAVA_FLOAT, 0, dest, 0, length);
-        }
-    }
-    private static class ThreadState {
-        Arena bufferArena = null;
-        MemorySegment bufA;
-        MemorySegment bufB;
-        MemorySegment densityBuf;
-        MemorySegment context;
-        MemorySegment configPtr;
-        int currentSize = -1;
-
-        final PushResultFFM resultWrapper = new PushResultFFM();
-        ThreadState() {
-            try {
-                if (createCtxMethodHandle != null) {
-                    context = (MemorySegment) createCtxMethodHandle.invokeExact();
-                }
-                if (createCfgMethodHandle != null) {
-                    configPtr = (MemorySegment) createCfgMethodHandle.invokeExact(
-                            FoldConfig.maxCollision,
-                            FoldConfig.gridSize,
-                            FoldConfig.densityWindow,
-                            FoldConfig.maxThreads
-                    );
-                }
-            } catch (Throwable e) {
-                throw new RuntimeException("Failed to create native context for thread", e);
-            }
-        }
-
-        PushResultFFM reallocOutputBuf(int newSize) {
-            int newCapacity = (int) (newSize * 1.2);
-            long newSizeTotal = Math.max(1024L, (long) newCapacity * JAVA_INT.byteSize());
-            long densitySizeTotal = Math.max(1024L, (long) newCapacity * JAVA_FLOAT.byteSize());
-            if (newSizeTotal > currentSize) {
-                if (bufferArena != null) {
-                    bufferArena.close();
-                }
-                bufferArena = Arena.ofConfined();
-                bufA = bufferArena.allocate(newSizeTotal);
-                bufB = bufferArena.allocate(newSizeTotal);
-                densityBuf = bufferArena.allocate(densitySizeTotal);
-                currentSize = (int) newSizeTotal;
-            }
-
-            // 更新封装类中的内部指针
-            resultWrapper.update(bufA, bufB, densityBuf);
-            return resultWrapper;
-        }
-
-        void destroy() {
-            if (bufferArena != null) {
-                try { bufferArena.close(); } catch (Exception ignored) {}
-            }
-            if (context != null && destroyCtxMethodHandle != null) {
-                try {
-                    destroyCtxMethodHandle.invokeExact(context);
-                } catch (Throwable e) {
-                    AcceleratedRecoiling.LOGGER.error("Failed to destroy native context", e);
-                }
-            }
-
-            if (configPtr != null && destroyCfgMethodHandle != null) {
-                try {
-                    destroyCfgMethodHandle.invokeExact(configPtr);
-                } catch (Throwable e) {
-                    AcceleratedRecoiling.LOGGER.error("Failed to destroy native config", e);
-                }
-            }
-        }
-    }
-
-    @Override
-    public void applyConfig() {
-        if (!ParallelAABB.isInitialized || updateCfgMethodHandle == null) {
-            return;
-        }
-        for (ThreadState state : ALL_THREAD_STATES) {
-            if (state.configPtr != null) {
-                try {
-                    updateCfgMethodHandle.invokeExact(
-                            state.configPtr,
-                            FoldConfig.maxCollision,
-                            FoldConfig.gridSize,
-                            FoldConfig.densityWindow,
-                            FoldConfig.maxThreads
-                    );
-                } catch (Throwable e) {
-                    AcceleratedRecoiling.LOGGER.error("Failed to update native config for thread", e);
-                }
-            }
-        }
-    }
+    private static MethodHandle pushMethodHandle;
+    private static MethodHandle createCtxMethodHandle;
+    private static MethodHandle destroyCtxMethodHandle;
+    private static MethodHandle createCfgMethodHandle;
+    private static MethodHandle updateCfgMethodHandle;
+    private static MethodHandle destroyCfgMethodHandle;
+    private static volatile boolean initialized;
+    private static int generation;
 
     private static final Set<ThreadState> ALL_THREAD_STATES = ConcurrentHashMap.newKeySet();
+    private static final ThreadLocal<ThreadState> THREAD_STATE = new ThreadLocal<>();
 
-    private static final ThreadLocal<ThreadState> THREAD_STATE = ThreadLocal.withInitial(() -> {
-        ThreadState state = new ThreadState();
-        ALL_THREAD_STATES.add(state);
-        return state;
-    });
+    private FFMBackend() {
+    }
 
-    @Override
-    public void destroy() {
-        if (!ParallelAABB.isInitialized) {
+    public static boolean isInitialized() {
+        return initialized;
+    }
+
+    public static synchronized void initialize() {
+        if (initialized) {
             return;
         }
 
-        ParallelAABB.isInitialized = false;
+        try {
+            loadNativeLibrary();
+            generation++;
+            initialized = true;
+            AcceleratedRecoiling.LOGGER.info("FFM collision backend initialized");
+        } catch (Throwable failure) {
+            resetHandles();
+            throw new IllegalStateException(
+                    "FFM collision backend failed to initialize; no fallback backend is configured",
+                    failure
+            );
+        }
+    }
 
+    public static void applyConfig() {
+        if (!initialized) {
+            return;
+        }
+
+        for (ThreadState state : ALL_THREAD_STATES) {
+            try {
+                updateCfgMethodHandle.invokeExact(
+                        state.configPtr,
+                        FoldConfig.maxCollision,
+                        FoldConfig.gridSize,
+                        FoldConfig.densityWindow,
+                        FoldConfig.maxThreads
+                );
+            } catch (Throwable failure) {
+                throw new IllegalStateException("Failed to update the FFM collision configuration", failure);
+            }
+        }
+    }
+
+    public static synchronized void destroy() {
+        if (!initialized) {
+            return;
+        }
+
+        initialized = false;
         for (ThreadState state : ALL_THREAD_STATES) {
             state.destroy();
         }
         ALL_THREAD_STATES.clear();
-
-        nativeArena = null;
-        linker = null;
-        pushMethodHandle = null;
-        createCtxMethodHandle = null;
-        destroyCtxMethodHandle = null;
-
-        maxSizeTouched.set(-1);
+        THREAD_STATE.remove();
+        resetHandles();
     }
 
-    private static SymbolLookup findFoldLib(Arena arena, String dllPath) {
-        return SymbolLookup.libraryLookup(dllPath, arena);
-    }
-
-    @Override
-    public PushResult push(
-            double[] locations,
-            double[] aabb,
-            int[] resultSizeOut
-    ) {
-        if (!ParallelAABB.isInitialized) {
-            return null;
+    public static PushResult push(double[] aabbs, int entityCount) {
+        if (!initialized) {
+            initialize();
         }
 
-        ThreadState state = THREAD_STATE.get();
-        if (state.context == null) {
-            return null;
-        }
-
+        ThreadState state = threadState();
         try (Arena tempArena = Arena.ofConfined()) {
-            int count = locations.length / 3;
-            int resultSize = locations.length * FoldConfig.maxCollision;
-            maxSizeTouched.updateAndGet(current -> Math.max(current, count));
+            int resultCapacity = Math.multiplyExact(
+                    entityCount,
+                    FoldConfig.effectiveMaxCollision(entityCount)
+            );
+            MemorySegment aabbMemory = FFM.allocateArray(tempArena, aabbs);
+            PushResult result = state.allocateOutput(resultCapacity);
 
-            MemorySegment aabbMem = FFM.allocateArray(tempArena, aabb);
-            PushResultFFM collisionPairs = state.reallocOutputBuf(resultSize);
-
-            int collisionSize = 0;
+            final int collisionCount;
             try {
-                collisionSize = (int) pushMethodHandle.invokeExact(
-                        aabbMem,                 // const double *aabbs
-                        collisionPairs.segmentA, // int *outputA
-                        collisionPairs.segmentB, // int *outputB
-                        count,                   // int entityCount
-                        collisionPairs.segmentDensity, // float* densityBuf
-                        state.context,           // void* memDataPtrOri
-                        state.configPtr          // void* configPtr
+                collisionCount = (int) pushMethodHandle.invokeExact(
+                        aabbMemory,
+                        result.segmentA,
+                        result.segmentB,
+                        entityCount,
+                        result.segmentDensity,
+                        state.context,
+                        state.configPtr
                 );
-            } catch (Throwable e) {
-                throw new RuntimeException("Failed to invoke native push method", e);
+            } catch (Throwable failure) {
+                throw new IllegalStateException("FFM collision call failed", failure);
             }
 
-            resultSizeOut[0] = collisionSize;
-            if (collisionSize == -1) return null;
-
-            return collisionPairs;
+            if (collisionCount < 0) {
+                throw new IllegalStateException("FFM collision call returned invalid result size " + collisionCount);
+            }
+            result.size = collisionCount;
+            return result;
         }
     }
 
-    @Override
-    public void initialize() {
-        Logger logger = AcceleratedRecoiling.LOGGER;
-        String dllPath = "";
-        String dllName = "AcceleratedRecoiling";
-        String fullDllName = System.mapLibraryName(dllName);
-
-        String resourcePath = NativeInterface.getPlatformNativePath() + fullDllName;
-        try (InputStream dllStream = AcceleratedRecoiling.class.getResourceAsStream(resourcePath)) {
-            if (dllStream == null) {
-                throw new FileNotFoundException("Cannot find " + fullDllName + " in resources at path: " + resourcePath);
-            }
-            File tempDll = File.createTempFile(UUID.randomUUID() + "_acceleratedRecoiling_", "_" + fullDllName);
-            tempDll.deleteOnExit();
-            dllPath = tempDll.getAbsolutePath();
-            try (OutputStream out = new FileOutputStream(tempDll)) {
-                dllStream.transferTo(out);
-                logger.info("Extracted native library from {} to temp: {}", resourcePath, dllPath);
-            }
-        } catch (IOException e) {
-            throw new RuntimeException("Native library load failed: " + e.getMessage(), e);
+    private static ThreadState threadState() {
+        ThreadState state = THREAD_STATE.get();
+        if (state == null || state.generation != generation) {
+            state = new ThreadState(generation);
+            THREAD_STATE.set(state);
+            ALL_THREAD_STATES.add(state);
         }
+        return state;
+    }
+
+    private static void loadNativeLibrary() throws IOException {
+        String libraryName = System.mapLibraryName("AcceleratedRecoiling");
+        String resourcePath = platformNativePath() + libraryName;
+        File extractedLibrary;
+
+        try (InputStream libraryStream = AcceleratedRecoiling.class.getResourceAsStream(resourcePath)) {
+            if (libraryStream == null) {
+                throw new FileNotFoundException("Cannot find native library resource " + resourcePath);
+            }
+            extractedLibrary = File.createTempFile(
+                    UUID.randomUUID() + "_acceleratedRecoiling_",
+                    "_" + libraryName
+            );
+            extractedLibrary.deleteOnExit();
+            try (OutputStream output = new FileOutputStream(extractedLibrary)) {
+                libraryStream.transferTo(output);
+            }
+        }
+
+        AcceleratedRecoiling.LOGGER.info(
+                "Extracted FFM native library {} to {}",
+                resourcePath,
+                extractedLibrary.getAbsolutePath()
+        );
+
         linker = Linker.nativeLinker();
         nativeArena = Arena.global();
-        SymbolLookup lib = findFoldLib(nativeArena, dllPath);
+        SymbolLookup library = SymbolLookup.libraryLookup(extractedLibrary.getAbsolutePath(), nativeArena);
         pushMethodHandle = linker.downcallHandle(
-                lib.find("push").orElseThrow(() -> new RuntimeException("Cannot find symbol 'push'")),
+                library.find("push").orElseThrow(() -> missingSymbol("push")),
                 FunctionDescriptor.of(
-                        JAVA_INT,   // return: collisionTimes
-                        ADDRESS,    // const double* aabbs
-                        ADDRESS,    // int* outputA
-                        ADDRESS,    // int* outputB
-                        JAVA_INT,   // int count
-                        ADDRESS,    // float* densityBuf
-                        ADDRESS,    // void* memDataPtrOri (Context)
-                        ADDRESS     // void* configPtr
+                        JAVA_INT,
+                        ADDRESS,
+                        ADDRESS,
+                        ADDRESS,
+                        JAVA_INT,
+                        ADDRESS,
+                        ADDRESS,
+                        ADDRESS
                 )
         );
         createCtxMethodHandle = linker.downcallHandle(
-                lib.find("createCtx").orElseThrow(() -> new RuntimeException("Cannot find symbol 'createCtx'")),
+                library.find("createCtx").orElseThrow(() -> missingSymbol("createCtx")),
                 FunctionDescriptor.of(ADDRESS)
         );
+        destroyCtxMethodHandle = linker.downcallHandle(
+                library.find("destroyCtx").orElseThrow(() -> missingSymbol("destroyCtx")),
+                FunctionDescriptor.ofVoid(ADDRESS)
+        );
         createCfgMethodHandle = linker.downcallHandle(
-                lib.find("createCfg").orElseThrow(() -> new RuntimeException("Cannot find symbol 'createCfg'")),
+                library.find("createCfg").orElseThrow(() -> missingSymbol("createCfg")),
                 FunctionDescriptor.of(ADDRESS, JAVA_INT, JAVA_INT, JAVA_INT, JAVA_INT)
         );
-        try {
-            updateCfgMethodHandle = linker.downcallHandle(
-                    lib.find("updateCfg").orElseThrow(),
-                    FunctionDescriptor.ofVoid(ADDRESS, JAVA_INT, JAVA_INT, JAVA_INT, JAVA_INT)
-            );
-        } catch (Exception e) {
-            logger.warn("Cannot find symbol 'updateCfg'");
+        updateCfgMethodHandle = linker.downcallHandle(
+                library.find("updateCfg").orElseThrow(() -> missingSymbol("updateCfg")),
+                FunctionDescriptor.ofVoid(ADDRESS, JAVA_INT, JAVA_INT, JAVA_INT, JAVA_INT)
+        );
+        destroyCfgMethodHandle = linker.downcallHandle(
+                library.find("destroyCfg").orElseThrow(() -> missingSymbol("destroyCfg")),
+                FunctionDescriptor.ofVoid(ADDRESS)
+        );
+    }
+
+    private static IllegalStateException missingSymbol(String symbol) {
+        return new IllegalStateException("Native library is missing required FFM symbol '" + symbol + "'");
+    }
+
+    private static String platformNativePath() {
+        String osName = System.getProperty("os.name").toLowerCase();
+        String osArch = System.getProperty("os.arch").toLowerCase();
+        String os;
+        if (osName.contains("win")) {
+            os = "windows";
+        } else if (osName.contains("mac")) {
+            os = "macos";
+        } else if (osName.contains("nix") || osName.contains("nux") || osName.contains("aix")) {
+            os = "linux";
+        } else {
+            throw new UnsupportedOperationException("Unsupported OS for the FFM backend: " + osName);
         }
-        try {
-            destroyCfgMethodHandle = linker.downcallHandle(
-                    lib.find("destroyCfg").orElseThrow(),
-                    FunctionDescriptor.ofVoid(ADDRESS)
-            );
-        } catch (Exception e) {
-            logger.warn("Cannot find symbol 'destroyCfg'");
+
+        String architecture;
+        if (osArch.contains("amd64") || osArch.contains("x86_64")) {
+            architecture = "x64";
+        } else if (osArch.contains("aarch64") || osArch.contains("arm64")) {
+            architecture = "arm64";
+        } else {
+            throw new UnsupportedOperationException("Unsupported architecture for the FFM backend: " + osArch);
         }
-        try {
-            destroyCtxMethodHandle = linker.downcallHandle(
-                    lib.find("destroyCtx").orElseThrow(),
-                    FunctionDescriptor.ofVoid(ADDRESS)
-            );
-        } catch (Exception e) {
-            logger.warn("Cannot find symbol 'destroyCtx'");
+        return "/natives/" + os + "-" + architecture + "/";
+    }
+
+    private static void resetHandles() {
+        linker = null;
+        nativeArena = null;
+        pushMethodHandle = null;
+        createCtxMethodHandle = null;
+        destroyCtxMethodHandle = null;
+        createCfgMethodHandle = null;
+        updateCfgMethodHandle = null;
+        destroyCfgMethodHandle = null;
+    }
+
+    public static final class PushResult {
+        private MemorySegment segmentA;
+        private MemorySegment segmentB;
+        private MemorySegment segmentDensity;
+        private int size;
+
+        private PushResult() {
+        }
+
+        private void update(MemorySegment a, MemorySegment b, MemorySegment density) {
+            segmentA = a;
+            segmentB = b;
+            segmentDensity = density;
+        }
+
+        public int size() {
+            return size;
+        }
+
+        public int getA(int index) {
+            return segmentA.get(JAVA_INT, (long) index * Integer.BYTES);
+        }
+
+        public int getB(int index) {
+            return segmentB.get(JAVA_INT, (long) index * Integer.BYTES);
+        }
+
+        public float getDensity(int index) {
+            return segmentDensity.get(JAVA_FLOAT, (long) index * Float.BYTES);
+        }
+    }
+
+    private static final class ThreadState {
+        private final int generation;
+        private final MemorySegment context;
+        private final MemorySegment configPtr;
+        private final PushResult result = new PushResult();
+        private Arena bufferArena;
+        private MemorySegment bufferA;
+        private MemorySegment bufferB;
+        private MemorySegment densityBuffer;
+        private long byteCapacity;
+
+        private ThreadState(int generation) {
+            this.generation = generation;
+            try {
+                context = (MemorySegment) createCtxMethodHandle.invokeExact();
+                configPtr = (MemorySegment) createCfgMethodHandle.invokeExact(
+                        FoldConfig.maxCollision,
+                        FoldConfig.gridSize,
+                        FoldConfig.densityWindow,
+                        FoldConfig.maxThreads
+                );
+            } catch (Throwable failure) {
+                throw new IllegalStateException("Failed to create FFM collision state", failure);
+            }
+
+            if (context.equals(MemorySegment.NULL) || configPtr.equals(MemorySegment.NULL)) {
+                throw new IllegalStateException("Native library returned a null FFM collision state");
+            }
+        }
+
+        private PushResult allocateOutput(int elementCapacity) {
+            long requiredBytes = Math.max(1024L, (long) elementCapacity * Integer.BYTES);
+            if (requiredBytes > byteCapacity) {
+                if (bufferArena != null) {
+                    bufferArena.close();
+                }
+                bufferArena = Arena.ofConfined();
+                bufferA = bufferArena.allocate(requiredBytes);
+                bufferB = bufferArena.allocate(requiredBytes);
+                densityBuffer = bufferArena.allocate(requiredBytes);
+                byteCapacity = requiredBytes;
+            }
+            result.update(bufferA, bufferB, densityBuffer);
+            return result;
+        }
+
+        private void destroy() {
+            if (bufferArena != null) {
+                bufferArena.close();
+                bufferArena = null;
+            }
+            try {
+                destroyCtxMethodHandle.invokeExact(context);
+                destroyCfgMethodHandle.invokeExact(configPtr);
+            } catch (Throwable failure) {
+                throw new IllegalStateException("Failed to destroy FFM collision state", failure);
+            }
         }
     }
 }

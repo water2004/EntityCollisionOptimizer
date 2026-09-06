@@ -3,16 +3,13 @@ package com.wiyuka.acceleratedrecoiling.commands;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
-import com.google.gson.annotations.SerializedName;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.BoolArgumentType;
-import com.mojang.brigadier.arguments.DoubleArgumentType;
-import com.mojang.brigadier.arguments.FloatArgumentType;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import com.wiyuka.acceleratedrecoiling.config.FoldConfig;
-import com.wiyuka.acceleratedrecoiling.natives.NativeInterface;
+import com.wiyuka.acceleratedrecoiling.natives.FFMBackend;
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -36,7 +33,7 @@ public class ToggleFoldCommand {
 
     private static void registerCommand(CommandDispatcher<CommandSourceStack> dispatcher, String name) {
         LiteralArgumentBuilder<CommandSourceStack> baseCommand = Commands.literal(name)
-                .requires(source -> source.hasPermission(2));
+                .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS));
 
         baseCommand.then(Commands.literal("check").executes(ToggleFoldCommand::checkConfig));
         baseCommand.then(Commands.literal("save").executes(ToggleFoldCommand::save));
@@ -68,12 +65,6 @@ public class ToggleFoldCommand {
             } else if (type == int.class) {
                 fieldNode.then(Commands.argument("value", IntegerArgumentType.integer())
                         .executes(ctx -> setFieldValue(ctx, field, IntegerArgumentType.getInteger(ctx, "value"))));
-            } else if (type == float.class) {
-                fieldNode.then(Commands.argument("value", FloatArgumentType.floatArg())
-                        .executes(ctx -> setFieldValue(ctx, field, FloatArgumentType.getFloat(ctx, "value"))));
-            } else if (type == double.class) {
-                fieldNode.then(Commands.argument("value", DoubleArgumentType.doubleArg())
-                        .executes(ctx -> setFieldValue(ctx, field, DoubleArgumentType.getDouble(ctx, "value"))));
             }
 
             baseCommand.then(fieldNode);
@@ -83,17 +74,16 @@ public class ToggleFoldCommand {
     }
 
     private static int updateConfig(CommandContext<CommandSourceStack> context) {
-//        CommandSourceStack source = context.getSource();
-
-        NativeInterface.applyConfig();
-        return 0;
+        FFMBackend.applyConfig();
+        context.getSource().sendSuccess(() -> Component.literal("FFM configuration applied"), false);
+        return 1;
     }
 
     private static int setFieldValue(CommandContext<CommandSourceStack> context, Field field, Object newValue) {
         try {
-            field.set(null, newValue); // 静态字段对象传 null
+            field.set(null, newValue);
             sendSuccessMessage(context.getSource(), field.getName(), newValue);
-            NativeInterface.applyConfig();
+            FFMBackend.applyConfig();
             return 1;
         } catch (IllegalAccessException e) {
             context.getSource().sendFailure(Component.literal("Failed to modify config: " + e.getMessage()));
@@ -146,24 +136,23 @@ public class ToggleFoldCommand {
         message.append(Component.literal("\n--------------------\n")
                 .withStyle(ChatFormatting.DARK_GRAY));
 
-        try {
-//            var backend = NativeInterface.getBackendName();
-//            String backendName = (backend != null) ? backend : "None";
-
-            // 使用自定义颜色突出显示 Backend，或者直接复用 buildConfigLine
-            message.append(Component.literal("  Backend: ")
-                            .withStyle(ChatFormatting.GRAY))
-//                    .append(Component.literal(backendName)
-//                            .withStyle(ChatFormatting.LIGHT_PURPLE, ChatFormatting.BOLD))
-                    .append("\n\n"); // 加两个换行，和下面的具体配置项区分开
-        } catch (Exception e) {
-            message.append(Component.literal("  Backend: Error\n\n").withStyle(ChatFormatting.RED));
-        }
-
+        String mode = FoldConfig.enableEntityCollision ? "FFM (enabled)" : "Vanilla (disabled)";
+        message.append(Component.literal("  Backend: ")
+                        .withStyle(ChatFormatting.GRAY))
+                .append(Component.literal(mode)
+                        .withStyle(
+                                FoldConfig.enableEntityCollision ? ChatFormatting.GREEN : ChatFormatting.YELLOW,
+                                ChatFormatting.BOLD
+                        ))
+                .append(Component.literal("\n  FFM initialized: ")
+                        .withStyle(ChatFormatting.GRAY))
+                .append(Component.literal(String.valueOf(FFMBackend.isInitialized()))
+                        .withStyle(FFMBackend.isInitialized() ? ChatFormatting.GREEN : ChatFormatting.DARK_GRAY))
+                .append("\n\n");
 
         for (Field field : FoldConfig.class.getDeclaredFields()) {
             int modifiers = field.getModifiers();
-            if (!Modifier.isStatic(modifiers)) continue;
+            if (!Modifier.isStatic(modifiers) || Modifier.isFinal(modifiers)) continue;
 
             field.setAccessible(true);
             try {
@@ -182,7 +171,7 @@ public class ToggleFoldCommand {
 
     private static int save(CommandContext<CommandSourceStack> context) {
         CommandSourceStack source = context.getSource();
-        File targetFile = new File("acceleratedRecoiling.json");
+        File targetFile = FoldConfig.getConfigFile();
 
         JsonObject jsonObject = new JsonObject();
 
@@ -194,8 +183,6 @@ public class ToggleFoldCommand {
             try {
                 Object value   = field.get(null);
                 String jsonKey = field.getName();
-                SerializedName serializedName = field.getAnnotation(SerializedName.class);
-                if      (serializedName != null)         jsonKey = serializedName.value();
                 if      (value instanceof Boolean bool)  jsonObject.addProperty(jsonKey, bool);
                 else if (value instanceof Number number) jsonObject.addProperty(jsonKey, number);
                 else if (value instanceof String string) jsonObject.addProperty(jsonKey, string);

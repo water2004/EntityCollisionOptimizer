@@ -2,11 +2,8 @@ package com.wiyuka.acceleratedrecoiling.mixin;
 
 import com.wiyuka.acceleratedrecoiling.api.ICustomData;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
-import net.minecraft.world.phys.Vec3;
 import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -55,19 +52,6 @@ public abstract class EntityMixin implements ICustomData {
         doubleArray[offset + 5] = (double) this.bbMaxZ + inflate;
     }
 
-    @Shadow
-    private Vec3 position;
-
-
-    @Shadow public abstract boolean isRemoved();
-
-    @Override
-    public final void extractionPosition(double[] doubleArray, int offset) {
-        doubleArray[offset + 0] = (double) this.position.x;
-        doubleArray[offset + 1] = (double) this.position.y;
-        doubleArray[offset + 2] = (double) this.position.z;
-    }
-
     @Inject(
             method = "setBoundingBox(Lnet/minecraft/world/phys/AABB;)V",
             at = @At("RETURN")
@@ -80,12 +64,4 @@ public abstract class EntityMixin implements ICustomData {
         this.bbMaxY = bb.maxY;
         this.bbMaxZ = bb.maxZ;
     }
-
-//    @Inject(
-//            method = "onRemoval",
-//            at = @At("TAIL")
-//    )
-//    private void onOnRemoval(Entity.RemovalReason r, CallbackInfo ci) {
-//        NativeIDManager.unregister((Entity) (Object) this);
-//    }
 }
