@@ -1,133 +1,93 @@
 # 加速碰撞 (Accelerated Recoiling)
 
-加速碰撞是一个专注于优化服务端实体碰撞逻辑的模组。它利用 FFM (Foreign Function & Memory) API/JNI 接管实体 AABB 碰撞检测，将高密集计算压力转移至 C++ 原生库，从而显著提升服务器性能。
-该项目由[加速碰撞](https://github.com/wiyuka0/AcceleratedRecoilingNative)提供支持。
+Accelerated Recoiling 是一个面向 Fabric 服务器的实体碰撞优化模组。它使用 Java FFM 调用随模组发布的原生库，处理高密度实体的 AABB 碰撞候选计算。
 
-**本模组目前为实验性质，实体挤压表现与原版不完全一致。请务必在做好存档备份的前提下谨慎使用。如果在意原版特性还原程度，请切换至Java Vanilla后端**
+> 本模组仍属于实验性优化，实体挤压结果可能与原版不完全一致。在服务器存档上使用前请先备份。
 
-官方交流群：1023713677
+## 支持范围
 
-## 特性介绍
+- Minecraft Java Edition **26.2**
+- Fabric Loader **0.19.5 或更高的 0.19.x 版本**
+- Fabric API **0.159.0+26.2 或更高的 26.2 兼容版本**
+- Java **25**
+- 仅支持 **Fabric**
 
-*   **实体碰撞性能提升**：通过将底层的碰撞逻辑交由 C++ 处理，打破 Java 在处理海量实体碰撞时的性能瓶颈。在测试条件下（同一区块数千实体），TPS 提升可达数十倍。
-*   **算法优化**：引入效率更高的碰撞算法，避免了原版 <math>O(N^2)</math> 复杂度的实体遍历，降低 CPU 负担。
-*   **阈值触发**：只有当局部实体密度达到设定阈值时才会使用 C++ 加速算法，保证常规游戏场景下的稳定与原版体验。
-*   **多端支持**：同时包含Windows/Linux/MacOS的运行库，未来版本将支持arm64
-*   **动态后端选择机制**: 同时包含多个后端并自动选择当前可以应用且效率最高的后端
+模组可同时安装在客户端和服务端，优化逻辑只在服务端世界中执行。
 
+## 运行模式
 
-| 后端 | 实现说明 | 要求 | 性能 (预期) | 状态 |
-| :--- | :--- | :--- | :--- | :--- |
-| **GPU** | 使用 GPU 算法加速碰撞 | 需图形硬件支持 | 最高 | 可用 |
-| **FFM** | 使用 FFM API 与 C++ 层进行通信 | 需要使用 JDK 21或以上的Java版本启动游戏 | 非常高 | 可用 |
-| **JNI** | 使用 JNI 与 C++ 层进行通信 | 无 | 非常高 | 可用 |
-| **Java SIMD** | 使用加速碰撞的 Java VectorAPI 算法 | 需添加启动参数 | 高 | 可用 |
-| **Java** | 使用加速碰撞的 Java 原生算法 | 无 | 良好 | 可用 |
-| **Java Vanilla** | 在原版的实体遍历下直接修改实体碰撞筛选逻辑（原版特性还原程度最高） | 无 | 偏差 | 可用 |
-| **Vanilla** | 原版的碰撞逻辑 | 无 | 最差 | - |
+只保留两种显式模式，由配置项 `enableEntityCollision` 决定：
 
-如果需要手动切换后端，请在游戏启动时添加参数`-Dacceleratedrecoiling.backend=后端名称`
+| 配置值 | 模式 | 行为 |
+| --- | --- | --- |
+| `false` | Vanilla | 不进入模组碰撞路径，直接执行 Minecraft 原版逻辑 |
+| `true` | FFM | 使用 FFM 原生碰撞后端 |
 
-## 环境要求与前置
+没有自动探测、后端选择参数或回退链。FFM 初始化或执行失败时会明确抛出错误，不会静默切换后端或跳过问题。运行 FFM 模式时建议添加 JVM 参数 `--enable-native-access=ALL-UNNAMED`。
 
-*   **64位操作系统**：本机库 (`.dll` / `.so`) 仅支持 64 位环境。
-*   **Leaves 端**：启动参数中必须包含 `-Dleavesclip.enable.mixin=true`。
+## 原生平台
 
-## 安装与配置
+发布 JAR 的原生构建目标为：
 
-首次启动时，模组会自动在根目录释放本机库文件，并生成 `acceleratedRecoiling.json` 配置文件。
+- Windows x64
+- Linux x64
+- macOS x64
 
-**默认配置及说明：**
+ARM64 暂不作为正式原生后端支持范围；在不受支持的平台上只能将 `enableEntityCollision` 设为 `false` 使用 Vanilla 模式。
+
+## 配置
+
+首次启动后会生成：
+
+```text
+config/acceleratedrecoiling.json
+```
+
+默认配置：
+
 ```json
 {
-   "enableEntityCollision": true,      // 是否启用实体挤压优化
-   "enableEntityGetterOptimization": true, // 启用EntityGetter接口优化(暂时无效)
-   "maxCollision": 32,                 // 单个实体最大碰撞交互数
-   "gridSize": 1,                      // 算法网格大小
-   "densityWindow": 4,                 // 密度平滑窗口
-   "densityThreshold": 16              // 触发加速碰撞的周围实体密度阈值
+  "enableEntityCollision": true,
+  "maxCollision": 32,
+  "gridSize": 1,
+  "densityWindow": 4,
+  "densityThreshold": 16,
+  "maxThreads": 1
 }
 ```
-*注：若开启后性能不升反降，请尝试调低 `densityThreshold`。*
-*如果CPU占用过高，请调低maxThreads*
 
-## 常见问题 (Q&A)
+`enableEntityCollision` 必须显式设为 `true`（FFM）或 `false`（Vanilla）。
 
-**Q: 为什么游戏崩溃或无法启动？** <br>
-**A:** 请按以下步骤排查：
-1. 确认已正确安装 Java 17+
-2. 若使用 **Leaves** 服务端，确保启动参数包含 `-Dleavesclip.enable.mixin=true`。
-3. 如果更新过模组，尝试删除根目录或 `.minecraft` 下的 `acceleratedRecoilingLib.dll`与`acceleratedRecoiling.json`，然后重启游戏让其重新生成。
+`maxCollision` 设为 `0` 时不截断碰撞候选；正数表示每个实体最多保留的候选数。
 
-**Q: 开启后实体挤压表现和原版一样吗？** <br>
-**A:** 不完全一致。本模组目前为实验性质，改变了底层计算逻辑，因此挤压表现会与原版有差异。**请务必在使用前做好存档备份。**
+可使用 `/acceleratedrecoiling` 或 `/togglefold` 查看、修改和保存配置。命令需要游戏管理员权限。
 
-**Q: 会影响生电特性吗？** <br>
-**A:** 目前没有找到因加速碰撞而失效的红石机器，但推测可能会影响与实体挤压有关的红石机器，**请务必在使用前做好存档备份。**
+## 构建
 
-**Q: 为什么开启模组后，服务器性能反而下降了？** <br>
-**A:** 可能是周围实体密度未达到触发优化的条件，因此同时走了原版和加速碰撞的两条路径。请尝试打开配置文件，适当调低 `densityThreshold` 的数值。或尝试调低`maxThreads`。
+常规 Java/Fabric 编译可在 Windows、Linux 或 macOS 上执行，Gradle 会自动获取 Java 25 工具链：
 
-**Q: 会不会和某些模组不兼容？** <br>
-**A:** 完全不会，根据我们目前的测试，加速碰撞与 ATM9 整合包完全兼容
-同时兼容
-* [Lithium](https://github.com/CaffeineMC/lithium)
-* [FlatCollision](https://github.com/PooSmacker/FlatCollision)
-* [RuOK](https://github.com/MCTeamPotato/RuOK)
-* [Create](https://github.com/Creators-of-Create/Create)
-* [Valkyrien-Skies-2](https://github.com/ValkyrienSkies/Valkyrien-Skies-2) <br>
-等多个大型模组。如果发现有不兼容的模组，请在本仓库提交Issue。
-
-**Q: FFM 是Java 21的预览功能，我是否应该使用Java 21+启动游戏？** <br>
-**A:** 如果你的游戏版本是*1.21.1*以上，那么是的，但这是**1.21.1**版本本身需要**Java 21**来运行。 <br>
-如果你的游戏是*1.20.1*，那么不需要，加速碰撞*v0.10.0-alpha-1.20.1*以上的版本**同时支持最新版JDK到Java 17**之间的任意JDK版本。 <br> （* 注: 1.20.1 的最低可运行 Java 即为 Java 17 *）
-
-## 性能基准测试
-
-**测试环境:** i5-12600KF | 32GB RAM | RTX 3060 Ti | Leaves 1.21.8 | GraalVM JDK 21
-
-**测试一：TPS 变化 (同一区块 2x2 空间内生成实体)**
-| 实体数量 | Leaves + 加速碰撞 | 原版 Leaves | 提升倍率 |
-| :--- | :--- | :--- | :--- |
-| **2,048** | **20.0 TPS** (16 MSPT) | 3.0 TPS | 20.8x |
-| **4,096** | **20.0 TPS** (27 MSPT) | 0.5 TPS | 74x |
-| **16,384** | **8.6 TPS** (115 MSPT) | - | - |
-| **32,768** | **4.3 TPS** (230 MSPT) | - | - |
-
-**测试二：BroadPhase 耗时 (纯 C++ 端处理性能)**
-| 实体数量 | MS / Frame (每帧耗时) | 等效 FPS |
-| :--- | :--- | :--- |
-| 10,000 | 0.2 ms | 5000 |
-| 50,000 | 1.1 ms | 909 |
-| 100,000 | 2.5 ms | 400 |
-| 400,000 | 21.3 ms | 46 |
-
-## 源码编译
-
-项目通过 Gradle 调用 MSVC 和 WSL 进行双端跨平台编译 (生成 `.dll` 和 `.so`)，建议在装有 WSL 的 Windows 10/11 环境下操作。
-
-**1. 环境准备**
-*   安装 JDK 21。(必须)
-*   克隆本仓库
-
-**2. 构建**
-在项目根目录运行以下命令：
-```bash
-gradlew jar
-gradlew build
+```powershell
+./gradlew.bat compileJava
 ```
-编译产物 (包含双端动态库的 Jar) 将生成在 `build/libs/` 目录下。
 
-## 支持与赞助
-如果你喜欢 **加速碰撞 (Accelerated Recoiling)**，欢迎来 **[这里](https://github.com/wiyuka0/AcceleratedRecoiling/blob/master/3ae91be2c6a1e7447635b7b1b7454ffc.jpeg)** 请wiyuka吃一顿带鱼哦 owo
+包含全部原生库的发布 JAR 需要 Windows 10/11、MSVC 和 WSL：
 
-## 鸣谢与开源协议
+```powershell
+./gradlew.bat build
+```
 
-本项目基于 **MIT 协议** 开源。
-特别感谢以下开发者对本项目的核心思路与代码移植提供的巨大帮助：
-*   **[Argon4W](https://github.com/Argon4W)**: 原始构思与核心思路。
-*   **[fireboy637](https://github.com/fireboy637)**: Architectury API 移植方案的核心代码。
-*   **[hydropuse](https://github.com/hydropuse)**: JDK 22 兼容方案的核心代码。
-*   **[wellcoming](https://github.com/wellcoming)**: Docker Ubuntu镜像解决方案。
-*   **[grayawa](https://github.com/grayawa)**: Linux 上的构建问题修复
-*   **[TomatoPuddin](https://github.com/TomatoPuddin)**: 跨平台构建(Windows/Linux/MacOS/Android) 与 C++ 层的重构
+产物位于 `build/libs/`。
+
+## 碰撞基准测试
+
+项目包含一个显式启用的 Fabric GameTest 基准：每个服务端 tick 都会将 1000 只无 AI、无重力的僵尸锁定在同一坐标，并分别采集关闭碰撞优化与启用 FFM 优化时的 MSPT。普通 `build` 不会运行它。
+
+```powershell
+./gradlew.bat runGameTest -Pbenchmark
+```
+
+结果会以 `AR_BENCHMARK_RESULT` 为前缀输出到日志。建议至少独立运行三次，并比较 `baseline_mean_mspt`、`optimized_mean_mspt` 与 `improvement_percent`。
+
+## 许可证
+
+本项目使用 MIT License。
