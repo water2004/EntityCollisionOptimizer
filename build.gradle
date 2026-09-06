@@ -1,190 +1,86 @@
-buildscript {
-    repositories {
-        mavenCentral()
-    }
-    dependencies {
-        classpath 'org.ow2.asm:asm:9.6'
-    }
-}
-
 plugins {
-    id 'java-library'
+    id 'net.fabricmc.fabric-loom' version "${loom_version}"
     id 'maven-publish'
-    id 'idea'
-    id 'net.neoforged.moddev' version '2.0.115'
-    id 'org.jetbrains.kotlin.jvm'
 }
 
-tasks.withType(JavaCompile).configureEach {
-    options.compilerArgs.add('--enable-preview')
-    options.compilerArgs += "--add-modules"
-    options.compilerArgs += "jdk.incubator.vector"
+version = project.mod_version
+group = project.maven_group
+
+base {
+    archivesName = project.archives_base_name
 }
-
-import org.objectweb.asm.*
-import java.util.jar.*
-
-jar.doLast {
-    File jarFile = archiveFile.get().asFile
-    println "正在移除预览版标记: ${jarFile.name}..."
-
-    // 创建一个临时文件
-    File tempFile = new File(jarFile.parent, jarFile.name + ".temp")
-
-    try (JarFile jar = new JarFile(jarFile);
-         JarOutputStream jos = new JarOutputStream(new FileOutputStream(tempFile))) {
-
-        Enumeration<JarEntry> entries = jar.entries()
-        while (entries.hasMoreElements()) {
-            JarEntry entry = entries.nextElement()
-            InputStream is = jar.getInputStream(entry)
-
-            if (!entry.getName().endsWith(".class")) {
-                jos.putNextEntry(new JarEntry(entry.getName()))
-                is.transferTo(jos)
-                continue
-            }
-
-            ClassReader cr = new ClassReader(is)
-            ClassWriter cw = new ClassWriter(0)
-
-            ClassVisitor cv = new ClassVisitor(Opcodes.ASM9, cw) {
-                @Override
-                void visit(int version, int access, String name, String signature, String superName, String[] interfaces) {
-                    int newVersion = version & ~Opcodes.V_PREVIEW
-                    super.visit(newVersion, access, name, signature, superName, interfaces)
-                }
-            }
-
-            cr.accept(cv, 0)
-
-            JarEntry newEntry = new JarEntry(entry.getName())
-            jos.putNextEntry(newEntry)
-            jos.write(cw.toByteArray())
-        }
-    }
-
-    if (jarFile.delete()) {
-        if (!tempFile.renameTo(jarFile)) {
-            throw new RuntimeException("无法重命名临时文件！")
-        }
-        println "预览版标记移除成功！"
-    } else {
-        throw new RuntimeException("无法删除原始 Jar 文件！")
-    }
-}
-
-version = mod_version
-group = mod_group_id
 
 repositories {
-    mavenLocal()
     mavenCentral()
 }
 
-base {
-    archivesName = mod_id
-}
-
-java.toolchain.languageVersion = JavaLanguageVersion.of(21)
-
-neoForge {
-    version = project.neo_version
-
-    parchment {
-        mappingsVersion = project.parchment_mappings_version
-        minecraftVersion = project.parchment_minecraft_version
-    }
-
+loom {
     runs {
-        client {
-            client()
-            jvmArgument("--enable-preview")
-            systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
-        }
-
-        server {
-            server()
-            programArgument '--nogui'
-            jvmArgument("--enable-preview")
-            systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
-        }
-
-        gameTestServer {
-            type = "gameTestServer"
-            systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
-        }
-
         configureEach {
-            systemProperty 'forge.logging.markers', 'REGISTRIES'
-            logLevel = org.slf4j.event.Level.DEBUG
-        }
-    }
-
-    mods {
-        "${mod_id}" {
-            sourceSet(sourceSets.main)
+            vmArg "--enable-native-access=ALL-UNNAMED"
+            vmArg "--add-modules=jdk.incubator.vector"
         }
     }
 }
 
-sourceSets.main.resources { srcDir 'src/generated/resources' }
-
-tasks.named('createMinecraftArtifacts') {
-    dependsOn 'generateModMetadata'
+// The 1000-entity benchmark is opt-in so normal builds do not start a game server.
+if (providers.gradleProperty("benchmark").isPresent()) {
+    fabricApi {
+        configureTests {
+            createSourceSet = true
+            modId = "acceleratedrecoiling-gametest"
+            enableGameTests = true
+            eula = true
+        }
+    }
 }
 
 dependencies {
+    minecraft "com.mojang:minecraft:${project.minecraft_version}"
+    implementation "net.fabricmc:fabric-loader:${project.loader_version}"
+    implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+
     def joclVersion = "2.0.5"
-    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8"
     implementation "org.jocl:jocl:${joclVersion}"
-    additionalRuntimeClasspath "org.jocl:jocl:${joclVersion}"
-    jarJar(group: 'org.jocl', name: 'jocl', version: "[${joclVersion},)")
+    include "org.jocl:jocl:${joclVersion}"
 }
 
-var generateModMetadata = tasks.register("generateModMetadata", ProcessResources) {
-    var replaceProperties = [minecraft_version      : minecraft_version,
-                             minecraft_version_range: minecraft_version_range,
-                             neo_version            : neo_version,
-                             neo_version_range      : neo_version_range,
-                             loader_version_range   : loader_version_range,
-                             mod_id                 : mod_id,
-                             mod_name               : mod_name,
-                             mod_license            : mod_license,
-                             mod_version            : mod_version,
-                             mod_authors            : mod_authors,
-                             mod_description        : mod_description]
-    inputs.properties replaceProperties
-    expand replaceProperties
-    from "src/main/templates"
-    into "build/generated/sources/modMetadata"
+def modVersion = version.toString()
+
+processResources {
+    inputs.property "version", modVersion
+
+    filesMatching("fabric.mod.json") {
+        expand "version": modVersion
+    }
 }
 
-sourceSets.main.resources.srcDir generateModMetadata
-neoForge.ideSyncTask generateModMetadata
+tasks.withType(JavaCompile).configureEach {
+    options.release = 25
+    options.compilerArgs.addAll(["--add-modules", "jdk.incubator.vector"])
+}
+
+java {
+    toolchain.languageVersion = JavaLanguageVersion.of(25)
+    withSourcesJar()
+}
+
+def archiveBaseName = project.archives_base_name
+
+jar {
+    inputs.property "archiveBaseName", archiveBaseName
+
+    from("LICENSE") {
+        rename { "${it}_${archiveBaseName}" }
+    }
+}
 
 publishing {
     publications {
-        register('mavenJava', MavenPublication) {
+        create("mavenJava", MavenPublication) {
             from components.java
         }
     }
-    repositories {
-        maven {
-            url "file://${project.projectDir}/repo"
-        }
-    }
-}
-
-idea {
-    module {
-        downloadSources = true
-        downloadJavadoc = true
-    }
-}
-
-kotlin {
-    jvmToolchain(21)
 }
 
 def cppScript = file('cpp-build.gradle')

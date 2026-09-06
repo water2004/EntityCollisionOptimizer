@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "id": "acceleratedrecoiling",
+  "version": "${version}",
+  "name": "AcceleratedRecoiling",
+  "description": "Accelerates server-side entity collision handling.",
+  "authors": ["wiyuka"],
+  "contact": {
+    "sources": "https://github.com/water2004/AcceleratedRecoiling",
+    "issues": "https://github.com/water2004/AcceleratedRecoiling/issues"
+  },
+  "license": "MIT",
+  "environment": "*",
+  "entrypoints": {
+    "main": ["com.wiyuka.acceleratedrecoiling.AcceleratedRecoiling"]
+  },
+  "mixins": ["acceleratedrecoiling.mixins.json"],
+  "depends": {
+    "fabricloader": ">=0.19.5",
+    "minecraft": "~26.2",
+    "java": ">=25",
+    "fabric-api": ">=0.159.0"
+  }
+}
