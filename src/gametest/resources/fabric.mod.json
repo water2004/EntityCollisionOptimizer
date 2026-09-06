@@ -10,6 +10,7 @@
       "org.edtp.entitycollisionoptimizer.gametest.VanillaCollisionParityGameTests"
     ]
   },
+  "mixins": ["entity_collision_optimizer-gametest.mixins.json"],
   "depends": {
     "fabricloader": ">=0.19.5",
     "fabric-api": "*",
