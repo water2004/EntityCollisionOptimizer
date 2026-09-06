@@ -9,6 +9,5 @@
 !/native/version-script
 !/native/src/
 /native/src/*
-!/native/src/entity_data.cpp
-!/native/src/entity_data.h
-!/native/src/export.h
+!/native/src/*.cpp
+!/native/src/*.h

@@ -86,5 +86,10 @@ else()
     message(FATAL_ERROR "Unsupported target")
 endif()
 
-file(GLOB_RECURSE sources "${PROJECT_SOURCE_DIR}/src/*.cpp")
-add_library(EntityCollisionOptimizer SHARED ${sources})
+add_library(EntityCollisionOptimizer SHARED
+        src/collision_rules.cpp
+        src/context_api.cpp
+        src/metadata_api.cpp
+        src/query_api.cpp
+        src/spatial_index.cpp
+)

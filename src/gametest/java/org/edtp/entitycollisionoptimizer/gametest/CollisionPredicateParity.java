@@ -1,0 +1,212 @@
+package org.edtp.entitycollisionoptimizer.gametest;
+
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.SectionPos;
+import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntitySelector;
+import net.minecraft.world.entity.EntityTypes;
+import net.minecraft.world.entity.monster.zombie.Zombie;
+import net.minecraft.world.level.GameType;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.scores.PlayerTeam;
+import net.minecraft.world.scores.Scoreboard;
+import net.minecraft.world.scores.Team;
+import org.edtp.entitycollisionoptimizer.collision.VanillaEntityCollision;
+import org.edtp.entitycollisionoptimizer.compat.CarpetCompatibility;
+import org.edtp.entitycollisionoptimizer.natives.CollisionFrame;
+import org.edtp.entitycollisionoptimizer.natives.FFMBackend;
+
+import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
+
+import static org.edtp.entitycollisionoptimizer.gametest.CollisionTestSupport.identitySet;
+import static org.edtp.entitycollisionoptimizer.gametest.CollisionTestSupport.spawnZombie;
+
+final class CollisionPredicateParity {
+    private CollisionPredicateParity() {
+    }
+
+    static void verifyPushabilityPredicate(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        Vec3 anchor = new Vec3(0.5, 1.0, 0.5);
+        Zombie source = spawnZombie(helper, anchor);
+        Zombie allied = spawnZombie(helper, anchor);
+        Zombie other = spawnZombie(helper, anchor);
+        Entity unpushable = helper.spawn(EntityTypes.END_CRYSTAL, anchor);
+        Entity spectator = helper.makeMockPlayer(GameType.SPECTATOR);
+
+        Scoreboard scoreboard = level.getScoreboard();
+        String suffix = UUID.randomUUID().toString().substring(0, 6);
+        PlayerTeam sourceTeam = scoreboard.addPlayerTeam("ar_s_" + suffix);
+        PlayerTeam otherTeam = scoreboard.addPlayerTeam("ar_o_" + suffix);
+        scoreboard.addPlayerToTeam(source.getScoreboardName(), sourceTeam);
+        scoreboard.addPlayerToTeam(allied.getScoreboardName(), sourceTeam);
+        scoreboard.addPlayerToTeam(other.getScoreboardName(), otherTeam);
+
+        try {
+            assertPredicateMatches(helper, source, allied, "allied/always");
+            assertPredicateMatches(helper, source, other, "other/always");
+            assertPredicateMatches(helper, source, unpushable, "unpushable");
+            assertPredicateMatches(helper, source, spectator, "spectator");
+
+            sourceTeam.setCollisionRule(Team.CollisionRule.NEVER);
+            assertPredicateMatches(helper, source, allied, "source/never");
+            sourceTeam.setCollisionRule(Team.CollisionRule.PUSH_OWN_TEAM);
+            assertPredicateMatches(helper, source, allied, "source/push-own/allied");
+            assertPredicateMatches(helper, source, other, "source/push-own/other");
+            sourceTeam.setCollisionRule(Team.CollisionRule.PUSH_OTHER_TEAMS);
+            assertPredicateMatches(helper, source, allied, "source/push-other/allied");
+            assertPredicateMatches(helper, source, other, "source/push-other/other");
+
+            sourceTeam.setCollisionRule(Team.CollisionRule.ALWAYS);
+            otherTeam.setCollisionRule(Team.CollisionRule.NEVER);
+            assertPredicateMatches(helper, source, other, "target/never");
+            otherTeam.setCollisionRule(Team.CollisionRule.PUSH_OWN_TEAM);
+            assertPredicateMatches(helper, source, other, "target/push-own/other");
+            otherTeam.setCollisionRule(Team.CollisionRule.PUSH_OTHER_TEAMS);
+            assertPredicateMatches(helper, source, other, "target/push-other/other");
+        } finally {
+            scoreboard.removePlayerTeam(sourceTeam);
+            scoreboard.removePlayerTeam(otherTeam);
+            source.discard();
+            allied.discard();
+            other.discard();
+            unpushable.discard();
+            spectator.discard();
+        }
+    }
+
+    static void verifyLiveSpatialIndex(GameTestHelper helper) {
+        ServerLevel level = helper.getLevel();
+        Vec3 anchor = new Vec3(0.5, 1.0, 0.5);
+        Zombie source = spawnZombie(helper, anchor);
+        Zombie overlapping = spawnZombie(helper, anchor.add(0.2, 0.0, 0.0));
+        Zombie touching = spawnZombie(helper, anchor.add(source.getBbWidth(), 0.0, 0.0));
+        Zombie tinyOverlap = spawnZombie(helper, anchor.add(source.getBbWidth() - 1.0E-10, 0.0, 0.0));
+        Zombie vertical = spawnZombie(helper, anchor.add(0.0, source.getBbHeight() + 0.1, 0.0));
+        List<Entity> observed = new ArrayList<>(List.of(overlapping, touching, tinyOverlap, vertical));
+
+        try {
+            CollisionFrame.begin(level);
+            assertSpatialQueryMatches(helper, source, observed, "initial/boundaries");
+
+            touching.setPos(source.position().add(0.1, 0.0, 0.0));
+            assertSpatialQueryMatches(helper, source, observed, "moved after frame start");
+
+            Zombie addedAfterFrameStart = spawnZombie(helper, anchor.add(0.0, 0.0, 0.2));
+            observed.add(addedAfterFrameStart);
+            assertSpatialQueryMatches(helper, source, observed, "added after frame start");
+
+            Zombie largeBounds = spawnZombie(helper, anchor.add(5.0, 0.0, 5.0));
+            AABB sourceBox = source.getBoundingBox();
+            largeBounds.setBoundingBox(new AABB(
+                    sourceBox.minX - 2.25,
+                    sourceBox.minY - 0.25,
+                    sourceBox.minZ - 2.25,
+                    sourceBox.maxX + 2.25,
+                    sourceBox.maxY + 0.25,
+                    sourceBox.maxZ + 2.25
+            ));
+            observed.add(largeBounds);
+            assertSpatialQueryMatches(helper, source, observed, "multi-cell bounds");
+        } finally {
+            source.discard();
+            for (Entity entity : observed) {
+                entity.discard();
+            }
+            CollisionFrame.end(level);
+        }
+    }
+
+    static void verifyCarpetOwnership(GameTestHelper helper) {
+        if (!CarpetCompatibility.isCarpetLoaded()) {
+            return;
+        }
+
+        try {
+            Field collisionLimit = Class.forName("carpet.CarpetSettings")
+                    .getField("maxEntityCollisions");
+            int originalLimit = collisionLimit.getInt(null);
+            try {
+                collisionLimit.setInt(null, 1);
+                helper.assertTrue(
+                        CarpetCompatibility.ownsEntityCollisions(),
+                        "Carpet must own collisions when maxEntityCollisions is active"
+                );
+                CollisionPushParity.verifyPushOutcome(helper, false);
+            } finally {
+                collisionLimit.setInt(null, originalLimit);
+                CarpetCompatibility.refreshCollisionOwnership();
+            }
+        } catch (ReflectiveOperationException failure) {
+            throw new IllegalStateException("Cannot exercise Carpet collision ownership", failure);
+        }
+    }
+
+    static void assertSpatialQueryMatches(
+            GameTestHelper helper,
+            Entity source,
+            List<Entity> observed,
+            String scenario
+    ) {
+        Set<Entity> observedSet = identitySet(observed);
+        Set<Entity> vanilla = identitySet(source.level().getEntities(
+                source,
+                source.getBoundingBox(),
+                observedSet::contains
+        ));
+
+        FFMBackend.QueryResult result = CollisionFrame.query(source);
+        Set<Entity> accelerated = identitySet(List.of());
+        for (int index = 0; index < result.size(); index++) {
+            Entity candidate = CollisionFrame.entity(source, result.get(index));
+            if (observedSet.contains(candidate)
+                    && isInVanillaLookupSections(source.getBoundingBox(), candidate.blockPosition())) {
+                accelerated.add(candidate);
+            }
+        }
+        long trackedEntities = observed.stream().filter(CollisionFrame::contains).count();
+        helper.assertTrue(
+                accelerated.equals(vanilla),
+                "spatial query parity: " + scenario
+                        + ", vanilla=" + vanilla.size()
+                        + ", accelerated=" + accelerated.size()
+                        + ", nativeTracked=" + trackedEntities + "/" + observed.size()
+        );
+    }
+
+    private static void assertPredicateMatches(
+            GameTestHelper helper,
+            Entity source,
+            Entity target,
+            String scenario
+    ) {
+        boolean vanilla = EntitySelector.pushableBy(source).test(target);
+        PlayerTeam sourceTeam = source.getTeam();
+        boolean accelerated = VanillaEntityCollision.isPushableBy(
+                source,
+                sourceTeam,
+                VanillaEntityCollision.collisionRule(sourceTeam),
+                target
+        );
+        helper.assertValueEqual(accelerated, vanilla, "pushableBy parity: " + scenario);
+    }
+
+    private static boolean isInVanillaLookupSections(AABB query, BlockPos position) {
+        int sectionX = SectionPos.blockToSectionCoord(position.getX());
+        int sectionY = SectionPos.blockToSectionCoord(position.getY());
+        int sectionZ = SectionPos.blockToSectionCoord(position.getZ());
+        return sectionX >= SectionPos.posToSectionCoord(query.minX - 2.0)
+                && sectionX <= SectionPos.posToSectionCoord(query.maxX + 2.0)
+                && sectionY >= SectionPos.posToSectionCoord(query.minY - 4.0)
+                && sectionY <= SectionPos.posToSectionCoord(query.maxY)
+                && sectionZ >= SectionPos.posToSectionCoord(query.minZ - 2.0)
+                && sectionZ <= SectionPos.posToSectionCoord(query.maxZ + 2.0);
+    }
+}
