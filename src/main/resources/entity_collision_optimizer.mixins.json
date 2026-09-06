@@ -6,10 +6,13 @@
   "mixins": [
     "CreakingMixin",
     "EntityMixin",
+    "EntityMovementMixin",
+    "EntityCollisionInvoker",
     "LevelMixin",
     "LivingEntityInvoker",
     "LivingEntityMixin",
     "PlayerTeamMixin",
+    "PalettedContainerMixin",
     "ScoreboardMixin",
     "ServerPlayerMixin",
     "ServerLevelMixin"

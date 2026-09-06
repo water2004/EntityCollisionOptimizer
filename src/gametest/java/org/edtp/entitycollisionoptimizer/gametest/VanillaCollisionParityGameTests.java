@@ -6,6 +6,27 @@ import net.minecraft.gametest.framework.GameTestHelper;
 
 public final class VanillaCollisionParityGameTests {
     @GameTest(maxTicks = 200, padding = 48)
+    public void orderedBlockShapes(GameTestHelper helper) {
+        BlockShapeParity.verify(helper);
+        helper.succeed();
+    }
+
+    @GameTest(maxTicks = 200, padding = 48)
+    public void blockMovementParity(GameTestHelper helper) {
+        BlockMovementParity.verify(helper);
+        helper.succeed();
+    }
+
+    @GameTest(maxTicks = 200, padding = 48)
+    public void impulseObservationParity(GameTestHelper helper) {
+        CollisionImpulseParity.verify(helper);
+        EntityCollisionOptimizer.LOGGER.info(
+                "ECO_PARITY_RESULT velocity_observations=5 result=passed"
+        );
+        helper.succeed();
+    }
+
+    @GameTest(maxTicks = 200, padding = 48)
     public void lowDensityVanillaParity(GameTestHelper helper) {
         CollisionParity.verifyLowDensity(helper);
         EntityCollisionOptimizer.LOGGER.info(

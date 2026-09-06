@@ -59,7 +59,8 @@ public final class ZombieCollisionBenchmark {
         ServerTickEvents.END_SERVER_TICK.register(ZombieCollisionBenchmark::onTickEnd);
     }
 
-    @GameTest(maxTicks = 1_200, padding = 4)
+    // Keep neighbouring GameTest structures out of the large requested movement sweep.
+    @GameTest(maxTicks = 1_200, padding = 96)
     public void stackedZombies(GameTestHelper helper) {
         if (!Boolean.getBoolean("entity_collision_optimizer.runBenchmark")) {
             helper.succeed();
@@ -121,6 +122,8 @@ public final class ZombieCollisionBenchmark {
         }
 
         CollisionOptimizerConfig.enableEntityCollision = run.currentTrial().optimized;
+        MovementScanDiagnostics.beginTick(run.currentTrial().optimized,
+                run.trialTick >= run.currentTrial().warmupTicks);
         run.tickStartedAt = System.nanoTime();
         run.attackIfReady();
     }
@@ -133,6 +136,7 @@ public final class ZombieCollisionBenchmark {
 
         Trial trial = run.currentTrial();
         double elapsedMs = (System.nanoTime() - run.tickStartedAt) / 1_000_000.0;
+        MovementScanDiagnostics.endTick();
         if (run.trialTick >= trial.warmupTicks) {
             (trial.optimized ? run.optimizedSamples : run.baselineSamples).add(elapsedMs);
         }
@@ -143,6 +147,12 @@ public final class ZombieCollisionBenchmark {
         }
 
         run.verifyPopulation();
+        List<Double> samples = trial.optimized ? run.optimizedSamples : run.baselineSamples;
+        Stats trialStats = Stats.of(samples.subList(samples.size() - trial.measuredTicks, samples.size()));
+        EntityCollisionOptimizer.LOGGER.info(String.format(Locale.ROOT,
+                "ECO_BENCHMARK_TRIAL index=%d mode=%s mean_mspt=%.3f median_mspt=%.3f p95_mspt=%.3f",
+                run.trialIndex, trial.optimized ? "optimized" : "baseline",
+                trialStats.mean, trialStats.median, trialStats.p95));
         run.trialIndex++;
         if (run.trialIndex == run.trials.length) {
             run.finish();
@@ -247,6 +257,7 @@ public final class ZombieCollisionBenchmark {
         }
 
         private void start() {
+            MovementScanDiagnostics.start();
             maxHealthAttribute.entityCollisionOptimizer$setMaxValue(BENCHMARK_HEALTH);
             healthLimitRaised = true;
             CollisionOptimizerConfig.enableEntityCollision = currentTrial().optimized;
@@ -352,6 +363,7 @@ public final class ZombieCollisionBenchmark {
                 zombie.setPersistenceRequired();
                 zombies.add(zombie);
             }
+            MovementScanDiagnostics.population(zombies);
         }
 
         private void verifyPopulation() {
@@ -385,6 +397,7 @@ public final class ZombieCollisionBenchmark {
         }
 
         private void finish() {
+            MovementScanDiagnostics.finish();
             CollisionOptimizerConfig.enableEntityCollision = originalCollisionSetting;
             discardPopulation();
             restoreHealthLimit();

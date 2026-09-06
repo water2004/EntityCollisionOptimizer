@@ -2,9 +2,16 @@
   "required": true,
   "minVersion": "0.8",
   "package": "org.edtp.entitycollisionoptimizer.gametest.mixin",
+  "plugin": "org.edtp.entitycollisionoptimizer.gametest.mixin.GameTestMixinPlugin",
   "compatibilityLevel": "JAVA_25",
   "mixins": [
-    "RangedAttributeAccessor"
+    "RangedAttributeAccessor",
+    "PistonProgressAccessor",
+    "MovementScanMixin",
+    "BlockScanMixin",
+    "OwnedMovementScanMixin",
+    "OwnedBlockScanMixin",
+    "MovementCoverageMixin"
   ],
   "injectors": {
     "defaultRequire": 1
