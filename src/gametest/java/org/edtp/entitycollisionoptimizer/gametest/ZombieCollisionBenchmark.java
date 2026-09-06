@@ -122,6 +122,12 @@ public final class ZombieCollisionBenchmark {
         }
 
         CollisionOptimizerConfig.enableEntityCollision = run.currentTrial().optimized;
+        if (run.trialTick == run.currentTrial().warmupTicks) {
+            EntityCollisionOptimizer.LOGGER.info(
+                    "ECO_MEASUREMENT_WINDOW phase=start pid={} trial={} optimized={} epoch_ms={}",
+                    ProcessHandle.current().pid(), run.trialIndex, run.currentTrial().optimized,
+                    System.currentTimeMillis());
+        }
         MovementScanDiagnostics.beginTick(run.currentTrial().optimized,
                 run.trialTick >= run.currentTrial().warmupTicks);
         run.tickStartedAt = System.nanoTime();
@@ -145,6 +151,10 @@ public final class ZombieCollisionBenchmark {
         if (run.trialTick < trial.totalTicks()) {
             return;
         }
+
+        EntityCollisionOptimizer.LOGGER.info(
+                "ECO_MEASUREMENT_WINDOW phase=end pid={} trial={} optimized={} epoch_ms={}",
+                ProcessHandle.current().pid(), run.trialIndex, trial.optimized, System.currentTimeMillis());
 
         run.verifyPopulation();
         List<Double> samples = trial.optimized ? run.optimizedSamples : run.baselineSamples;

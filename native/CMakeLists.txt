@@ -3,6 +3,7 @@ cmake_policy(SET CMP0091 NEW)
 project(EntityCollisionOptimizer CXX)
 
 set(CMAKE_CXX_STANDARD 20)
+option(ECO_NATIVE_SYMBOLS "Emit Windows PDB symbols without disabling Release optimizations" OFF)
 
 if(NOT AR_TOOLCHAIN)
     message(FATAL_ERROR "AR toolchain not found")
@@ -94,3 +95,8 @@ add_library(EntityCollisionOptimizer SHARED
         src/push_impulses.cpp
         src/spatial_index.cpp
 )
+
+if(ECO_NATIVE_SYMBOLS AND AR_WINDOWS)
+    target_compile_options(EntityCollisionOptimizer PRIVATE /Z7)
+    target_link_options(EntityCollisionOptimizer PRIVATE /DEBUG:FULL)
+endif()
