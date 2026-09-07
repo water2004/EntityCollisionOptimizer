@@ -32,6 +32,12 @@ public final class CollisionFrame {
         }
     }
 
+    /** Explicit vanilla/Carpet ownership: materialize outstanding velocities on this level's thread. */
+    public static void suspend(ServerLevel level) {
+        LevelCollisionFrame frame = LEVEL_FRAMES.get(level);
+        if (frame != null) frame.suspend();
+    }
+
     public static void destroy() {
         for (LevelCollisionFrame frame : LEVEL_FRAMES.values()) {
             frame.close();

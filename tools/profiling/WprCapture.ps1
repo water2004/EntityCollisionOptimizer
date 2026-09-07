@@ -1,7 +1,8 @@
 param(
     [Parameter(Mandatory)][string]$BenchmarkLog,
     [Parameter(Mandatory)][string]$Trace,
-    [Parameter(Mandatory)][string]$StatusLog
+    [Parameter(Mandatory)][string]$StatusLog,
+    [string]$StartPattern = 'ECO_BENCHMARK_START'
 )
 $ErrorActionPreference = 'Stop'
 if (Test-Path -LiteralPath $Trace) { throw 'Trace already exists' }
@@ -13,7 +14,7 @@ try {
     $ecoDeadline = [DateTime]::UtcNow.AddMinutes(15)
     while ([DateTime]::UtcNow -lt $ecoDeadline) {
         if (Test-Path -LiteralPath $BenchmarkLog) {
-            if (Select-String -LiteralPath $BenchmarkLog -Pattern 'ECO_BENCHMARK_START' -Quiet) { break }
+            if (Select-String -LiteralPath $BenchmarkLog -Pattern $StartPattern -Quiet) { break }
             if (Select-String -LiteralPath $BenchmarkLog -Pattern 'BUILD FAILED' -Quiet) { throw 'Benchmark build failed before capture' }
         }
         Start-Sleep -Milliseconds 200

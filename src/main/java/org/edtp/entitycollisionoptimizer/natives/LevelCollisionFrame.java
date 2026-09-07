@@ -28,6 +28,7 @@ final class LevelCollisionFrame {
 
     private final TempID ids = new TempID();
     private final FFMBackend.Context nativeContext = FFMBackend.createContext();
+    private final CollisionStateTable bodies = new CollisionStateTable();
     private final IdentityHashMap<PlayerTeam, Integer> teamIds = new IdentityHashMap<>();
     private final ArrayDeque<PushBatch> batchPool = new ArrayDeque<>();
     private final List<Entity> derivedTeams = new ArrayList<>();
@@ -55,6 +56,7 @@ final class LevelCollisionFrame {
             }
         }
 
+        bodies.prune(ids::contains);
         double[] boxes = new double[entities.size() * 6];
         double[] positions = new double[entities.size() * 2];
         int[] sections = new int[entities.size() * 3];
@@ -81,9 +83,19 @@ final class LevelCollisionFrame {
         active = false;
     }
 
+    synchronized void suspend() {
+        active = false;
+        bodies.clear();
+        ids.tickStart();
+        teamIds.clear();
+        derivedTeams.clear();
+        Arrays.fill(teams, null);
+    }
+
     synchronized void close() {
         active = false;
         batchPool.clear();
+        bodies.close();
         nativeContext.close();
     }
 
@@ -202,17 +214,10 @@ final class LevelCollisionFrame {
         FFMBackend.QueryResult result = queryPushable(source, team, rule, vanillaPush);
         PushBatch batch = batchPool.pollFirst();
         if (batch == null) {
-            batch = new PushBatch(nativeContext, this::recycle);
+            batch = new PushBatch(nativeContext, bodies, this::recycle);
         }
         try {
             batch.prepare(result);
-            for (int i = 0; i < batch.size(); i++) {
-                Entity target = ids.getEntity(batch.id(i));
-                if (target == null) {
-                    throw new IllegalStateException("Native collision query returned unknown entity " + batch.id(i));
-                }
-                batch.target(i, target);
-            }
             return batch;
         } catch (RuntimeException | Error failure) {
             batch.close();
@@ -286,6 +291,7 @@ final class LevelCollisionFrame {
                 VanillaEntityCollision.usesVanillaVectorPush(entity),
                 teamId(targetTeam),
                 collisionRuleId(VanillaEntityCollision.collisionRule(targetTeam)),
+                bodies.slot(entity),
                 ((CollisionOrderState) entity).eco$sectionOrder()
         );
     }

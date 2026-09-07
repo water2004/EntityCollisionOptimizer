@@ -4,6 +4,12 @@ import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.entity.monster.zombie.Zombie;
 import net.minecraft.world.phys.Vec3;
 import org.edtp.entitycollisionoptimizer.natives.FFMBackend;
+import java.lang.foreign.Arena;
+import java.lang.foreign.MemorySegment;
+import static java.lang.foreign.ValueLayout.JAVA_DOUBLE;
+import static java.lang.foreign.ValueLayout.JAVA_INT;
+import static java.lang.foreign.ValueLayout.JAVA_LONG;
+import static org.edtp.entitycollisionoptimizer.natives.CollisionStateTable.*;
 
 import static org.edtp.entitycollisionoptimizer.gametest.CollisionTestSupport.spawnZombie;
 
@@ -88,15 +94,33 @@ final class NativeImpulseParity {
 
     private static void nativePair(FFMBackend.Context context, Zombie source, Zombie target) {
         Vec3 sourceVelocity = source.getDeltaMovement(), targetVelocity = target.getDeltaMovement();
-        double[] bodies = {source.getX(), source.getZ(), sourceVelocity.x, sourceVelocity.y, sourceVelocity.z,
-                target.getX(), target.getZ(), targetVelocity.x, targetVelocity.y, targetVelocity.z};
-        int[] updates = {0, 3};
-        FFMBackend.executePushRun(context, bodies, updates, 1);
-        // Decode the API result; integration tests separately exercise PushBatch's actual writeback.
-        if ((updates[0] & 2) != 0) source.setDeltaMovement(new Vec3(bodies[2], bodies[3], bodies[4]));
-        if ((updates[1] & 2) != 0) target.setDeltaMovement(new Vec3(bodies[7], bodies[8], bodies[9]));
-        if ((updates[0] & 1) != 0) source.needsSync = true;
-        if ((updates[1] & 1) != 0) target.needsSync = true;
+        try (Arena arena = Arena.ofConfined()) {
+            // Deliberately non-contiguous slots and a nonzero source: batches must use table IDs.
+            MemorySegment bodies = arena.allocate(5L * STRIDE_BYTES, Double.BYTES);
+            double[] input = {target.getX(), target.getZ(), targetVelocity.x, targetVelocity.y, targetVelocity.z};
+            MemorySegment.copy(input, 0, bodies, JAVA_DOUBLE, STRIDE_BYTES, 5);
+            input = new double[]{source.getX(), source.getZ(), sourceVelocity.x, sourceVelocity.y, sourceVelocity.z};
+            MemorySegment.copy(input, 0, bodies, JAVA_DOUBLE, 3L * STRIDE_BYTES, 5);
+            for (int slot : new int[]{1, 3}) {
+                bodies.set(JAVA_INT, (long) slot * STRIDE_BYTES + STATE_OFFSET, 1);
+                bodies.set(JAVA_INT, (long) slot * STRIDE_BYTES + ROOT_OFFSET, slot);
+            }
+            bodies.set(JAVA_INT, 3L * STRIDE_BYTES + SYNC_OFFSET, source.needsSync ? 1 : 0);
+            bodies.set(JAVA_INT, (long) STRIDE_BYTES + SYNC_OFFSET, target.needsSync ? 1 : 0);
+            FFMBackend.executePushRun(context, bodies, 5, 3, new int[]{-1, 1, -1}, 1, 1);
+            // Decode the API result; integration tests separately exercise the canonical field publication.
+            if (bodies.get(JAVA_LONG, 3L * STRIDE_BYTES + VERSION_OFFSET) != 0) source.setDeltaMovement(readVelocity(bodies, 3));
+            if (bodies.get(JAVA_LONG, (long) STRIDE_BYTES + VERSION_OFFSET) != 0) target.setDeltaMovement(readVelocity(bodies, 1));
+            source.needsSync = bodies.get(JAVA_INT, 3L * STRIDE_BYTES + SYNC_OFFSET) != 0;
+            target.needsSync = bodies.get(JAVA_INT, (long) STRIDE_BYTES + SYNC_OFFSET) != 0;
+        }
+    }
+
+    private static Vec3 readVelocity(MemorySegment memory, int slot) {
+        long offset = (long) slot * STRIDE_BYTES;
+        return new Vec3(memory.get(JAVA_DOUBLE, offset + 2L * Double.BYTES),
+                memory.get(JAVA_DOUBLE, offset + 3L * Double.BYTES),
+                memory.get(JAVA_DOUBLE, offset + 4L * Double.BYTES));
     }
 
     static void exact(GameTestHelper helper, Vec3 actual, Vec3 expected, String label) {

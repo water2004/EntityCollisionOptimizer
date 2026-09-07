@@ -6,9 +6,49 @@ import net.minecraft.gametest.framework.GameTestHelper;
 
 public final class VanillaCollisionParityGameTests {
     @GameTest(maxTicks = 200, padding = 48)
+    public void nativeMovementContract(GameTestHelper helper) {
+        NativeVoxelParity.edges(helper);
+        SingleCellParity.verify(helper);
+        org.edtp.entitycollisionoptimizer.natives.MovementPublicationChecks.verify(helper);
+        org.edtp.entitycollisionoptimizer.natives.MovementBoundsChecks.verify(helper);
+        org.edtp.entitycollisionoptimizer.natives.MovementLeaseChecks.verify(helper);
+        helper.succeed();
+    }
+    @GameTest(maxTicks = 200, padding = 48)
+    public void positionWriteParity(GameTestHelper helper) {
+        PositionWriteParity.verify(helper);
+        org.edtp.entitycollisionoptimizer.natives.PositionMirrorChecks.verify(helper);
+        helper.succeed();
+    }
+
+    @GameTest(maxTicks = 200, padding = 48)
+    public void nativeQueryContract(GameTestHelper helper) {
+        org.edtp.entitycollisionoptimizer.natives.NativeQueryChecks.verify(helper);
+        helper.succeed();
+    }
+
+    @GameTest(maxTicks = 200, padding = 48)
+    public void orderedNativeIndexParity(GameTestHelper helper) {
+        OrderedCandidateParity.verify(helper);
+        org.edtp.entitycollisionoptimizer.natives.NativeOrderChecks.verify(helper);
+        helper.succeed();
+    }
+
+    @GameTest(maxTicks = 200, padding = 48)
+    public void sharedBodyStateParity(GameTestHelper helper) {
+        BodyFieldConsumerCoverage.verify();
+        SyncStateParity.verify(helper);
+        PushStateParity.verify(helper);
+        helper.succeed();
+    }
+
+    @GameTest(maxTicks = 200, padding = 48)
     public void nativePushRunParity(GameTestHelper helper) {
         NativePushRunParity.verify(helper);
         PushRunBoundaryParity.verify(helper);
+        PersistentBodyParity.verify(helper);
+        AuthoritativeVelocityParity.verify(helper);
+        org.edtp.entitycollisionoptimizer.natives.CollisionStateTableChecks.verify(helper);
         helper.succeed();
     }
 

@@ -25,6 +25,7 @@ struct EntityMetadata {
     std::int64_t sectionOrder = 0;
     int teamId = -1;
     int collisionRule = 0;
+    int bodySlot = -1;
     bool selectable = false;
     bool passenger = false;
     bool vehicle = false;
@@ -46,12 +47,24 @@ struct CellHash {
     std::size_t operator()(const Cell& cell) const noexcept;
 };
 
+struct CellMembers {
+    std::vector<int> ids;
+    bool orderDirty = true;
+};
+
+struct CandidateCursor {
+    const std::vector<int>* ids;
+    std::size_t index;
+    int entity() const noexcept { return (*ids)[index]; }
+};
+
 struct CollisionContext {
     int gridSize = 1;
     std::vector<Aabb> boxes;
     std::vector<EntityMetadata> metadata;
     std::vector<std::vector<Cell>> memberships;
-    std::unordered_map<Cell, std::vector<int>, CellHash> cells;
+    std::unordered_map<Cell, CellMembers, CellHash> cells;
+    std::vector<CandidateCursor> candidateHeap;
     std::vector<std::uint32_t> queryMarks;
     std::vector<int> metadataMisses;
     std::uint32_t queryGeneration = 0;

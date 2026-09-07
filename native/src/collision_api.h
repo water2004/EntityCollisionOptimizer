@@ -56,11 +56,14 @@ ECO_EXPORT int updateCollisionEntityMetadata(
         int vanillaVectorPush,
         int teamId,
         int collisionRule,
+        int bodySlot,
         std::int64_t sectionOrder
 );
 ECO_EXPORT int invalidateCollisionEntityMetadata(void* context, int entityId);
 ECO_EXPORT int invalidateCollisionMetadata(void* context, int mask);
 ECO_EXPORT int queryCollisionEntities(void* context, int sourceId, int* output, int outputCapacity);
+// output: [metadataRequired, pushableCount, nonPassengerCount], IDs[capacity], bodySlots[capacity].
+// On a metadata miss only the header and returned IDs are valid. nativePushOutput has capacity ints.
 ECO_EXPORT int queryPushableEntities(
         void* context,
         int sourceId,
@@ -72,6 +75,10 @@ ECO_EXPORT int queryPushableEntities(
         int outputCapacity
 );
 
-ECO_EXPORT int executePushRun(double* bodies, int* actionsAndUpdates, int count);
+ECO_EXPORT int executePushRun(void* bodies, int capacity, int sourceSlot,
+                             const int* targetSlots, int count);
+
+ECO_EXPORT int solveMovement(const void* body, double* data, const void* shapes, int count, int phase);
+ECO_EXPORT int prepareMovement(const double* bounds, double* data);
 
 }

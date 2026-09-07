@@ -2,13 +2,18 @@
   "required": true,
   "minVersion": "0.8",
   "package": "org.edtp.entitycollisionoptimizer.mixin",
+  "plugin": "org.edtp.entitycollisionoptimizer.mixin.BodyMixinPlugin",
   "compatibilityLevel": "JAVA_25",
   "mixins": [
+    "BodyFieldConsumersMixin",
+    "InterfaceBodyFieldConsumersMixin",
     "CreakingMixin",
     "EntityMixin",
+    "EntityBodyMixin",
     "EntitySectionMixin",
     "EntityMovementMixin",
     "EntityCollisionInvoker",
+    "VoxelGeometryMixin",
     "LevelMixin",
     "LivingEntityMixin",
     "LivingEntityStateMixin",
@@ -17,8 +22,6 @@
     "ScoreboardMixin",
     "ServerPlayerMixin",
     "ServerLevelMixin"
-  ],
-  "client": [
   ],
   "injectors": {
     "defaultRequire": 1

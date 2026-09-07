@@ -9,6 +9,7 @@ public interface CollisionCacheState {
     int VEHICLE = 2;
     int PASSENGER = 4;
     int SLEEPING = 8;
+    int NO_PHYSICS = 16;
 
     long entityCollisionOptimizer$collisionRevision();
 

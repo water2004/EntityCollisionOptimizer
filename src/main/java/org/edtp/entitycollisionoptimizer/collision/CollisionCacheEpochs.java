@@ -9,6 +9,10 @@ import java.util.concurrent.atomic.AtomicLong;
 public final class CollisionCacheEpochs {
     private static final AtomicLong BLOCK_REVISION = new AtomicLong();
     private static final AtomicLong TEAM_REVISION = new AtomicLong();
+    private static final AtomicLong VEHICLE_REVISION = new AtomicLong();
+
+    public static long vehicleRevision() { return VEHICLE_REVISION.get(); }
+    public static void invalidateVehicles() { VEHICLE_REVISION.incrementAndGet(); }
 
     private CollisionCacheEpochs() {
     }

@@ -30,7 +30,7 @@ public abstract class ServerLevelMixin {
         if (CollisionOptimizerConfig.enableEntityCollision && !CarpetCompatibility.ownsEntityCollisions()) {
             CollisionFrame.begin(self);
         } else {
-            CollisionFrame.end(self);
+            CollisionFrame.suspend(self);
         }
     }
 

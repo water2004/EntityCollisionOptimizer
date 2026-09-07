@@ -1,6 +1,7 @@
 #include "collision_api.h"
 
 #include "collision_types.h"
+#include "ordered_candidates.h"
 
 #include <cstddef>
 
@@ -15,9 +16,10 @@ int updateCollisionEntityMetadata(
         int vanillaVectorPush,
         int teamId,
         int collisionRule,
+        int bodySlot,
         std::int64_t sectionOrder
 ) {
-    if (contextPointer == nullptr || entityId < 0) {
+    if (contextPointer == nullptr || entityId < 0 || bodySlot < 0) {
         return -1;
     }
     try {
@@ -34,7 +36,11 @@ int updateCollisionEntityMetadata(
         metadata.vanillaVectorPush = vanillaVectorPush != 0;
         metadata.teamId = teamId;
         metadata.collisionRule = collisionRule;
-        metadata.sectionOrder = sectionOrder;
+        metadata.bodySlot = bodySlot;
+        if (metadata.sectionOrder != sectionOrder) {
+            metadata.sectionOrder = sectionOrder;
+            eco::invalidateCandidateOrder(context, entityId);
+        }
         metadata.selectableValid = true;
         metadata.teamValid = true;
         return 0;

@@ -122,6 +122,10 @@ public final class ZombieCollisionBenchmark {
         }
 
         CollisionOptimizerConfig.enableEntityCollision = run.currentTrial().optimized;
+        if (run.trialTick == 1 && run.profileOnly) {
+            EntityCollisionOptimizer.LOGGER.info("ECO_PROFILE_WARMUP pid={} trial={} epoch_ms={}",
+                    ProcessHandle.current().pid(), run.trialIndex, System.currentTimeMillis());
+        }
         if (run.trialTick == run.currentTrial().warmupTicks) {
             EntityCollisionOptimizer.LOGGER.info(
                     "ECO_MEASUREMENT_WINDOW phase=start pid={} trial={} optimized={} epoch_ms={}",

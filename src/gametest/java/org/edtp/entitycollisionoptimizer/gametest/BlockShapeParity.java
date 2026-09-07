@@ -26,6 +26,8 @@ final class BlockShapeParity {
         var originalBlockEntity = level.getBlockEntity(pos);
         Entity entity = CollisionTestSupport.spawnZombie(helper, new Vec3(3.5, 3, 3.5));
         int count = 0;
+        int nativeComparisons = 0;
+        var seen = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<VoxelShape, Boolean>());
         try {
             for (BlockState state : Block.BLOCK_STATE_REGISTRY) {
                 level.removeBlockEntity(pos);
@@ -33,6 +35,8 @@ final class BlockShapeParity {
                 section.setBlockState(pos.getX() & 15, pos.getY() & 15, pos.getZ() & 15, state);
                 BlockMaskParity.checkRow(helper, section.getStates(), pos.getY() & 15, pos.getZ() & 15);
                 compare(helper, entity, new AABB(pos).inflate(0.2), state.toString());
+                var localShape = CollisionContext.of(entity).getCollisionShape(state, level, pos);
+                if (seen.add(localShape)) nativeComparisons += NativeVoxelParity.compare(helper, localShape, state.toString());
                 count++;
             }
             BlockMaskParity.verify(helper, section.getStates());
@@ -45,6 +49,7 @@ final class BlockShapeParity {
             entity.discard();
         }
         EntityCollisionOptimizer.LOGGER.info("ECO_BLOCK_SHAPE_PARITY states={} ordered_shapes=exact result=passed", count);
+        EntityCollisionOptimizer.LOGGER.info("ECO_NATIVE_VOXEL_PARITY unique_shapes={} bitwise_comparisons={} result=passed", seen.size(), nativeComparisons);
     }
 
     static void compare(GameTestHelper helper, Entity entity, AABB box, String label) {

@@ -12,5 +12,7 @@
         queryCollisionEntities;
         queryPushableEntities;
         executePushRun;
+        solveMovement;
+        prepareMovement;
     local: *;
 };

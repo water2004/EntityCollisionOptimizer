@@ -79,7 +79,9 @@ void insertMemberships(
         const std::vector<Cell>& memberships
 ) {
     for (const Cell& cell : memberships) {
-        context.cells[cell].push_back(entityId);
+        auto& members = context.cells[cell];
+        members.ids.push_back(entityId);
+        members.orderDirty = true;
     }
 }
 
@@ -93,11 +95,12 @@ void removeMemberships(
         if (cellIterator == context.cells.end()) {
             continue;
         }
-        std::vector<int>& entities = cellIterator->second;
+        std::vector<int>& entities = cellIterator->second.ids;
         const auto entityIterator = std::find(entities.begin(), entities.end(), entityId);
         if (entityIterator != entities.end()) {
             *entityIterator = entities.back();
             entities.pop_back();
+            cellIterator->second.orderDirty = true;
         }
         if (entities.empty()) {
             context.cells.erase(cellIterator);
@@ -106,6 +109,7 @@ void removeMemberships(
 }
 
 void rebuildSpatialIndex(CollisionContext& context) {
+    context.candidateHeap.clear();
     context.cells.clear();
     context.memberships.clear();
     context.memberships.resize(context.boxes.size());

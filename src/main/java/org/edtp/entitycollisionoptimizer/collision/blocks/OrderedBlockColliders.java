@@ -12,6 +12,7 @@ import net.minecraft.world.phys.shapes.BooleanOp;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
+import org.edtp.entitycollisionoptimizer.natives.NativeShapeBatch;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -35,21 +36,32 @@ public final class OrderedBlockColliders {
     }
 
     public static void append(Level level, CollisionContext context, AABB box, List<VoxelShape> result) {
-        new Scan(level, context, box, result).run();
+        new Scan(level, context, box, (shape, x, y, z) -> result.add(shape.move(x, y, z))).run();
     }
+
+    public static void collectNative(Level level, CollisionContext context, Entity entity,
+                                     AABB box, List<VoxelShape> entityShapes, NativeShapeBatch result) {
+        for (VoxelShape shape : entityShapes) result.add(shape);
+        var border = level.getWorldBorder();
+        if (entity != null && border.isInsideCloseToBorder(entity, box)) result.add(border.getCollisionShape());
+        new Scan(level, context, box, result::addTranslated).run();
+    }
+
+    @FunctionalInterface
+    private interface ColliderSink { void add(VoxelShape shape, double x, double y, double z); }
 
     private static final class Scan {
         private final Level level;
         private final CollisionContext context;
         private final AABB box;
         private final VoxelShape boxShape;
-        private final List<VoxelShape> result;
+        private final ColliderSink result;
         private final BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
         private final int minX, maxX, minY, maxY, minZ, maxZ, minChunkX, minChunkZ, chunkWidth;
         private final ChunkAccess[] chunks;
         private final boolean[] visited;
 
-        private Scan(Level level, CollisionContext context, AABB box, List<VoxelShape> result) {
+        private Scan(Level level, CollisionContext context, AABB box, ColliderSink result) {
             this.level = level;
             this.context = context;
             this.box = box;
@@ -115,11 +127,11 @@ public final class OrderedBlockColliders {
             VoxelShape shape = context.getCollisionShape(state, level, pos);
             if (shape == Shapes.block()) {
                 if (box.intersects(x, y, z, x + 1.0, y + 1.0, z + 1.0)) {
-                    result.add(shape.move(x, y, z));
+                    result.add(shape, x, y, z);
                 }
             } else {
                 VoxelShape moved = shape.move(x, y, z);
-                if (!moved.isEmpty() && Shapes.joinIsNotEmpty(moved, boxShape, BooleanOp.AND)) result.add(moved);
+                if (!moved.isEmpty() && Shapes.joinIsNotEmpty(moved, boxShape, BooleanOp.AND)) result.add(shape, x, y, z);
             }
         }
 

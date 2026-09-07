@@ -1,6 +1,7 @@
 package org.edtp.entitycollisionoptimizer.mixin;
 
 import org.edtp.entitycollisionoptimizer.collision.CollisionCacheState;
+import org.edtp.entitycollisionoptimizer.collision.CollisionBodyAccess;
 import org.edtp.entitycollisionoptimizer.collision.CollisionOrderState;
 import org.edtp.entitycollisionoptimizer.collision.CollisionCacheEpochs;
 import org.edtp.entitycollisionoptimizer.natives.CollisionFrame;
@@ -13,6 +14,7 @@ import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.objectweb.asm.Opcodes;
 
 @Mixin(Entity.class)
 public abstract class EntityMixin implements CollisionCacheState, CollisionOrderState {
@@ -60,6 +62,7 @@ public abstract class EntityMixin implements CollisionCacheState, CollisionOrder
     @Override
     public void entityCollisionOptimizer$resetPushabilityCache() {
         entityCollisionOptimizer$pushableEntityRevision = Long.MIN_VALUE;
+        ((CollisionBodyAccess) this).eco$invalidatePushState();
     }
 
     @Override
@@ -70,6 +73,7 @@ public abstract class EntityMixin implements CollisionCacheState, CollisionOrder
     @Override
     public void entityCollisionOptimizer$invalidateCollisionCache() {
         entityCollisionOptimizer$collisionRevision++;
+        ((CollisionBodyAccess) this).eco$invalidatePushState();
         CollisionFrame.invalidateEntity((Entity) (Object) this);
     }
 
@@ -80,6 +84,7 @@ public abstract class EntityMixin implements CollisionCacheState, CollisionOrder
     private void entityCollisionOptimizer$onSetBoundingBox(AABB boundingBox, CallbackInfo ci) {
         Entity self = (Entity) (Object) this;
         entityCollisionOptimizer$collisionRevision++;
+        ((CollisionBodyAccess) this).eco$invalidatePushState();
         CollisionFrame.updateBoundingBox(self, boundingBox);
     }
 
@@ -88,6 +93,15 @@ public abstract class EntityMixin implements CollisionCacheState, CollisionOrder
             Entity.RemovalReason reason,
             CallbackInfo ci
     ) {
+        entityCollisionOptimizer$invalidateCollisionCache();
+    }
+
+    @Inject(method = {"baseTick", "setPosRaw"}, at = @At(value = "FIELD",
+            target = "Lnet/minecraft/world/entity/Entity;inBlockState:Lnet/minecraft/world/level/block/state/BlockState;",
+            opcode = Opcodes.PUTFIELD, shift = At.Shift.AFTER))
+    private void eco$onInBlockStateExpired(CallbackInfo ci) {
+        // Pushability depends on vanilla's cached in-block state, not just the world block revision.
+        // Expire derived state at the same point, including raw position updates without an AABB update.
         entityCollisionOptimizer$invalidateCollisionCache();
     }
 
@@ -114,12 +128,14 @@ public abstract class EntityMixin implements CollisionCacheState, CollisionOrder
 
     @Inject(method = "addPassenger", at = @At("RETURN"))
     private void entityCollisionOptimizer$onAddPassenger(Entity passenger, CallbackInfo ci) {
+        CollisionCacheEpochs.invalidateVehicles();
         entityCollisionOptimizer$invalidateCollisionCache();
         ((CollisionCacheState) passenger).entityCollisionOptimizer$invalidateCollisionCache();
     }
 
     @Inject(method = "removePassenger", at = @At("RETURN"))
     private void entityCollisionOptimizer$onRemovePassenger(Entity passenger, CallbackInfo ci) {
+        CollisionCacheEpochs.invalidateVehicles();
         entityCollisionOptimizer$invalidateCollisionCache();
         ((CollisionCacheState) passenger).entityCollisionOptimizer$invalidateCollisionCache();
     }

@@ -44,10 +44,31 @@ public final class FFMBackend {
     private static MethodHandle query;
     private static MethodHandle queryPushable;
     private static MethodHandle executeRun;
+    private static MethodHandle movement;
+    private static MethodHandle prepareMovement;
     private static final Set<Context> CONTEXTS = ConcurrentHashMap.newKeySet();
     private static volatile boolean initialized;
 
     private FFMBackend() {
+    }
+
+    public static void solveMovement(MemorySegment body, MemorySegment packet, MemorySegment shapes, int count, int phase) {
+        ensureInitialized();
+        try {
+            int status = (int) movement.invokeExact(body, packet, shapes, count, phase);
+            checkStatus("solve native movement", status);
+        } catch (Throwable failure) {
+            throw new IllegalStateException("FFM movement call failed", failure);
+        }
+    }
+
+    public static void prepareMovement(MemorySegment bounds, MemorySegment packet) {
+        ensureInitialized();
+        try {
+            checkStatus("prepare native movement", (int) prepareMovement.invokeExact(bounds, packet));
+        } catch (Throwable failure) {
+            throw new IllegalStateException("FFM movement preparation failed", failure);
+        }
     }
 
     public static boolean isInitialized() {
@@ -222,6 +243,7 @@ public final class FFMBackend {
             boolean vanillaVectorPush,
             int teamId,
             int collisionRule,
+            int bodySlot,
             long sectionOrder
     ) {
         synchronized (nativeContext) {
@@ -238,6 +260,7 @@ public final class FFMBackend {
                         vanillaVectorPush ? 1 : 0,
                         teamId,
                         collisionRule,
+                        bodySlot,
                         sectionOrder
                 );
                 checkStatus("update native entity collision metadata", status);
@@ -327,6 +350,7 @@ public final class FFMBackend {
                 }
                 QueryResult result = nativeContext.queryResult;
                 result.offset = 3;
+                result.bodyOffset = 3 + nativeContext.outputCapacity;
                 result.size = resultSize;
                 result.metadataRequired = nativeContext.outputBuffer.get(JAVA_INT, 0) != 0;
                 result.pushableCount = nativeContext.outputBuffer.get(JAVA_INT, Integer.BYTES);
@@ -341,23 +365,23 @@ public final class FFMBackend {
         }
     }
 
-    /** In-place wire format: source then targets, five doubles per body; action flags become updates. */
-    public static void executePushRun(Context context, double[] bodies, int[] actionsAndUpdates, int count) {
-        if (count < 0 || count >= bodies.length / 5 || count >= actionsAndUpdates.length) {
+    /** Native owns velocity/version/sync and consumes shared guards. Only target IDs are submitted. */
+    public static void executePushRun(Context context, MemorySegment bodies, int capacity, int sourceSlot,
+                                      int[] targetSlots, int from, int count) {
+        if (!bodies.isNative() || bodies.isReadOnly() || bodies.byteSize() < (long) capacity * CollisionStateTable.STRIDE_BYTES
+                || sourceSlot < 0 || sourceSlot >= capacity || from < 0 || count < 0
+                || from > targetSlots.length - count) {
             throw new IllegalArgumentException("Invalid native push run size " + count);
         }
         synchronized (context) {
             context.ensureOpen();
             if (count == 0) return;
             context.ensureOutputCapacity(count);
-            int slots = count + 1;
-            MemorySegment.copy(bodies, 0, context.runBodyBuffer, JAVA_DOUBLE, 0, slots * 5);
-            MemorySegment.copy(actionsAndUpdates, 0, context.runFlagBuffer, JAVA_INT, 0, slots);
+            MemorySegment.copy(targetSlots, from, context.runIdBuffer, JAVA_INT, 0, count);
             try {
-                int status = (int) executeRun.invokeExact(context.runBodyBuffer, context.runFlagBuffer, count);
+                int status = (int) executeRun.invokeExact(bodies, capacity, sourceSlot,
+                        context.runIdBuffer, count);
                 checkStatus("execute native push run", status);
-                MemorySegment.copy(context.runBodyBuffer, JAVA_DOUBLE, 0, bodies, 0, slots * 5);
-                MemorySegment.copy(context.runFlagBuffer, JAVA_INT, 0, actionsAndUpdates, 0, slots);
             } catch (Throwable failure) {
                 throw new IllegalStateException("FFM push run execution failed", failure);
             }
@@ -489,6 +513,7 @@ public final class FFMBackend {
                         JAVA_INT,
                         JAVA_INT,
                         JAVA_INT,
+                        JAVA_INT,
                         JAVA_LONG
                 )
         );
@@ -523,8 +548,14 @@ public final class FFMBackend {
         );
         executeRun = linker.downcallHandle(
                 library.find("executePushRun").orElseThrow(() -> missingSymbol("executePushRun")),
-                FunctionDescriptor.of(JAVA_INT, ADDRESS, ADDRESS, JAVA_INT)
+                FunctionDescriptor.of(JAVA_INT, ADDRESS, JAVA_INT, JAVA_INT, ADDRESS, JAVA_INT)
         );
+        movement = linker.downcallHandle(
+                library.find("solveMovement").orElseThrow(() -> missingSymbol("solveMovement")),
+                FunctionDescriptor.of(JAVA_INT, ADDRESS, ADDRESS, ADDRESS, JAVA_INT, JAVA_INT));
+        prepareMovement = linker.downcallHandle(
+                library.find("prepareMovement").orElseThrow(() -> missingSymbol("prepareMovement")),
+                FunctionDescriptor.of(JAVA_INT, ADDRESS, ADDRESS), Linker.Option.critical(false));
     }
 
     private static void checkStatus(String operation, int status) {
@@ -577,6 +608,7 @@ public final class FFMBackend {
         query = null;
         queryPushable = null;
         executeRun = null;
+        movement = null;
     }
 
     public static final class Context implements AutoCloseable {
@@ -584,8 +616,7 @@ public final class FFMBackend {
         private Arena outputArena;
         private MemorySegment outputBuffer = MemorySegment.NULL;
         private MemorySegment nativePushBuffer = MemorySegment.NULL;
-        private MemorySegment runBodyBuffer = MemorySegment.NULL;
-        private MemorySegment runFlagBuffer = MemorySegment.NULL;
+        private MemorySegment runIdBuffer = MemorySegment.NULL;
         private int outputCapacity;
         private final QueryResult queryResult = new QueryResult();
 
@@ -612,12 +643,11 @@ public final class FFMBackend {
             }
             outputArena = Arena.ofShared();
             outputBuffer = outputArena.allocate(
-                    (long) (newCapacity + 3) * Integer.BYTES,
+                    ((long) newCapacity * 2 + 3) * Integer.BYTES,
                     Integer.BYTES
             );
             nativePushBuffer = outputArena.allocate((long) newCapacity * Integer.BYTES, Integer.BYTES);
-            runBodyBuffer = outputArena.allocate(((long) newCapacity + 1) * 5 * Double.BYTES, Double.BYTES);
-            runFlagBuffer = outputArena.allocate(((long) newCapacity + 1) * Integer.BYTES, Integer.BYTES);
+            runIdBuffer = outputArena.allocate((long) newCapacity * Integer.BYTES, Integer.BYTES);
             outputCapacity = newCapacity;
             queryResult.output = outputBuffer;
             queryResult.nativePush = nativePushBuffer;
@@ -651,8 +681,7 @@ public final class FFMBackend {
                 }
                 outputBuffer = MemorySegment.NULL;
                 nativePushBuffer = MemorySegment.NULL;
-                runBodyBuffer = MemorySegment.NULL;
-                runFlagBuffer = MemorySegment.NULL;
+                runIdBuffer = MemorySegment.NULL;
                 outputCapacity = 0;
                 queryResult.output = MemorySegment.NULL;
                 queryResult.nativePush = MemorySegment.NULL;
@@ -665,6 +694,7 @@ public final class FFMBackend {
         private MemorySegment output = MemorySegment.NULL;
         private MemorySegment nativePush = MemorySegment.NULL;
         private int offset;
+        private int bodyOffset;
         private int size;
         private boolean metadataRequired;
         private int pushableCount;
@@ -703,10 +733,11 @@ public final class FFMBackend {
             return nativePush.get(JAVA_INT, (long) index * Integer.BYTES) != 0;
         }
 
-        void copyTo(int[] ids, int[] nativeFlags) {
-            if (metadataRequired) throw new IllegalStateException("Collision metadata is unresolved");
+        void copyBodiesTo(int[] bodySlots, int[] nativeFlags) {
+            if (metadataRequired || offset != 3) throw new IllegalStateException("No resolved push batch");
             if (size == 0) return;
-            MemorySegment.copy(output, JAVA_INT, (long) offset * Integer.BYTES, ids, 0, size);
+            // Fixed-capacity regions let native fill IDs/slots/flags together, without a second traversal.
+            MemorySegment.copy(output, JAVA_INT, (long) bodyOffset * Integer.BYTES, bodySlots, 0, size);
             MemorySegment.copy(nativePush, JAVA_INT, 0, nativeFlags, 0, size);
         }
     }

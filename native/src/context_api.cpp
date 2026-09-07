@@ -2,6 +2,7 @@
 
 #include "collision_types.h"
 #include "spatial_index.h"
+#include "ordered_candidates.h"
 
 #include <cstddef>
 #include <new>
@@ -143,6 +144,9 @@ int updateCollisionEntity(
         eco::EntityMetadata& metadata = context.metadata[entityId];
         metadata.positionX = positionX;
         metadata.positionZ = positionZ;
+        if (metadata.sectionX != sectionX || metadata.sectionY != sectionY || metadata.sectionZ != sectionZ) {
+            eco::invalidateCandidateOrder(context, entityId);
+        }
         metadata.sectionX = sectionX;
         metadata.sectionY = sectionY;
         metadata.sectionZ = sectionZ;

@@ -22,5 +22,9 @@ public final class GameTestMixinPlugin implements IMixinConfigPlugin {
     @Override public void acceptTargets(Set<String> myTargets, Set<String> otherTargets) {}
     @Override public List<String> getMixins() { return null; }
     @Override public void preApply(String target, ClassNode node, String mixin, IMixinInfo info) {}
-    @Override public void postApply(String target, ClassNode node, String mixin, IMixinInfo info) {}
+    @Override public void postApply(String target, ClassNode node, String mixin, IMixinInfo info) {
+        if (mixin.endsWith("TestBodyFieldConsumersMixin")) {
+            org.edtp.entitycollisionoptimizer.collision.bytecode.BodyFieldAccess.rewrite(node);
+        }
+    }
 }

@@ -4,7 +4,12 @@
 
 namespace eco {
 
-bool isInLookupSections(const Aabb& source, const EntityMetadata& target) noexcept;
+// Immutable source-only bounds, computed once before visiting any candidates.
+struct LookupSections {
+    std::int64_t minX, minY, minZ, maxX, maxY, maxZ;
+    explicit LookupSections(const Aabb& source) noexcept;
+    bool contains(const EntityMetadata& target) const noexcept;
+};
 bool passesTeamRules(
         int sourceTeamId,
         int sourceRule,

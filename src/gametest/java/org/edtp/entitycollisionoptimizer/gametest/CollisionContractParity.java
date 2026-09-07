@@ -99,7 +99,7 @@ final class CollisionContractParity {
         }
     }
 
-    private static void ordered(GameTestHelper helper, LivingEntity source, String label) {
+    static void ordered(GameTestHelper helper, LivingEntity source, String label) {
         List<Entity> expected = source.level().getEntities(source, source.getBoundingBox(), EntitySelector.pushableBy(source));
         List<Entity> actual = new ArrayList<>();
         var team = source.getTeam();

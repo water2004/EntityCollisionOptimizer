@@ -91,17 +91,20 @@ add_library(EntityCollisionOptimizer SHARED
         src/collision_rules.cpp
         src/context_api.cpp
         src/metadata_api.cpp
+        src/ordered_candidates.cpp
         src/query_api.cpp
         src/push_run.cpp
+        src/movement_solver.cpp
+        src/voxel_geometry.cpp
         src/spatial_index.cpp
 )
 
 # Batch velocity accumulation must not fuse/reassociate vanilla's individual operations.
 if(AR_WINDOWS)
-    set_source_files_properties(src/push_run.cpp
+    set_source_files_properties(src/push_run.cpp src/movement_solver.cpp src/voxel_geometry.cpp
             PROPERTIES COMPILE_OPTIONS "/clang:-ffp-contract=off")
 else()
-    set_source_files_properties(src/push_run.cpp
+    set_source_files_properties(src/push_run.cpp src/movement_solver.cpp src/voxel_geometry.cpp
             PROPERTIES COMPILE_OPTIONS "-ffp-contract=off")
 endif()
 
