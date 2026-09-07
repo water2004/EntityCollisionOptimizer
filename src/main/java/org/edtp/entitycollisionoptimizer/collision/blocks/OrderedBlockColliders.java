@@ -1,18 +1,16 @@
 package org.edtp.entitycollisionoptimizer.collision.blocks;
 
 import net.minecraft.core.BlockPos;
-import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.chunk.ChunkAccess;
-import net.minecraft.world.level.chunk.LevelChunkSection;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.shapes.BooleanOp;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import org.edtp.entitycollisionoptimizer.natives.NativeShapeBatch;
+import org.edtp.entitycollisionoptimizer.natives.NativeBlockScan;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -57,9 +55,6 @@ public final class OrderedBlockColliders {
         private final VoxelShape boxShape;
         private final ColliderSink result;
         private final BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
-        private final int minX, maxX, minY, maxY, minZ, maxZ, minChunkX, minChunkZ, chunkWidth;
-        private final ChunkAccess[] chunks;
-        private final boolean[] visited;
 
         private Scan(Level level, CollisionContext context, AABB box, ColliderSink result) {
             this.level = level;
@@ -67,59 +62,16 @@ public final class OrderedBlockColliders {
             this.box = box;
             this.boxShape = Shapes.create(box);
             this.result = result;
-            minX = Mth.floor(box.minX - 1.0E-7) - 1;
-            maxX = Mth.floor(box.maxX + 1.0E-7) + 1;
-            minY = Mth.floor(box.minY - 1.0E-7) - 1;
-            maxY = Mth.floor(box.maxY + 1.0E-7) + 1;
-            minZ = Mth.floor(box.minZ - 1.0E-7) - 1;
-            maxZ = Mth.floor(box.maxZ + 1.0E-7) + 1;
-            minChunkX = minX >> 4;
-            minChunkZ = minZ >> 4;
-            chunkWidth = (maxX >> 4) - minChunkX + 1;
-            int count = Math.multiplyExact(chunkWidth, (maxZ >> 4) - minChunkZ + 1);
-            chunks = new ChunkAccess[count];
-            visited = new boolean[count];
         }
 
         private void run() {
-            for (int z = minZ; z <= maxZ; z++) {
-                for (int y = minY; y <= maxY; y++) {
-                    int edgesYZ = edge(y, minY, maxY) + edge(z, minZ, maxZ);
-                    for (int chunkX = minChunkX; chunkX <= maxX >> 4; chunkX++) {
-                        ChunkAccess chunk = chunk(chunkX, z >> 4);
-                        if (chunk == null) continue;
-                        int sectionIndex = chunk.getSectionIndex(y);
-                        LevelChunkSection[] sections = chunk.getSections();
-                        if (sectionIndex < 0 || sectionIndex >= sections.length) continue;
-                        LevelChunkSection section = sections[sectionIndex];
-                        int start = Math.max(minX, chunkX << 4);
-                        int end = Math.min(maxX, (chunkX << 4) + 15);
-                        int edgesX = 0;
-                        if (start == minX) edgesX |= 1 << (start & 15);
-                        if (end == maxX) edgesX |= 1 << (end & 15);
-                        int mask = ((CollisionBlockMask) section.getStates())
-                                .entityCollisionOptimizer$collisionRow(y & 15, z & 15, edgesYZ, edgesX);
-                        mask &= (0xffff << (start & 15)) & (0xffff >>> (15 - (end & 15)));
-                        while (mask != 0) {
-                            int localX = Integer.numberOfTrailingZeros(mask);
-                            mask &= mask - 1;
-                            int x = (chunkX << 4) + localX;
-                            BlockState state = section.getBlockState(localX, y & 15, z & 15);
-                            add(state, x, y, z);
-                        }
-                    }
+            try (NativeBlockScan scan = new NativeBlockScan(level, box)) {
+                for (int count; (count = scan.next()) != 0;) for (int i = 0; i < count; i++) {
+                    int x = scan.coordinate(i, 0), y = scan.coordinate(i, 1), z = scan.coordinate(i, 2);
+                    BlockState state = scan.section(i).getBlockState(x & 15, y & 15, z & 15);
+                    add(state, x, y, z);
                 }
             }
-        }
-
-        private ChunkAccess chunk(int x, int z) {
-            int index = (z - minChunkZ) * chunkWidth + x - minChunkX;
-            if (!visited[index]) {
-                // The server's collision getter is non-loading; a missing chunk stays absent in this scan.
-                chunks[index] = (ChunkAccess) level.getChunkForCollisions(x, z);
-                visited[index] = true;
-            }
-            return chunks[index];
         }
 
         private void add(BlockState state, int x, int y, int z) {
@@ -135,8 +87,5 @@ public final class OrderedBlockColliders {
             }
         }
 
-        private static int edge(int value, int min, int max) {
-            return value == min || value == max ? 1 : 0;
-        }
     }
 }

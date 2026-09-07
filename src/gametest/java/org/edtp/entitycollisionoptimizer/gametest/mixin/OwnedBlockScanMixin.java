@@ -18,13 +18,19 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public abstract class OwnedBlockScanMixin {
     @Unique private MovementScanDiagnostics.Probe eco$probe;
     @Unique private boolean eco$step;
-    @Shadow @Final private int minX, maxX, minY, maxY, minZ, maxZ;
+    @Unique private int minX, maxX, minY, maxY, minZ, maxZ;
     @Shadow @Final private AABB box;
 
     @Inject(method = "<init>", at = @At("RETURN"))
     private void eco$scan(CallbackInfo ci) {
         eco$probe = MovementScanDiagnostics.current();
         if (eco$probe != null) {
+            minX = net.minecraft.util.Mth.floor(box.minX - 1e-7) - 1;
+            maxX = net.minecraft.util.Mth.floor(box.maxX + 1e-7) + 1;
+            minY = net.minecraft.util.Mth.floor(box.minY - 1e-7) - 1;
+            maxY = net.minecraft.util.Mth.floor(box.maxY + 1e-7) + 1;
+            minZ = net.minecraft.util.Mth.floor(box.minZ - 1e-7) - 1;
+            maxZ = net.minecraft.util.Mth.floor(box.maxZ + 1e-7) + 1;
             eco$step = eco$probe.step;
             eco$probe.scan(box, eco$step, true);
         }

@@ -15,13 +15,13 @@ public final class NativeQueryChecks {
         int queries = 0;
         for (int count : new int[]{2, 8, 20}) {
             try (var context = FFMBackend.createContext()) {
-                FFMBackend.beginFrame(context, new double[count * 6], new double[count * 2],
+                FFMBackend.beginFrame(context, new double[count * 6],
                         new int[count * 3], count, 4);
                 for (int phase = 0; phase < 90; phase++) {
                     Body[] bodies = bodies(count, phase);
                     for (int id = 0; id < count; id++) {
                         Body b = bodies[id];
-                        FFMBackend.updateEntity(context, id, b.box, 0, 0, b.x, b.y, b.z);
+                        IndexUpdateFixture.update(context, id, b.box, b.x, b.y, b.z);
                         metadata(context, id, b);
                     }
                     // Grow reusable output storage without changing the low/medium entity count.
@@ -34,7 +34,7 @@ public final class NativeQueryChecks {
                     }
                 }
                 // Empty geometry after a populated query must not expose stale counts or slots.
-                FFMBackend.updateEntity(context, 0, new AABB(0, 0, 0, 0, 0, 0), 0, 0, 0, 0, 0);
+                IndexUpdateFixture.update(context, 0, new AABB(0, 0, 0, 0, 0, 0), 0, 0, 0);
                 var empty = FFMBackend.queryPushable(context, 0, -1, 0, true, count);
                 helper.assertTrue(empty.size() == 0 && empty.pushableCount() == 0
                         && empty.nonPassengerCount() == 0 && !empty.metadataRequired(), "empty source result");

@@ -39,14 +39,13 @@ int setCollisionGridSize(void* contextPointer, int gridSize) {
 int beginCollisionFrame(
         void* contextPointer,
         const double* aabbs,
-        const double* positions,
         const int* sections,
         int entityCount,
         int gridSize
 ) {
     if (contextPointer == nullptr || entityCount < 0 || gridSize <= 0
             || (entityCount > 0
-                    && (aabbs == nullptr || positions == nullptr || sections == nullptr))) {
+                    && (aabbs == nullptr || sections == nullptr))) {
         return -1;
     }
     try {
@@ -56,14 +55,11 @@ int beginCollisionFrame(
         context.metadata.assign(static_cast<std::size_t>(entityCount), {});
         for (int index = 0; index < entityCount; ++index) {
             const double* box = aabbs + static_cast<std::size_t>(index) * 6;
-            const double* position = positions + static_cast<std::size_t>(index) * 2;
             const int* section = sections + static_cast<std::size_t>(index) * 3;
             context.boxes[index] = eco::makeAabb(
                     box[0], box[1], box[2], box[3], box[4], box[5]
             );
             eco::EntityMetadata& metadata = context.metadata[index];
-            metadata.positionX = position[0];
-            metadata.positionZ = position[1];
             metadata.sectionX = section[0];
             metadata.sectionY = section[1];
             metadata.sectionZ = section[2];
@@ -83,8 +79,6 @@ int addCollisionEntity(
         double maxX,
         double maxY,
         double maxZ,
-        double positionX,
-        double positionZ,
         int sectionX,
         int sectionY,
         int sectionZ
@@ -98,8 +92,6 @@ int addCollisionEntity(
         const eco::Aabb box = eco::makeAabb(minX, minY, minZ, maxX, maxY, maxZ);
         context.boxes.push_back(box);
         eco::EntityMetadata metadata;
-        metadata.positionX = positionX;
-        metadata.positionZ = positionZ;
         metadata.sectionX = sectionX;
         metadata.sectionY = sectionY;
         metadata.sectionZ = sectionZ;
@@ -116,19 +108,12 @@ int addCollisionEntity(
 int updateCollisionEntity(
         void* contextPointer,
         int entityId,
-        double minX,
-        double minY,
-        double minZ,
-        double maxX,
-        double maxY,
-        double maxZ,
-        double positionX,
-        double positionZ,
+        const double* bounds,
         int sectionX,
         int sectionY,
         int sectionZ
 ) {
-    if (contextPointer == nullptr || entityId < 0) {
+    if (contextPointer == nullptr || entityId < 0 || !bounds) {
         return -1;
     }
     try {
@@ -139,11 +124,9 @@ int updateCollisionEntity(
         eco::updateEntityBounds(
                 context,
                 entityId,
-                eco::makeAabb(minX, minY, minZ, maxX, maxY, maxZ)
+                eco::makeAabb(bounds[0], bounds[1], bounds[2], bounds[3], bounds[4], bounds[5])
         );
         eco::EntityMetadata& metadata = context.metadata[entityId];
-        metadata.positionX = positionX;
-        metadata.positionZ = positionZ;
         if (metadata.sectionX != sectionX || metadata.sectionY != sectionY || metadata.sectionZ != sectionZ) {
             eco::invalidateCandidateOrder(context, entityId);
         }

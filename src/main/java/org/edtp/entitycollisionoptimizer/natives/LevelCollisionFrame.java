@@ -58,12 +58,11 @@ final class LevelCollisionFrame {
 
         bodies.prune(ids::contains);
         double[] boxes = new double[entities.size() * 6];
-        double[] positions = new double[entities.size() * 2];
         int[] sections = new int[entities.size() * 3];
         for (int index = 0; index < entities.size(); index++) {
             Entity entity = entities.get(index);
             writeBox(boxes, index * 6, entity.getBoundingBox());
-            writeLocation(positions, sections, index, entity);
+            writeLocation(sections, index, entity);
         }
         prepareSemanticCaches(entities.size());
         nativeBlockRevision = CollisionCacheEpochs.blockRevision();
@@ -71,7 +70,6 @@ final class LevelCollisionFrame {
         FFMBackend.beginFrame(
                 nativeContext,
                 boxes,
-                positions,
                 sections,
                 entities.size(),
                 CollisionOptimizerConfig.gridSize
@@ -114,8 +112,6 @@ final class LevelCollisionFrame {
         int nativeId = FFMBackend.addEntity(
                 nativeContext,
                 entity.getBoundingBox(),
-                entity.getX(),
-                entity.getZ(),
                 SectionPos.blockToSectionCoord(position.getX()),
                 SectionPos.blockToSectionCoord(position.getY()),
                 SectionPos.blockToSectionCoord(position.getZ())
@@ -130,18 +126,17 @@ final class LevelCollisionFrame {
         teamRevisions[nativeId] = UNCACHED;
     }
 
-    synchronized void updateBoundingBox(Entity entity, AABB box) {
+    synchronized void updateBoundingBox(Entity entity) {
         if (!active || !ids.contains(entity)) {
             return;
         }
         int nativeId = ids.getId(entity);
         BlockPos position = entity.blockPosition();
+        int slot = bodies.slot(entity);
         FFMBackend.updateEntity(
                 nativeContext,
                 nativeId,
-                box,
-                entity.getX(),
-                entity.getZ(),
+                bodies.movementRow(slot),
                 SectionPos.blockToSectionCoord(position.getX()),
                 SectionPos.blockToSectionCoord(position.getY()),
                 SectionPos.blockToSectionCoord(position.getZ())
@@ -344,14 +339,10 @@ final class LevelCollisionFrame {
     }
 
     private static void writeLocation(
-            double[] positions,
             int[] sections,
             int index,
             Entity entity
     ) {
-        int positionOffset = index * 2;
-        positions[positionOffset] = entity.getX();
-        positions[positionOffset + 1] = entity.getZ();
         BlockPos position = entity.blockPosition();
         int sectionOffset = index * 3;
         sections[sectionOffset] = SectionPos.blockToSectionCoord(position.getX());

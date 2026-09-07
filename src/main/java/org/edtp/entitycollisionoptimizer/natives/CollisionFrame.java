@@ -3,7 +3,6 @@ package org.edtp.entitycollisionoptimizer.natives;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.phys.AABB;
 import net.minecraft.world.scores.PlayerTeam;
 import net.minecraft.world.scores.Team;
 
@@ -55,13 +54,13 @@ public final class CollisionFrame {
         }
     }
 
-    public static void updateBoundingBox(Entity entity, AABB box) {
+    public static void updateBoundingBox(Entity entity) {
         if (!(entity.level() instanceof ServerLevel level)) {
             return;
         }
         LevelCollisionFrame frame = LEVEL_FRAMES.get(level);
         if (frame != null) {
-            frame.updateBoundingBox(entity, box);
+            frame.updateBoundingBox(entity);
         }
     }
 

@@ -95,6 +95,7 @@ add_library(EntityCollisionOptimizer SHARED
         src/query_api.cpp
         src/push_run.cpp
         src/movement_solver.cpp
+        src/block_scan.cpp
         src/voxel_geometry.cpp
         src/spatial_index.cpp
 )

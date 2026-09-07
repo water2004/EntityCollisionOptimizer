@@ -36,7 +36,7 @@ public final class NativeOrderChecks {
                     case 6 -> begin(context, bodies, 2);
                     case 7 -> begin(context, bodies, 1);
                 }
-                FFMBackend.updateEntity(context, id, body.box, 0, 0, body.x, body.y, body.z);
+                IndexUpdateFixture.update(context, id, body.box, body.x, body.y, body.z);
                 metadata(context, id, body);
                 // Repeated queries with different sources share the same ordered cell state.
                 for (int repeat = 0; repeat < 3; repeat++) for (int source = 0; source < count; source++) {
@@ -85,14 +85,14 @@ public final class NativeOrderChecks {
     }
 
     private static void begin(FFMBackend.Context context, Body[] bodies, int grid) {
-        double[] boxes = new double[bodies.length * 6], positions = new double[bodies.length * 2];
+        double[] boxes = new double[bodies.length * 6];
         int[] sections = new int[bodies.length * 3];
         for (int i = 0; i < bodies.length; i++) {
             AABB b = bodies[i].box;
             System.arraycopy(new double[]{b.minX, b.minY, b.minZ, b.maxX, b.maxY, b.maxZ}, 0, boxes, i * 6, 6);
             System.arraycopy(new int[]{bodies[i].x, bodies[i].y, bodies[i].z}, 0, sections, i * 3, 3);
         }
-        FFMBackend.beginFrame(context, boxes, positions, sections, bodies.length, grid);
+        FFMBackend.beginFrame(context, boxes, sections, bodies.length, grid);
     }
 
     private static void metadata(FFMBackend.Context context, int id, Body body) {

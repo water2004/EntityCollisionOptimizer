@@ -4,6 +4,7 @@
 #include <cstdint>
 
 extern "C" {
+ECO_EXPORT int scanCollisionBlocks(const std::uint16_t* const* rows, int* query, int* output, int capacity);
 
 ECO_EXPORT void* createCollisionContext();
 ECO_EXPORT void destroyCollisionContext(void* context);
@@ -11,7 +12,6 @@ ECO_EXPORT int setCollisionGridSize(void* context, int gridSize);
 ECO_EXPORT int beginCollisionFrame(
         void* context,
         const double* aabbs,
-        const double* positions,
         const int* sections,
         int entityCount,
         int gridSize
@@ -24,8 +24,6 @@ ECO_EXPORT int addCollisionEntity(
         double maxX,
         double maxY,
         double maxZ,
-        double positionX,
-        double positionZ,
         int sectionX,
         int sectionY,
         int sectionZ
@@ -33,14 +31,7 @@ ECO_EXPORT int addCollisionEntity(
 ECO_EXPORT int updateCollisionEntity(
         void* context,
         int entityId,
-        double minX,
-        double minY,
-        double minZ,
-        double maxX,
-        double maxY,
-        double maxZ,
-        double positionX,
-        double positionZ,
+        const double* bounds,
         int sectionX,
         int sectionY,
         int sectionZ

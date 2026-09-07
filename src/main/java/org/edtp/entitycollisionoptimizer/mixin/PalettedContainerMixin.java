@@ -5,6 +5,7 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.PalettedContainer;
 import org.edtp.entitycollisionoptimizer.collision.blocks.CollisionBlockMask;
+import org.edtp.entitycollisionoptimizer.collision.blocks.CollisionRows;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
@@ -17,42 +18,51 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @Mixin(PalettedContainer.class)
 public abstract class PalettedContainerMixin<T> implements CollisionBlockMask {
     @Shadow public abstract T get(int x, int y, int z);
-    @Unique private short[] entityCollisionOptimizer$collisionRows;
-    @Unique private long[] entityCollisionOptimizer$knownRows;
+    @Unique private CollisionRows entityCollisionOptimizer$collisionRows;
 
     @Override
     public int entityCollisionOptimizer$collisionRow(int y, int z, int edgesYZ, int edgesX) {
         int row = (y << 4) | z;
-        short[] rows = entityCollisionOptimizer$collisionRows;
-        if (rows == null || (entityCollisionOptimizer$knownRows[row >>> 6] & (1L << (row & 63))) == 0) {
+        CollisionRows rows = entityCollisionOptimizer$collisionRows;
+        if (rows == null || !rows.known(row)) {
             rows = entityCollisionOptimizer$decodeRow(y, z, row);
         }
         int offset = row * 3 + edgesYZ;
-        int selected = rows[offset] & 0xffff;
+        int selected = rows.get(offset);
         if (edgesX != 0) {
-            int boundary = edgesYZ == 2 ? 0 : rows[offset + 1] & 0xffff;
+            int boundary = edgesYZ == 2 ? 0 : rows.get(offset + 1);
             selected = (selected & ~edgesX) | (boundary & edgesX);
         }
         return selected;
     }
 
     @Unique
-    private short[] entityCollisionOptimizer$decodeRow(int y, int z, int row) {
-        short[] rows = entityCollisionOptimizer$collisionRows;
+    private CollisionRows entityCollisionOptimizer$decodeRow(int y, int z, int row) {
+        CollisionRows rows = entityCollisionOptimizer$collisionRows;
         if (rows == null) {
-            rows = new short[256 * 3];
+            rows = new CollisionRows();
             entityCollisionOptimizer$collisionRows = rows;
-            entityCollisionOptimizer$knownRows = new long[4];
         }
-        int offset = row * 3;
         long bits = 0;
         // A cold query reads only the requested 16-block row, not all 4,096 section blocks.
         for (int x = 0; x < 16; x++) bits |= entityCollisionOptimizer$flags((BlockState) get(x, y, z)) << x;
-        rows[offset] = (short) bits;
-        rows[offset + 1] = (short) (bits >>> 16);
-        rows[offset + 2] = (short) (bits >>> 32);
-        entityCollisionOptimizer$knownRows[row >>> 6] |= 1L << (row & 63);
+        rows.initialize(row, bits);
         return rows;
+    }
+
+    @Override
+    public java.lang.foreign.MemorySegment entityCollisionOptimizer$collisionRows(int minY, int maxY, int minZ, int maxZ) {
+        if (entityCollisionOptimizer$collisionRows != null
+                && entityCollisionOptimizer$collisionRows.knownRectangle(minY, maxY, minZ, maxZ)) {
+            return entityCollisionOptimizer$collisionRows.memory();
+        }
+        for (int y = minY; y <= maxY; y++) for (int z = minZ; z <= maxZ; z++) {
+            int row = (y << 4) | z;
+            if (entityCollisionOptimizer$collisionRows == null || !entityCollisionOptimizer$collisionRows.known(row)) {
+                entityCollisionOptimizer$decodeRow(y, z, row);
+            }
+        }
+        return entityCollisionOptimizer$collisionRows.memory();
     }
 
     @Inject(method = "set(ILjava/lang/Object;)V", at = @At("RETURN"))
@@ -67,17 +77,12 @@ public abstract class PalettedContainerMixin<T> implements CollisionBlockMask {
 
     @Unique
     private void entityCollisionOptimizer$updateBit(int index, T value) {
-        short[] rows = entityCollisionOptimizer$collisionRows;
+        CollisionRows rows = entityCollisionOptimizer$collisionRows;
         if (rows == null) return;
         // Block-state palettes use x | z << 4 | y << 8. Biome palettes never build this index.
-        int bit = 1 << (index & 15);
-        int row = index >>> 4;
-        if ((entityCollisionOptimizer$knownRows[row >>> 6] & (1L << (row & 63))) == 0) return;
+        if (!rows.known(index >>> 4)) return;
         long flags = entityCollisionOptimizer$flags((BlockState) value);
-        for (int plane = 0; plane < 3; plane++) {
-            int offset = row * 3 + plane;
-            rows[offset] = (short) ((flags & (1L << (plane * 16))) == 0 ? rows[offset] & ~bit : rows[offset] | bit);
-        }
+        rows.update(index, flags);
     }
 
     @Unique
@@ -90,6 +95,5 @@ public abstract class PalettedContainerMixin<T> implements CollisionBlockMask {
     @Inject(method = "read", at = @At("HEAD"))
     private void entityCollisionOptimizer$beforeRead(FriendlyByteBuf buffer, CallbackInfo ci) {
         entityCollisionOptimizer$collisionRows = null;
-        entityCollisionOptimizer$knownRows = null;
     }
 }

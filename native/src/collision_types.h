@@ -17,8 +17,6 @@ struct Aabb {
 };
 
 struct EntityMetadata {
-    double positionX = 0.0;
-    double positionZ = 0.0;
     std::int64_t sectionX = 0;
     std::int64_t sectionY = 0;
     std::int64_t sectionZ = 0;

@@ -85,7 +85,7 @@ public abstract class EntityMixin implements CollisionCacheState, CollisionOrder
         Entity self = (Entity) (Object) this;
         entityCollisionOptimizer$collisionRevision++;
         ((CollisionBodyAccess) this).eco$invalidatePushState();
-        CollisionFrame.updateBoundingBox(self, boundingBox);
+        CollisionFrame.updateBoundingBox(self);
     }
 
     @Inject(method = "setRemoved", at = @At("RETURN"))

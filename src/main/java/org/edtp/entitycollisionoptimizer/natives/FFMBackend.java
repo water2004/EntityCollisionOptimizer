@@ -45,9 +45,19 @@ public final class FFMBackend {
     private static MethodHandle queryPushable;
     private static MethodHandle executeRun;
     private static MethodHandle movement;
+    private static MethodHandle blockScan;
     private static MethodHandle prepareMovement;
     private static final Set<Context> CONTEXTS = ConcurrentHashMap.newKeySet();
     private static volatile boolean initialized;
+
+    public static int scanBlocks(MemorySegment rows, MemorySegment query, MemorySegment output, int capacity) {
+        ensureInitialized();
+        try {
+            int count = (int) blockScan.invokeExact(rows, query, output, capacity);
+            if (count < 0) throw new IllegalStateException("Invalid native block scan: " + count);
+            return count;
+        } catch (Throwable failure) { throw new IllegalStateException("Native block scan failed", failure); }
+    }
 
     private FFMBackend() {
     }
@@ -130,7 +140,6 @@ public final class FFMBackend {
     public static void beginFrame(
             Context nativeContext,
             double[] aabbs,
-            double[] positions,
             int[] sections,
             int entityCount,
             int gridSize
@@ -140,14 +149,12 @@ public final class FFMBackend {
             nativeContext.ensureOutputCapacity(entityCount);
             try (Arena arena = Arena.ofConfined()) {
                 MemorySegment aabbMemory = FFM.allocateArray(arena, aabbs);
-                MemorySegment positionMemory = FFM.allocateArray(arena, positions);
                 MemorySegment sectionMemory = FFM.allocateArray(arena, sections);
                 final int status;
                 try {
                     status = (int) beginFrame.invokeExact(
                             nativeContext.address,
                             aabbMemory,
-                            positionMemory,
                             sectionMemory,
                             entityCount,
                             gridSize
@@ -163,8 +170,6 @@ public final class FFMBackend {
     public static int addEntity(
             Context nativeContext,
             AABB box,
-            double positionX,
-            double positionZ,
             int sectionX,
             int sectionY,
             int sectionZ
@@ -180,8 +185,6 @@ public final class FFMBackend {
                         box.maxX,
                         box.maxY,
                         box.maxZ,
-                        positionX,
-                        positionZ,
                         sectionX,
                         sectionY,
                         sectionZ
@@ -200,9 +203,7 @@ public final class FFMBackend {
     public static void updateEntity(
             Context nativeContext,
             int nativeId,
-            AABB box,
-            double positionX,
-            double positionZ,
+            MemorySegment bounds,
             int sectionX,
             int sectionY,
             int sectionZ
@@ -213,14 +214,7 @@ public final class FFMBackend {
                 int status = (int) updateEntity.invokeExact(
                         nativeContext.address,
                         nativeId,
-                        box.minX,
-                        box.minY,
-                        box.minZ,
-                        box.maxX,
-                        box.maxY,
-                        box.maxZ,
-                        positionX,
-                        positionZ,
+                        bounds,
                         sectionX,
                         sectionY,
                         sectionZ
@@ -437,6 +431,8 @@ public final class FFMBackend {
         Linker linker = Linker.nativeLinker();
         nativeArena = Arena.global();
         SymbolLookup library = SymbolLookup.libraryLookup(extractedLibrary.getAbsolutePath(), nativeArena);
+        blockScan = linker.downcallHandle(library.find("scanCollisionBlocks").orElseThrow(() -> missingSymbol("scanCollisionBlocks")),
+                FunctionDescriptor.of(JAVA_INT, ADDRESS, ADDRESS, ADDRESS, JAVA_INT));
         createContextHandle = linker.downcallHandle(
                 library.find("createCollisionContext").orElseThrow(() -> missingSymbol("createCollisionContext")),
                 FunctionDescriptor.of(ADDRESS)
@@ -449,7 +445,6 @@ public final class FFMBackend {
                 library.find("beginCollisionFrame").orElseThrow(() -> missingSymbol("beginCollisionFrame")),
                 FunctionDescriptor.of(
                         JAVA_INT,
-                        ADDRESS,
                         ADDRESS,
                         ADDRESS,
                         ADDRESS,
@@ -472,8 +467,6 @@ public final class FFMBackend {
                         JAVA_DOUBLE,
                         JAVA_DOUBLE,
                         JAVA_DOUBLE,
-                        JAVA_DOUBLE,
-                        JAVA_DOUBLE,
                         JAVA_INT,
                         JAVA_INT,
                         JAVA_INT
@@ -485,14 +478,7 @@ public final class FFMBackend {
                         JAVA_INT,
                         ADDRESS,
                         JAVA_INT,
-                        JAVA_DOUBLE,
-                        JAVA_DOUBLE,
-                        JAVA_DOUBLE,
-                        JAVA_DOUBLE,
-                        JAVA_DOUBLE,
-                        JAVA_DOUBLE,
-                        JAVA_DOUBLE,
-                        JAVA_DOUBLE,
+                        ADDRESS,
                         JAVA_INT,
                         JAVA_INT,
                         JAVA_INT

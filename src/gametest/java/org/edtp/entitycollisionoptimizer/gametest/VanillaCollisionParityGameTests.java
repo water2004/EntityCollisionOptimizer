@@ -11,6 +11,7 @@ public final class VanillaCollisionParityGameTests {
         SingleCellParity.verify(helper);
         org.edtp.entitycollisionoptimizer.natives.MovementPublicationChecks.verify(helper);
         org.edtp.entitycollisionoptimizer.natives.MovementBoundsChecks.verify(helper);
+        org.edtp.entitycollisionoptimizer.natives.NativeRowsChecks.verify(helper);
         org.edtp.entitycollisionoptimizer.natives.MovementLeaseChecks.verify(helper);
         helper.succeed();
     }

@@ -1,5 +1,6 @@
 {
     global:
+        scanCollisionBlocks;
         createCollisionContext;
         destroyCollisionContext;
         setCollisionGridSize;
