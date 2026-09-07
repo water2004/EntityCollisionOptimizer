@@ -92,9 +92,18 @@ add_library(EntityCollisionOptimizer SHARED
         src/context_api.cpp
         src/metadata_api.cpp
         src/query_api.cpp
-        src/push_impulses.cpp
+        src/push_run.cpp
         src/spatial_index.cpp
 )
+
+# Batch velocity accumulation must not fuse/reassociate vanilla's individual operations.
+if(AR_WINDOWS)
+    set_source_files_properties(src/push_run.cpp
+            PROPERTIES COMPILE_OPTIONS "/clang:-ffp-contract=off")
+else()
+    set_source_files_properties(src/push_run.cpp
+            PROPERTIES COMPILE_OPTIONS "-ffp-contract=off")
+endif()
 
 if(ECO_NATIVE_SYMBOLS AND AR_WINDOWS)
     target_compile_options(EntityCollisionOptimizer PRIVATE /Z7)

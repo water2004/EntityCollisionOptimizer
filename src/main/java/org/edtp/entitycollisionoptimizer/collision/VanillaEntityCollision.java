@@ -5,6 +5,7 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.scores.PlayerTeam;
 import net.minecraft.world.scores.Team;
+import net.minecraft.world.phys.Vec3;
 
 /**
  * Minecraft 26.2's EntitySelector.pushableBy predicate, expressed directly so
@@ -55,6 +56,8 @@ public final class VanillaEntityCollision {
             double.class,
             double.class
     );
+    private static final ClassValue<Boolean> USE_VANILLA_VELOCITY_GETTER = declaringClass("getDeltaMovement", Entity.class);
+    private static final ClassValue<Boolean> USE_VANILLA_VELOCITY_SETTER = declaringClass("setDeltaMovement", Entity.class, Vec3.class);
 
     private VanillaEntityCollision() {
     }
@@ -109,7 +112,10 @@ public final class VanillaEntityCollision {
     }
 
     public static boolean usesVanillaVectorPush(Entity entity) {
-        return USE_VANILLA_VECTOR_PUSH.get(entity.getClass());
+        Class<?> type = entity.getClass();
+        // A native run may defer writes only across ordinary, non-observing velocity accessors.
+        return USE_VANILLA_VECTOR_PUSH.get(type) && USE_VANILLA_VELOCITY_GETTER.get(type)
+                && USE_VANILLA_VELOCITY_SETTER.get(type);
     }
 
     private static ClassValue<Boolean> declaringClass(

@@ -24,14 +24,20 @@ public final class JfrWindowSummary {
         Instant end = Instant.ofEpochMilli(Long.parseLong(args[2]));
         if (!end.isAfter(start)) throw new IllegalArgumentException("End must follow start");
         Map<String, Samples> groups = new LinkedHashMap<>();
+        Map<String, Long> allocationWeights = new HashMap<>();
         groups.put("jdk.ExecutionSample", new Samples());
         groups.put("jdk.NativeMethodSample", new Samples());
         try (var file = new RecordingFile(Path.of(args[0]))) {
             while (file.hasMoreEvents()) {
                 RecordedEvent event = file.readEvent();
+                if (event.getStartTime().isBefore(start) || event.getStartTime().isAfter(end)) continue;
+                if (event.getEventType().getName().equals("jdk.ObjectAllocationSample")
+                        && event.getThread() != null && args[3].equals(event.getThread().getJavaName())) {
+                    allocationWeights.merge(event.getClass("objectClass").getName(), event.getLong("weight"), Long::sum);
+                    continue;
+                }
                 Samples samples = groups.get(event.getEventType().getName());
-                if (samples == null || event.getStartTime().isBefore(start) || event.getStartTime().isAfter(end)
-                        || event.getThread("sampledThread") == null
+                if (samples == null || event.getThread("sampledThread") == null
                         || !args[3].equals(event.getThread("sampledThread").getJavaName())) continue;
                 samples.count++;
                 var stack = event.getStackTrace();
@@ -55,6 +61,12 @@ public final class JfrWindowSummary {
             print("leaf", samples.leaves, samples.count);
             print("nearest ECO caller", samples.nearest, samples.count);
         });
+        long allocationTotal = allocationWeights.values().stream().mapToLong(Long::longValue).sum();
+        System.out.printf(Locale.ROOT, "Allocation sample weights: %.2f MiB (estimates, not exact allocated bytes)%n",
+                allocationTotal / 1048576.0);
+        allocationWeights.entrySet().stream().sorted(Map.Entry.<String, Long>comparingByValue().reversed())
+                .limit(8).forEach(entry -> System.out.printf(Locale.ROOT, "%10.2f MiB %s%n",
+                        entry.getValue() / 1048576.0, entry.getKey()));
         System.out.println("Percentages are separate event-sample distributions, not CPU time; do not merge event types.");
     }
 

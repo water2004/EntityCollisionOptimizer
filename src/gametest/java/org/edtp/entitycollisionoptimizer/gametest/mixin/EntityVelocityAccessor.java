@@ -8,4 +8,5 @@ import org.spongepowered.asm.mixin.gen.Accessor;
 @Mixin(Entity.class)
 public interface EntityVelocityAccessor {
     @Accessor("deltaMovement") Vec3 eco$rawVelocity();
+    @Accessor("deltaMovement") void eco$rawVelocity(Vec3 value);
 }

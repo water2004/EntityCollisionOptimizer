@@ -72,8 +72,6 @@ ECO_EXPORT int queryPushableEntities(
         int outputCapacity
 );
 
-ECO_EXPORT int calculatePushImpulses(
-        double sourceX, double sourceZ, const double* targetPositions, int count, double* impulses
-);
+ECO_EXPORT int executePushRun(double* bodies, int* actionsAndUpdates, int count);
 
 }

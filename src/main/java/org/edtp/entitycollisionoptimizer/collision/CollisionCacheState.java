@@ -5,11 +5,19 @@ package org.edtp.entitycollisionoptimizer.collision;
  * server collision frame is active.
  */
 public interface CollisionCacheState {
+    int PUSHABLE = 1;
+    int VEHICLE = 2;
+    int PASSENGER = 4;
+    int SLEEPING = 8;
+
     long entityCollisionOptimizer$collisionRevision();
 
     void entityCollisionOptimizer$invalidateCollisionCache();
 
     boolean entityCollisionOptimizer$isPushableCached();
+
+    /** Live revision-checked vanilla flags, shared by selection and ordinary push execution. */
+    int entityCollisionOptimizer$pushState();
 
     void entityCollisionOptimizer$resetPushabilityCache();
 }

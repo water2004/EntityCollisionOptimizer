@@ -6,6 +6,13 @@ import net.minecraft.gametest.framework.GameTestHelper;
 
 public final class VanillaCollisionParityGameTests {
     @GameTest(maxTicks = 200, padding = 48)
+    public void nativePushRunParity(GameTestHelper helper) {
+        NativePushRunParity.verify(helper);
+        PushRunBoundaryParity.verify(helper);
+        helper.succeed();
+    }
+
+    @GameTest(maxTicks = 200, padding = 48)
     public void playerInteractions(GameTestHelper helper) {
         PlayerInteractionParity.verify(helper);
         helper.succeed();

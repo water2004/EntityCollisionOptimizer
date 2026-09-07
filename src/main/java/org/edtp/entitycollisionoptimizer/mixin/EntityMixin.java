@@ -5,6 +5,7 @@ import org.edtp.entitycollisionoptimizer.collision.CollisionOrderState;
 import org.edtp.entitycollisionoptimizer.collision.CollisionCacheEpochs;
 import org.edtp.entitycollisionoptimizer.natives.CollisionFrame;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Pose;
 import net.minecraft.world.phys.AABB;
 import org.spongepowered.asm.mixin.Mixin;
@@ -34,18 +35,26 @@ public abstract class EntityMixin implements CollisionCacheState, CollisionOrder
     private long entityCollisionOptimizer$pushableBlockRevision = Long.MIN_VALUE;
 
     @Unique
-    private boolean entityCollisionOptimizer$pushable;
+    private int entityCollisionOptimizer$pushState;
 
     @Override
     public boolean entityCollisionOptimizer$isPushableCached() {
+        return (entityCollisionOptimizer$pushState() & PUSHABLE) != 0;
+    }
+
+    @Override
+    public int entityCollisionOptimizer$pushState() {
         long blocks = CollisionCacheEpochs.blockRevision();
         if (entityCollisionOptimizer$pushableEntityRevision != entityCollisionOptimizer$collisionRevision
                 || entityCollisionOptimizer$pushableBlockRevision != blocks) {
-            entityCollisionOptimizer$pushable = ((Entity) (Object) this).isPushable();
+            Entity self = (Entity) (Object) this;
+            entityCollisionOptimizer$pushState = (self.isPushable() ? PUSHABLE : 0)
+                    | (self.isVehicle() ? VEHICLE : 0) | (self.isPassenger() ? PASSENGER : 0)
+                    | (self instanceof LivingEntity living && living.isSleeping() ? SLEEPING : 0);
             entityCollisionOptimizer$pushableEntityRevision = entityCollisionOptimizer$collisionRevision;
             entityCollisionOptimizer$pushableBlockRevision = blocks;
         }
-        return entityCollisionOptimizer$pushable;
+        return entityCollisionOptimizer$pushState;
     }
 
     @Override

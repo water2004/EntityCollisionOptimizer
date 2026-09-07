@@ -43,7 +43,7 @@ public final class FFMBackend {
     private static MethodHandle invalidateMetadata;
     private static MethodHandle query;
     private static MethodHandle queryPushable;
-    private static MethodHandle calculateImpulses;
+    private static MethodHandle executeRun;
     private static final Set<Context> CONTEXTS = ConcurrentHashMap.newKeySet();
     private static volatile boolean initialized;
 
@@ -341,23 +341,25 @@ public final class FFMBackend {
         }
     }
 
-    public static void calculatePushImpulses(Context context, double sourceX, double sourceZ,
-                                              double[] positions, int count, double[] impulses) {
-        if (count < 0 || count > positions.length / 2 || count > impulses.length / 2) {
-            throw new IllegalArgumentException("Invalid native impulse batch size " + count);
+    /** In-place wire format: source then targets, five doubles per body; action flags become updates. */
+    public static void executePushRun(Context context, double[] bodies, int[] actionsAndUpdates, int count) {
+        if (count < 0 || count >= bodies.length / 5 || count >= actionsAndUpdates.length) {
+            throw new IllegalArgumentException("Invalid native push run size " + count);
         }
         synchronized (context) {
             context.ensureOpen();
-            context.ensureOutputCapacity(count);
             if (count == 0) return;
-            MemorySegment.copy(positions, 0, context.positionBuffer, JAVA_DOUBLE, 0, count * 2);
+            context.ensureOutputCapacity(count);
+            int slots = count + 1;
+            MemorySegment.copy(bodies, 0, context.runBodyBuffer, JAVA_DOUBLE, 0, slots * 5);
+            MemorySegment.copy(actionsAndUpdates, 0, context.runFlagBuffer, JAVA_INT, 0, slots);
             try {
-                int status = (int) calculateImpulses.invokeExact(sourceX, sourceZ,
-                        context.positionBuffer, count, context.impulseBuffer);
-                checkStatus("calculate native push impulses", status);
-                MemorySegment.copy(context.impulseBuffer, JAVA_DOUBLE, 0, impulses, 0, count * 2);
+                int status = (int) executeRun.invokeExact(context.runBodyBuffer, context.runFlagBuffer, count);
+                checkStatus("execute native push run", status);
+                MemorySegment.copy(context.runBodyBuffer, JAVA_DOUBLE, 0, bodies, 0, slots * 5);
+                MemorySegment.copy(context.runFlagBuffer, JAVA_INT, 0, actionsAndUpdates, 0, slots);
             } catch (Throwable failure) {
-                throw new IllegalStateException("FFM push impulse calculation failed", failure);
+                throw new IllegalStateException("FFM push run execution failed", failure);
             }
         }
     }
@@ -519,9 +521,9 @@ public final class FFMBackend {
                         JAVA_INT
                 )
         );
-        calculateImpulses = linker.downcallHandle(
-                library.find("calculatePushImpulses").orElseThrow(() -> missingSymbol("calculatePushImpulses")),
-                FunctionDescriptor.of(JAVA_INT, JAVA_DOUBLE, JAVA_DOUBLE, ADDRESS, JAVA_INT, ADDRESS)
+        executeRun = linker.downcallHandle(
+                library.find("executePushRun").orElseThrow(() -> missingSymbol("executePushRun")),
+                FunctionDescriptor.of(JAVA_INT, ADDRESS, ADDRESS, JAVA_INT)
         );
     }
 
@@ -574,16 +576,16 @@ public final class FFMBackend {
         invalidateMetadata = null;
         query = null;
         queryPushable = null;
-        calculateImpulses = null;
+        executeRun = null;
     }
 
     public static final class Context implements AutoCloseable {
         private MemorySegment address;
         private Arena outputArena;
         private MemorySegment outputBuffer = MemorySegment.NULL;
-        private MemorySegment impulseBuffer = MemorySegment.NULL;
-        private MemorySegment positionBuffer = MemorySegment.NULL;
         private MemorySegment nativePushBuffer = MemorySegment.NULL;
+        private MemorySegment runBodyBuffer = MemorySegment.NULL;
+        private MemorySegment runFlagBuffer = MemorySegment.NULL;
         private int outputCapacity;
         private final QueryResult queryResult = new QueryResult();
 
@@ -613,12 +615,9 @@ public final class FFMBackend {
                     (long) (newCapacity + 3) * Integer.BYTES,
                     Integer.BYTES
             );
-            impulseBuffer = outputArena.allocate(
-                    (long) newCapacity * 2 * Double.BYTES,
-                    Double.BYTES
-            );
-            positionBuffer = outputArena.allocate((long) newCapacity * 2 * Double.BYTES, Double.BYTES);
             nativePushBuffer = outputArena.allocate((long) newCapacity * Integer.BYTES, Integer.BYTES);
+            runBodyBuffer = outputArena.allocate(((long) newCapacity + 1) * 5 * Double.BYTES, Double.BYTES);
+            runFlagBuffer = outputArena.allocate(((long) newCapacity + 1) * Integer.BYTES, Integer.BYTES);
             outputCapacity = newCapacity;
             queryResult.output = outputBuffer;
             queryResult.nativePush = nativePushBuffer;
@@ -651,9 +650,9 @@ public final class FFMBackend {
                     outputArena = null;
                 }
                 outputBuffer = MemorySegment.NULL;
-                impulseBuffer = MemorySegment.NULL;
-                positionBuffer = MemorySegment.NULL;
                 nativePushBuffer = MemorySegment.NULL;
+                runBodyBuffer = MemorySegment.NULL;
+                runFlagBuffer = MemorySegment.NULL;
                 outputCapacity = 0;
                 queryResult.output = MemorySegment.NULL;
                 queryResult.nativePush = MemorySegment.NULL;

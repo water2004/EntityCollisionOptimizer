@@ -39,10 +39,10 @@ final class PushBatchParity {
                 outer.applyNativeRun(source, 0, 1);
                 NativeImpulseParity.exact(helper, source.getDeltaMovement(), expectedSource, "late source geometry");
                 NativeImpulseParity.exact(helper, target.getDeltaMovement(), expectedTarget, "late target geometry");
-                // Beginning a new frame must preserve even an unobserved pending velocity.
+                // A completed run has already committed its velocity, even without a getter read.
                 nestedTarget.needsSync = false;
                 CollisionFrame.begin(level);
-                helper.assertTrue(nestedTarget.getDeltaMovement().lengthSqr() > 0, "new frame preserves pending velocity");
+                helper.assertTrue(nestedTarget.getDeltaMovement().lengthSqr() > 0, "new frame preserves committed velocity");
                 helper.assertTrue(!nestedTarget.needsSync, "new frame preserves reset sync");
             }
             try (PushBatch batch = collect(source)) {

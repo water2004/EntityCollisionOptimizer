@@ -21,13 +21,11 @@ final class NativeImpulseParity {
                     Math.nextUp(1.0), -1.0, 1.5, -2.0};
             int count = deltas.length * deltas.length;
             double[] positions = new double[count * 2];
-            double[] impulses = new double[count * 2];
             int index = 0;
             for (double x : deltas) for (double z : deltas) {
                 positions[index++] = source.getX() + x;
                 positions[index++] = source.getZ() + z;
             }
-            FFMBackend.calculatePushImpulses(context, source.getX(), source.getZ(), positions, count, impulses);
             for (int i = 0; i < count; i++) {
                 target.setPos(positions[2 * i], source.getY(), positions[2 * i + 1]);
                 Vec3 initial = new Vec3(0.125, -0.0, -0.375);
@@ -42,10 +40,7 @@ final class NativeImpulseParity {
                 source.setDeltaMovement(initial);
                 target.setDeltaMovement(initial);
                 source.needsSync = target.needsSync = false;
-                if (!Double.isNaN(impulses[2 * i])) {
-                    target.push(-impulses[2 * i], 0, -impulses[2 * i + 1]);
-                    source.push(impulses[2 * i], 0, impulses[2 * i + 1]);
-                }
+                nativePair(context, source, target);
                 exact(helper, source.getDeltaMovement(), expectedSource, "kernel source " + i);
                 exact(helper, target.getDeltaMovement(), expectedTarget, "kernel target " + i);
                 helper.assertValueEqual(source.needsSync, expectedSourceSync, "kernel source sync " + i);
@@ -63,8 +58,6 @@ final class NativeImpulseParity {
                 new Vec3(Double.MAX_VALUE, 0, Double.MAX_VALUE), new Vec3(1, 2, 3)};
         double[] positions = {0.125, -0.25, -0.125, 0.25, 1.5, -2, -1.5, 2, 0, 0};
         int count = positions.length / 2;
-        double[] impulses = new double[positions.length];
-        FFMBackend.calculatePushImpulses(context, source.getX(), source.getZ(), positions, count, impulses);
         for (int scenario = 0; scenario < initial.length; scenario++) {
             source.setDeltaMovement(initial[scenario]);
             target.setDeltaMovement(initial[scenario]);
@@ -83,16 +76,27 @@ final class NativeImpulseParity {
             target.setDeltaMovement(initial[scenario]);
             source.needsSync = target.needsSync = false;
             for (int i = 0; i < count; i++) {
-                if (!Double.isNaN(impulses[2 * i])) {
-                    target.push(-impulses[2 * i], 0, -impulses[2 * i + 1]);
-                    source.push(impulses[2 * i], 0, impulses[2 * i + 1]);
-                }
+                target.setPos(positions[2 * i], source.getY(), positions[2 * i + 1]);
+                nativePair(context, source, target);
                 exact(helper, source.getDeltaMovement(), expectedSource[i], "native accumulation source " + scenario + "/" + i);
                 exact(helper, target.getDeltaMovement(), expectedTarget[i], "native accumulation target " + scenario + "/" + i);
                 helper.assertValueEqual(source.needsSync, expectedSourceSync[i], "accumulation source sync");
                 helper.assertValueEqual(target.needsSync, expectedTargetSync[i], "accumulation target sync");
             }
         }
+    }
+
+    private static void nativePair(FFMBackend.Context context, Zombie source, Zombie target) {
+        Vec3 sourceVelocity = source.getDeltaMovement(), targetVelocity = target.getDeltaMovement();
+        double[] bodies = {source.getX(), source.getZ(), sourceVelocity.x, sourceVelocity.y, sourceVelocity.z,
+                target.getX(), target.getZ(), targetVelocity.x, targetVelocity.y, targetVelocity.z};
+        int[] updates = {0, 3};
+        FFMBackend.executePushRun(context, bodies, updates, 1);
+        // Decode the API result; integration tests separately exercise PushBatch's actual writeback.
+        if ((updates[0] & 2) != 0) source.setDeltaMovement(new Vec3(bodies[2], bodies[3], bodies[4]));
+        if ((updates[1] & 2) != 0) target.setDeltaMovement(new Vec3(bodies[7], bodies[8], bodies[9]));
+        if ((updates[0] & 1) != 0) source.needsSync = true;
+        if ((updates[1] & 1) != 0) target.needsSync = true;
     }
 
     static void exact(GameTestHelper helper, Vec3 actual, Vec3 expected, String label) {
