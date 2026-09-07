@@ -4,6 +4,15 @@ project(EntityCollisionOptimizer CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 option(ECO_NATIVE_SYMBOLS "Emit Windows PDB symbols without disabling Release optimizations" OFF)
+option(ECO_NATIVE_AVX2 "Require AVX2 on x64" ON)
+
+if(ECO_NATIVE_AVX2 AND AR_X64)
+    if(AR_WINDOWS)
+        add_compile_options(/clang:-mavx2)
+    else()
+        add_compile_options(-mavx2)
+    endif()
+endif()
 
 if(NOT AR_TOOLCHAIN)
     message(FATAL_ERROR "AR toolchain not found")

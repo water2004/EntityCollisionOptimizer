@@ -22,6 +22,7 @@ dependencies {
 def cppProjectDir = file("./native")
 def isWindows = System.getProperty("os.name").toLowerCase().contains("windows")
 def nativeSymbols = providers.gradleProperty("nativeSymbols").isPresent() ? "ON" : "OFF"
+def nativeAvx2 = providers.gradleProperty("nativeAvx2").orElse("true").get().toBoolean() ? "ON" : "OFF"
 
 def registerNativeTask = { String taskName, String targetName, String cmakeScriptName, String description ->
     return tasks.register(taskName, Exec) {
@@ -34,7 +35,7 @@ def registerNativeTask = { String taskName, String targetName, String cmakeScrip
 
         commandLine 'cmd', '/c', "call \"${envScript}\" && " +
                 "call \"%AR_TOOLCHAIN%\\bin\\${cmakeScriptName}\" " +
-                "-DCMAKE_BUILD_TYPE=Release -DECO_NATIVE_SYMBOLS=${nativeSymbols} \"${cppProjectDir.absolutePath}\" -B \"${outputDir}\" && " +
+                "-DCMAKE_BUILD_TYPE=Release -DECO_NATIVE_SYMBOLS=${nativeSymbols} -DECO_NATIVE_AVX2=${nativeAvx2} \"${cppProjectDir.absolutePath}\" -B \"${outputDir}\" && " +
                 "call \"%AR_TOOLCHAIN%\\bin\\cmake-build.bat\" \"${outputDir}\""
 
         doFirst {
