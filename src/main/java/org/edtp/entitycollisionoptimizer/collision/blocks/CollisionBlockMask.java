@@ -1,6 +1,6 @@
 package org.edtp.entitycollisionoptimizer.collision.blocks;
 
-/** A conservative index: every non-air block remains a collision candidate. */
+/** A row filtered by vanilla's interior/face/edge/corner rules. No shapes are cached. */
 public interface CollisionBlockMask {
-    int entityCollisionOptimizer$nonAirRow(int y, int z);
+    int entityCollisionOptimizer$collisionRow(int y, int z, int edgesYZ, int edgesX);
 }

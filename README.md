@@ -66,7 +66,7 @@ config/entity_collision_optimizer.json
 - 安装 Carpet 且其 `maxEntityCollisions` 大于 `0` 时，本模组完整让出实体推动，由 Carpet 管理上限；值为 `0` 时不截断候选，本模组接管查询。
 - Lithium 可以同时安装。本模组启用时直接接管 `LivingEntity.pushEntities`，不进入 Lithium 对原版实体查询的注入；关闭本模组或由 Carpet 接管时，原版/Lithium 路径正常执行。
 - 移动碰撞从 `Entity.collide` 及两个 `collideBoundingBox` 入口接管，普通移动和跨台阶共用同一个有序方块收集器，不执行 Lithium 对应的移动求解路径；不冲突的底层形状优化仍可工作。保持原版的轴处理顺序、台阶高度选择、世界边界及实体形状处理。此功能同样由 `enableEntityCollision` 控制，独立于 Carpet 对实体推动数量的管理。
-- 方块扫描按原版 z/y/x 顺序遍历，用非空气位图跳过空气，所有非空气方块仍执行实时的原版形状查询。索引按需建立每行 16 个方块的位图，附着在方块调色板上；单格写入直接更新位图，反序列化使其失效，复制容器独立建立索引。没有跨实体缓存碰撞形状，因此皮革靴、潜行、流体和运动中活塞等上下文不会被快照冻结。没有按实体密度分流、速度限制或候选截断。
+- 方块扫描按原版 z/y/x 顺序遍历，用非空气、大碰撞形状标志、运动中活塞三张位图，在读取方块状态之前执行原版扫描边缘筛选；通过筛选的方块仍实时查询原版形状。索引按需解码每行 16 个方块，附着在调色板上；单格写入同步更新三张位图，反序列化使其失效，复制容器独立建立索引。只缓存方块状态固有的筛选标志，不跨实体缓存碰撞形状，因此皮革靴、潜行、流体和活塞进度等上下文不会被冻结。没有按实体密度分流、速度限制或候选截断。验证与性能记录见 [方块边缘预筛选](docs/block-halo-prefilter-2026-09-07.md)。
 - Worldthreader 可以同时安装。每个 `ServerLevel` 独立持有实体 ID、原生碰撞上下文、语义缓存、批次池和查询输出缓冲区；不同维度可以并行执行碰撞查询，不共享或串行化碰撞帧。三维度并发 GameTest 会交错执行 13,500 次原生查询和 4,500 次批量推动，检查跨维度实体、重复实体、计数及冲量缓冲区污染。
 - 已联合加载验证 ServerCore、FerriteCore、C2ME、VMP、Krypton、Alternate Current、ScalableLux、Noisium、Lithium、Carpet 与 Worldthreader；该组合的全部 GameTest 通过。这里验证的是这些模组面向 Minecraft 26.2 的当前版本，不替未来版本提供无条件兼容承诺。
 - 不为其他模组自定义的 `pushEntities` 或带副作用的 `isPushable` 实现提供额外兼容承诺。

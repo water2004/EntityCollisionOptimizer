@@ -134,6 +134,10 @@ public final class MovementScanDiagnostics {
             if (stepScan) stepReads++;
             else normalReads++;
         }
+
+        public void rejectedByHalo(boolean stepScan) {
+            (stepScan ? totals.step : totals.normal).haloRejectedReads++;
+        }
     }
 
     private static final class Totals {
@@ -167,6 +171,7 @@ public final class MovementScanDiagnostics {
     private static final class Phase {
         private long reads;
         private long airReads;
+        private long haloRejectedReads;
         private long ownedScans;
         private long uniquePerTick;
         private final LongOpenHashSet unique = new LongOpenHashSet();
@@ -176,8 +181,8 @@ public final class MovementScanDiagnostics {
         private void report(String mode, String phase) {
             EntityCollisionOptimizer.LOGGER.info(
                     "ECO_SCAN_PHASE mode={} phase={} owned_scans={} vanilla_scans={} "
-                            + "cursor_cells={} state_reads={} air_reads={} sum_sampled_unique_positions_per_tick={} reads_per_sampled_move={}",
-                    mode, phase, ownedScans, cursorCells.size() - ownedScans, cursorCells.summary(), reads, airReads, uniquePerTick,
+                            + "cursor_cells={} state_reads={} air_reads={} halo_rejected_reads={} sum_sampled_unique_positions_per_tick={} reads_per_sampled_move={}",
+                    mode, phase, ownedScans, cursorCells.size() - ownedScans, cursorCells.summary(), reads, airReads, haloRejectedReads, uniquePerTick,
                     readsPerMove.summary());
         }
     }

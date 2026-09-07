@@ -2,12 +2,15 @@ package org.edtp.entitycollisionoptimizer.gametest.mixin;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import org.edtp.entitycollisionoptimizer.gametest.MovementScanDiagnostics;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Final;
+import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -19,6 +22,7 @@ import java.util.List;
 public abstract class OwnedBlockScanMixin {
     @Unique private MovementScanDiagnostics.Probe eco$probe;
     @Unique private boolean eco$step;
+    @Shadow @Final private int minX, maxX, minY, maxY, minZ, maxZ;
 
     @Inject(method = "<init>", at = @At("RETURN"))
     private void eco$scan(Level level, CollisionContext context, AABB box, List<VoxelShape> result, CallbackInfo ci) {
@@ -30,7 +34,14 @@ public abstract class OwnedBlockScanMixin {
     }
 
     @Inject(method = "add", at = @At("HEAD"))
-    private void eco$read(BlockState state, int x, int y, int z, int edges, CallbackInfo ci) {
-        if (eco$probe != null) eco$probe.read(BlockPos.asLong(x, y, z), eco$step, state.isAir());
+    private void eco$read(BlockState state, int x, int y, int z, CallbackInfo ci) {
+        if (eco$probe != null) {
+            eco$probe.read(BlockPos.asLong(x, y, z), eco$step, state.isAir());
+            int edges = (x == minX || x == maxX ? 1 : 0) + (y == minY || y == maxY ? 1 : 0)
+                    + (z == minZ || z == maxZ ? 1 : 0);
+            if ((edges == 1 && !state.hasLargeCollisionShape()) || (edges == 2 && !state.is(Blocks.MOVING_PISTON))) {
+                eco$probe.rejectedByHalo(eco$step);
+            }
+        }
     }
 }

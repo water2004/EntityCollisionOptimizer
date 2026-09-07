@@ -31,10 +31,12 @@ final class BlockShapeParity {
                 level.removeBlockEntity(pos);
                 // Test stored states directly, including states that ordinary placement would reject.
                 section.setBlockState(pos.getX() & 15, pos.getY() & 15, pos.getZ() & 15, state);
+                BlockMaskParity.checkRow(helper, section.getStates(), pos.getY() & 15, pos.getZ() & 15);
                 compare(helper, entity, new AABB(pos).inflate(0.2), state.toString());
                 count++;
             }
             BlockMaskParity.verify(helper, section.getStates());
+            BlockHaloParity.verify(helper, entity);
         } finally {
             level.removeBlockEntity(pos);
             section.setBlockState(pos.getX() & 15, pos.getY() & 15, pos.getZ() & 15, original);

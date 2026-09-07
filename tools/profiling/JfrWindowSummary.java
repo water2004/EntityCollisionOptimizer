@@ -8,12 +8,14 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
+import java.util.TreeSet;
 
 /** Java 25 source launcher: file.jfr start_epoch_ms end_epoch_ms exact_thread_name. */
 public final class JfrWindowSummary {
     private static final class Samples {
         int count;
         final Map<String, Integer> leaves = new HashMap<>();
+        final Map<String, Integer> leafLines = new HashMap<>();
         final Map<String, Integer> nearest = new HashMap<>();
     }
 
@@ -25,6 +27,7 @@ public final class JfrWindowSummary {
         if (!end.isAfter(start)) throw new IllegalArgumentException("End must follow start");
         Map<String, Samples> groups = new LinkedHashMap<>();
         Map<String, Long> allocationWeights = new HashMap<>();
+        var osThreadIds = new TreeSet<Long>();
         groups.put("jdk.ExecutionSample", new Samples());
         groups.put("jdk.NativeMethodSample", new Samples());
         try (var file = new RecordingFile(Path.of(args[0]))) {
@@ -40,10 +43,12 @@ public final class JfrWindowSummary {
                 if (samples == null || event.getThread("sampledThread") == null
                         || !args[3].equals(event.getThread("sampledThread").getJavaName())) continue;
                 samples.count++;
+                osThreadIds.add(event.getThread("sampledThread").getOSThreadId());
                 var stack = event.getStackTrace();
                 String leaf = "<no stack>", nearest = "<outside ECO>";
                 if (stack != null && !stack.getFrames().isEmpty()) {
                     leaf = method(stack.getFrames().getFirst());
+                    samples.leafLines.merge(leaf + ":" + stack.getFrames().getFirst().getLineNumber(), 1, Integer::sum);
                     for (var frame : stack.getFrames()) {
                         if (method(frame).startsWith("org.edtp.entitycollisionoptimizer.")) {
                             nearest = method(frame);
@@ -56,9 +61,11 @@ public final class JfrWindowSummary {
                 samples.nearest.merge(nearest, 1, Integer::sum);
             }
         }
+        System.out.println("OS thread IDs in the selected window: " + osThreadIds);
         groups.forEach((name, samples) -> {
             System.out.println(name + " samples=" + samples.count);
             print("leaf", samples.leaves, samples.count);
+            print("leaf source line (JIT attribution, not instruction timing)", samples.leafLines, samples.count);
             print("nearest ECO caller", samples.nearest, samples.count);
         });
         long allocationTotal = allocationWeights.values().stream().mapToLong(Long::longValue).sum();

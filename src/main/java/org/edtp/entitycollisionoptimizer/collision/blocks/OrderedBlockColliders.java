@@ -4,7 +4,6 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.ChunkAccess;
 import net.minecraft.world.level.chunk.LevelChunkSection;
@@ -83,17 +82,18 @@ public final class OrderedBlockColliders {
                         LevelChunkSection section = sections[sectionIndex];
                         int start = Math.max(minX, chunkX << 4);
                         int end = Math.min(maxX, (chunkX << 4) + 15);
+                        int edgesX = 0;
+                        if (start == minX) edgesX |= 1 << (start & 15);
+                        if (end == maxX) edgesX |= 1 << (end & 15);
                         int mask = ((CollisionBlockMask) section.getStates())
-                                .entityCollisionOptimizer$nonAirRow(y & 15, z & 15);
+                                .entityCollisionOptimizer$collisionRow(y & 15, z & 15, edgesYZ, edgesX);
                         mask &= (0xffff << (start & 15)) & (0xffff >>> (15 - (end & 15)));
                         while (mask != 0) {
                             int localX = Integer.numberOfTrailingZeros(mask);
                             mask &= mask - 1;
                             int x = (chunkX << 4) + localX;
-                            int edges = edgesYZ + edge(x, minX, maxX);
-                            if (edges == 3) continue;
                             BlockState state = section.getBlockState(localX, y & 15, z & 15);
-                            add(state, x, y, z, edges);
+                            add(state, x, y, z);
                         }
                     }
                 }
@@ -110,9 +110,7 @@ public final class OrderedBlockColliders {
             return chunks[index];
         }
 
-        private void add(BlockState state, int x, int y, int z, int edges) {
-            if (edges == 1 && !state.hasLargeCollisionShape()) return;
-            if (edges == 2 && !state.is(Blocks.MOVING_PISTON)) return;
+        private void add(BlockState state, int x, int y, int z) {
             pos.set(x, y, z);
             VoxelShape shape = context.getCollisionShape(state, level, pos);
             if (shape == Shapes.block()) {
