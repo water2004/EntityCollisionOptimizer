@@ -24,6 +24,12 @@ loom {
             if (providers.gradleProperty("jfrOutput").isPresent()) {
                 vmArg "-XX:StartFlightRecording=filename=${file(providers.gradleProperty("jfrOutput").get()).absolutePath},settings=profile,dumponexit=true"
             }
+            // Optional local profiler only; never instrument Gradle or package this agent.
+            if (providers.gradleProperty("jitMapAgent").isPresent()) {
+                def agent = file(providers.gradleProperty("jitMapAgent").get()).absolutePath
+                def output = file(providers.gradleProperty("jitMapOutput").get()).absolutePath
+                vmArg "-agentpath:${agent}=${output}"
+            }
         }
     }
 }
