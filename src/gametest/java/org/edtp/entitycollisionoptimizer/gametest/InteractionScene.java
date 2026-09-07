@@ -26,12 +26,20 @@ import java.util.Map;
 final class InteractionScene implements AutoCloseable {
     final GameTestHelper helper;
     private final boolean previous;
+    private final int maxX, maxY, maxZ;
     private final Map<BlockPos, BlockState> blocks = new LinkedHashMap<>();
     private final List<Entity> entities = new ArrayList<>();
     private final Map<GameRule<Boolean>, Boolean> rules = new LinkedHashMap<>();
 
     InteractionScene(GameTestHelper helper, boolean optimized) {
+        this(helper, optimized, 12, 8, 8);
+    }
+
+    InteractionScene(GameTestHelper helper, boolean optimized, int maxX, int maxY, int maxZ) {
         this.helper = helper;
+        this.maxX = maxX;
+        this.maxY = maxY;
+        this.maxZ = maxZ;
         previous = CollisionOptimizerConfig.enableEntityCollision;
         CollisionFrame.end(helper.getLevel());
         CollisionOptimizerConfig.enableEntityCollision = optimized;
@@ -43,7 +51,7 @@ final class InteractionScene implements AutoCloseable {
         }
         // Padding can place fixtures below the generated terrain surface. Establish the whole
         // test volume explicitly; otherwise "open air" explosions can be occluded by terrain.
-        for (int x = 1; x <= 12; x++) for (int y = 1; y <= 8; y++) for (int z = 1; z <= 8; z++) {
+        for (int x = 1; x <= maxX; x++) for (int y = 1; y <= maxY; y++) for (int z = 1; z <= maxZ; z++) {
             block(x, y, z, net.minecraft.world.level.block.Blocks.AIR);
         }
     }
@@ -57,7 +65,12 @@ final class InteractionScene implements AutoCloseable {
     void block(int x, int y, int z, Block block) { block(x, y, z, block.defaultBlockState()); }
 
     void floor(Block block) {
-        for (int x = 1; x <= 12; x++) for (int z = 1; z <= 8; z++) block(x, 0, z, block);
+        for (int x = 1; x <= maxX; x++) for (int z = 1; z <= maxZ; z++) block(x, 0, z, block);
+    }
+
+    void seed(long seed) {
+        helper.getLevel().getRandom().setSeed(seed);
+        for (int i = 0; i < entities.size(); i++) entities.get(i).getRandom().setSeed(seed + i);
     }
 
     Entity spawn(EntityType<?> type, Vec3 position) {

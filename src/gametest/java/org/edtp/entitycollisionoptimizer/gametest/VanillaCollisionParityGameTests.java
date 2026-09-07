@@ -78,6 +78,12 @@ public final class VanillaCollisionParityGameTests {
     }
 
     @GameTest(maxTicks = 200, padding = 48)
+    public void tntCannonInteractions(GameTestHelper helper) {
+        TntCannonParity.verify(helper);
+        helper.succeed();
+    }
+
+    @GameTest(maxTicks = 200, padding = 48)
     public void machineClearances(GameTestHelper helper) {
         MachineClearanceParity.verify(helper);
         helper.succeed();
