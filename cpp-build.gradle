@@ -55,6 +55,8 @@ tasks.register("extractToolchain", Copy) {
         // The release archive supplies compilers and sysroots only. Native
         // project sources are versioned in this repository.
         exclude "src/**"
+        exclude "include/**"
+        exclude "README.md"
         exclude "CMakeLists.txt"
         exclude "version-script"
     }

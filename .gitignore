@@ -8,6 +8,11 @@
 !/native/CMakeLists.txt
 !/native/version-script
 !/native/src/
-/native/src/*
-!/native/src/*.cpp
-!/native/src/*.h
+!/native/include/
+!/native/README.md
+
+# Generated diagnostics belong outside the source tree.
+*.jfr
+*.etl
+*.etl.*
+__pycache__/

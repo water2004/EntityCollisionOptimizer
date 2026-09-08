@@ -97,28 +97,33 @@ else()
 endif()
 
 set(ECO_COMMON_SOURCES
-        src/persistent_index.cpp
-        src/collision_rules.cpp
-        src/context_api.cpp
-        src/metadata_api.cpp
-        src/query_api.cpp
-        src/push_run.cpp
-        src/movement_solver.cpp
-        src/block_scan.cpp
-        src/voxel_geometry.cpp
-        src/spatial_index.cpp
+        src/state/context_api.cpp
+        src/state/metadata_api.cpp
+        src/state/persistent_index.cpp
+        src/spatial/spatial_index.cpp
+        src/query/collision_rules.cpp
+        src/query/query_api.cpp
+        src/motion/push_run.cpp
+        src/motion/movement_solver.cpp
+        src/geometry/voxel_geometry.cpp
+        src/blocks/block_scan.cpp
 )
 
-add_library(EntityCollisionOptimizer SHARED ${ECO_COMMON_SOURCES} src/ordered_candidates.cpp)
+add_library(EntityCollisionOptimizer SHARED ${ECO_COMMON_SOURCES} src/spatial/ordered_candidates.cpp)
 add_library(EntityCollisionOptimizerUnordered SHARED ${ECO_COMMON_SOURCES})
 target_compile_definitions(EntityCollisionOptimizerUnordered PRIVATE ECO_VANILLA_ORDER=0)
 
+# Module-qualified internal includes and the stable FFM ABI headers.
+foreach(target EntityCollisionOptimizer EntityCollisionOptimizerUnordered)
+    target_include_directories(${target} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src" "${CMAKE_CURRENT_SOURCE_DIR}/include")
+endforeach()
+
 # Batch velocity accumulation must not fuse/reassociate vanilla's individual operations.
 if(AR_WINDOWS)
-    set_source_files_properties(src/push_run.cpp src/movement_solver.cpp src/voxel_geometry.cpp
+    set_source_files_properties(src/motion/push_run.cpp src/motion/movement_solver.cpp src/geometry/voxel_geometry.cpp
             PROPERTIES COMPILE_OPTIONS "/clang:-ffp-contract=off")
 else()
-    set_source_files_properties(src/push_run.cpp src/movement_solver.cpp src/voxel_geometry.cpp
+    set_source_files_properties(src/motion/push_run.cpp src/motion/movement_solver.cpp src/geometry/voxel_geometry.cpp
             PROPERTIES COMPILE_OPTIONS "-ffp-contract=off")
 endif()
 
