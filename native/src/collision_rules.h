@@ -10,10 +10,14 @@ struct LookupSections {
     explicit LookupSections(const Aabb& source) noexcept;
     bool contains(const EntityMetadata& target) const noexcept;
 };
-bool passesTeamRules(
-        int sourceTeamId,
-        int sourceRule,
-        int targetTeamId,
-        int targetRule
-) noexcept;
+/** Source-dependent rule decisions are fixed for the entire query. */
+struct TeamFilter {
+    int sourceTeam;
+    unsigned alliedRules, otherRules;
+    TeamFilter(int sourceTeamId, int sourceRule) noexcept;
+    bool accepts(int targetTeamId, int targetRule) const noexcept {
+        unsigned allowed = targetTeamId == sourceTeam ? alliedRules : otherRules;
+        return (allowed & (1u << targetRule)) != 0;
+    }
+};
 } // namespace eco

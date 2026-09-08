@@ -25,22 +25,13 @@ bool LookupSections::contains(const EntityMetadata& target) const noexcept {
             && target.sectionZ >= minZ && target.sectionZ <= maxZ;
 }
 
-bool passesTeamRules(
-        int sourceTeamId,
-        int sourceRule,
-        int targetTeamId,
-        int targetRule
-) noexcept {
-    if (sourceRule == COLLISION_NEVER || targetRule == COLLISION_NEVER) {
-        return false;
-    }
-    const bool allied = sourceTeamId >= 0 && sourceTeamId == targetTeamId;
-    if ((sourceRule == COLLISION_PUSH_OWN_TEAM || targetRule == COLLISION_PUSH_OWN_TEAM)
-            && allied) {
-        return false;
-    }
-    return (sourceRule != COLLISION_PUSH_OTHER_TEAMS
-            && targetRule != COLLISION_PUSH_OTHER_TEAMS) || allied;
+TeamFilter::TeamFilter(int sourceTeamId, int sourceRule) noexcept : sourceTeam(sourceTeamId) {
+    otherRules = sourceRule == COLLISION_NEVER || sourceRule == COLLISION_PUSH_OTHER_TEAMS
+            ? 0u : (1u << COLLISION_ALWAYS) | (1u << COLLISION_PUSH_OWN_TEAM);
+    alliedRules = sourceRule == COLLISION_NEVER || sourceRule == COLLISION_PUSH_OWN_TEAM
+            ? 0u : (1u << COLLISION_ALWAYS) | (1u << COLLISION_PUSH_OTHER_TEAMS);
+    // Two absent teams are not allied. Equal sentinel IDs must select the non-allied rules too.
+    if (sourceTeamId < 0) alliedRules = otherRules;
 }
 
 } // namespace eco

@@ -148,10 +148,10 @@ int queryPushableEntities(
         }
         const eco::Aabb source = context.boxes[sourceId];
         const eco::LookupSections lookup(source);
+        const eco::TeamFilter teamFilter(sourceTeamId, sourceCollisionRule);
         const bool nativeSource = sourceUsesVanillaPush != 0 && context.metadata[sourceId].vanillaVectorPush;
         int* const bodySlots = output + 3 + outputCapacity;
         context.metadataMisses.clear();
-        int pushableCount = 0;
         int nonPassengerCount = 0;
         int actionableCount = 0;
         auto consume = [&](int candidateId) -> int {
@@ -173,15 +173,9 @@ int queryPushableEntities(
                 return 0;
             }
             if (!target.selectable
-                    || !eco::passesTeamRules(
-                            sourceTeamId,
-                            sourceCollisionRule,
-                            target.teamId,
-                            target.collisionRule
-                    )) {
+                    || !teamFilter.accepts(target.teamId, target.collisionRule)) {
                 return 0;
             }
-            ++pushableCount;
             if (!target.passenger) {
                 ++nonPassengerCount;
             }
@@ -217,7 +211,7 @@ int queryPushableEntities(
             return static_cast<int>(context.metadataMisses.size());
         }
         output[0] = 0;
-        output[1] = pushableCount;
+        output[1] = actionableCount;
         output[2] = nonPassengerCount;
         return actionableCount;
     } catch (...) {

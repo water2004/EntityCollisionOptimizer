@@ -22,7 +22,8 @@ int updateCollisionEntityMetadata(
         , std::int64_t sectionOrder
 #endif
 ) {
-    if (contextPointer == nullptr || entityId < 0 || bodySlot < 0) {
+    if (contextPointer == nullptr || entityId < 0 || bodySlot < 0
+            || collisionRule < eco::COLLISION_ALWAYS || collisionRule > eco::COLLISION_PUSH_OTHER_TEAMS) {
         return -1;
     }
     try {

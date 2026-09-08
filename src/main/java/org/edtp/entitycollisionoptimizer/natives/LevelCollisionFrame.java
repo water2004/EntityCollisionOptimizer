@@ -122,8 +122,9 @@ final class LevelCollisionFrame {
     }
 
     synchronized void invalidateEntity(Entity entity) {
-        if (initialized && ids.contains(entity)) {
-            int id = ids.getId(entity);
+        if (!initialized) return;
+        int id = ids.getId(entity);
+        if (id >= 0) {
             BlockPos p = entity.blockPosition();
             FFMBackend.updateLocation(nativeContext, id,
                     SectionPos.blockToSectionCoord(p.getX()),
