@@ -55,9 +55,9 @@ config/entity_collision_optimizer.json
 
 `enableEntityCollision` 必须显式设为 `true`（FFM）或 `false`（Vanilla）。
 
-`gridSize` 是原生 X/Z 空间索引的格子边长，必须大于 `0`。实现始终返回所有相交候选，不包含候选上限、密度阈值、多线程开关或按密度分流的路径。
+`gridSize` 是原生 X/Y/Z 空间索引的格子边长，必须大于 `0`。实现始终返回所有相交候选，不包含候选上限、密度阈值、多线程开关或按密度分流的路径。
 
-可使用 `/eco` 查看、修改和保存配置。命令需要游戏管理员权限。
+安装默认启用。使用 `/eco` 或 `/eco check` 查看状态；命令只开放原版顺序开关，修改后自动保存。命令需要游戏管理员权限。
 
 `/eco vanillaOrder true` 开启原版实体推动候选顺序（默认）；
 `/eco vanillaOrder false` 关闭排序专用维护，保留完整候选、去重、过滤与挤压计数。
