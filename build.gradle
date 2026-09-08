@@ -34,7 +34,7 @@ loom {
     }
 }
 
-// The 1000-entity benchmark is opt-in so normal builds do not start a game server.
+// The three-layer, 3000-entity benchmark is opt-in so normal builds do not start a game server.
 if (providers.gradleProperty("benchmark").isPresent()
         || providers.gradleProperty("parity").isPresent()) {
     fabricApi {

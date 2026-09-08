@@ -1,7 +1,5 @@
 package org.edtp.entitycollisionoptimizer.gametest;
 
-import com.mojang.authlib.GameProfile;
-import io.netty.channel.embedded.EmbeddedChannel;
 import org.edtp.entitycollisionoptimizer.EntityCollisionOptimizer;
 import org.edtp.entitycollisionoptimizer.config.CollisionOptimizerConfig;
 import org.edtp.entitycollisionoptimizer.gametest.mixin.RangedAttributeAccessor;
@@ -9,49 +7,25 @@ import org.edtp.entitycollisionoptimizer.natives.CollisionFrame;
 import org.edtp.entitycollisionoptimizer.natives.FFMBackend;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
-import net.minecraft.core.BlockPos;
-import net.minecraft.core.registries.Registries;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.network.Connection;
-import net.minecraft.network.protocol.PacketFlow;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.level.ClientInformation;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.server.network.CommonListenerCookie;
-import net.minecraft.world.InteractionHand;
-import net.minecraft.world.entity.EntityTypes;
-import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.attributes.RangedAttribute;
 import net.minecraft.world.entity.monster.zombie.Zombie;
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Items;
-import net.minecraft.world.item.enchantment.Enchantments;
-import net.minecraft.world.level.GameType;
-import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.phys.Vec3;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Locale;
-import java.util.Objects;
 import java.util.Set;
-import java.util.UUID;
 
 /**
  * Opt-in integration benchmark. Run with {@code ./gradlew runGameTest -Pbenchmark}.
  */
 public final class ZombieCollisionBenchmark {
-    private static final int ENTITY_COUNT = 1_000;
-    private static final float BENCHMARK_HEALTH = 100_000_000.0F;
-    private static final int ATTACK_INTERVAL_TICKS = 13;
-    private static final int CHAMBER_MIN = 1;
-    private static final int CHAMBER_MAX = 3;
-    private static final int CHAMBER_FLOOR_Y = 0;
-    private static final int CHAMBER_CEILING_Y = 3;
-    private static final Vec3 CHAMBER_CENTER = new Vec3(2.5, 1.0, 2.5);
+    private static final int LAYER_COUNT = 3;
+    private static final int ENTITY_COUNT = LAYER_COUNT * ZombieBenchmarkLayer.ENTITY_COUNT;
     private static BenchmarkRun activeRun;
 
     static {
@@ -71,7 +45,6 @@ public final class ZombieCollisionBenchmark {
             return;
         }
 
-        buildStoneChamber(helper);
         BenchmarkRun run = new BenchmarkRun(helper);
         try {
             run.start();
@@ -81,7 +54,8 @@ public final class ZombieCollisionBenchmark {
         }
         activeRun = run;
 
-        int expectedPairs = ENTITY_COUNT * (ENTITY_COUNT - 1) / 2;
+        int expectedPairs = LAYER_COUNT * ZombieBenchmarkLayer.ENTITY_COUNT
+                * (ZombieBenchmarkLayer.ENTITY_COUNT - 1) / 2;
         int detectedPairs = detectAllPairs(run.zombies);
         if (detectedPairs != expectedPairs) {
             run.cleanup();
@@ -92,14 +66,19 @@ public final class ZombieCollisionBenchmark {
         }
         EntityCollisionOptimizer.LOGGER.info(
                 "ECO_BENCHMARK_START entities={} scenario=natural_enclosed_zombies "
+                        + "layers={} players={} entities_per_layer={} vertical_stride={} "
                         + "chamber=1x2x1 health={} samples_per_mode={} verified_initial_pairs={} "
                         + "attacker=survival_player weapon=diamond_sword knockback_level=2 "
                         + "attack_interval_ticks={} profile_mode={}",
                 ENTITY_COUNT,
-                (long) BENCHMARK_HEALTH,
+                LAYER_COUNT,
+                LAYER_COUNT,
+                ZombieBenchmarkLayer.ENTITY_COUNT,
+                ZombieBenchmarkLayer.VERTICAL_STRIDE,
+                (long) ZombieBenchmarkLayer.BENCHMARK_HEALTH,
                 run.samplesPerMode(),
                 detectedPairs,
-                ATTACK_INTERVAL_TICKS,
+                ZombieBenchmarkLayer.ATTACK_INTERVAL_TICKS,
                 run.profileMode
         );
 
@@ -177,22 +156,6 @@ public final class ZombieCollisionBenchmark {
         run.replacePopulation();
     }
 
-    private static void buildStoneChamber(GameTestHelper helper) {
-        for (int y = CHAMBER_FLOOR_Y; y <= CHAMBER_CEILING_Y; y++) {
-            for (int x = CHAMBER_MIN; x <= CHAMBER_MAX; x++) {
-                for (int z = CHAMBER_MIN; z <= CHAMBER_MAX; z++) {
-                    boolean boundary = y == CHAMBER_FLOOR_Y
-                            || y == CHAMBER_CEILING_Y
-                            || x == CHAMBER_MIN
-                            || x == CHAMBER_MAX
-                            || z == CHAMBER_MIN
-                            || z == CHAMBER_MAX;
-                    helper.setBlock(new BlockPos(x, y, z), boundary ? Blocks.STONE : Blocks.AIR);
-                }
-            }
-        }
-    }
-
     private static int detectAllPairs(List<Zombie> zombies) {
         return detectDirectedEdges(zombies) / 2;
     }
@@ -236,16 +199,9 @@ public final class ZombieCollisionBenchmark {
         private final List<Double> optimizedSamples = new ArrayList<>(400);
         private final Trial[] trials;
 
-        private ServerPlayer player;
-        private EmbeddedChannel playerChannel;
+        private final List<ZombieBenchmarkLayer> layers = new ArrayList<>(LAYER_COUNT);
         private int trialIndex;
         private int trialTick;
-        private int trialAttacks;
-        private int trialAcceptedAttacks;
-        private int trialObservedKnockbacks;
-        private int totalAttacks;
-        private int totalAcceptedAttacks;
-        private int totalObservedKnockbacks;
         private long tickStartedAt;
         private boolean done;
         private boolean healthLimitRaised;
@@ -272,10 +228,15 @@ public final class ZombieCollisionBenchmark {
 
         private void start() {
             MovementScanDiagnostics.start();
-            maxHealthAttribute.entityCollisionOptimizer$setMaxValue(BENCHMARK_HEALTH);
+            maxHealthAttribute.entityCollisionOptimizer$setMaxValue(ZombieBenchmarkLayer.BENCHMARK_HEALTH);
             healthLimitRaised = true;
             CollisionOptimizerConfig.enableEntityCollision = currentTrial().optimized;
-            spawnPlayer();
+            for (int index = 0; index < LAYER_COUNT; index++) {
+                ZombieBenchmarkLayer layer = new ZombieBenchmarkLayer(helper, index);
+                layers.add(layer);
+                layer.buildChamber();
+                layer.spawnPlayer();
+            }
             spawnPopulation();
         }
 
@@ -290,123 +251,34 @@ public final class ZombieCollisionBenchmark {
         private void replacePopulation() {
             discardPopulation();
             CollisionOptimizerConfig.enableEntityCollision = currentTrial().optimized;
-            resetPlayerForTrial();
+            layers.forEach(ZombieBenchmarkLayer::resetPlayerForTrial);
             spawnPopulation();
         }
 
-        private void spawnPlayer() {
-            GameProfile profile = new GameProfile(UUID.randomUUID(), "eco-benchmark-player");
-            CommonListenerCookie cookie = CommonListenerCookie.createInitial(profile, false);
-            player = new ServerPlayer(
-                    helper.getLevel().getServer(),
-                    helper.getLevel(),
-                    profile,
-                    ClientInformation.createDefault()
-            );
-            Connection connection = new Connection(PacketFlow.SERVERBOUND);
-            playerChannel = new EmbeddedChannel(connection);
-            helper.getLevel().getServer().getPlayerList().placeNewPlayer(connection, player, cookie);
-            player.setGameMode(GameType.SURVIVAL);
-            if (player.gameMode() != GameType.SURVIVAL) {
-                throw new IllegalStateException("Failed to create a survival benchmark player");
-            }
-            AttributeInstance maxHealth = Objects.requireNonNull(
-                    player.getAttribute(Attributes.MAX_HEALTH),
-                    "Player max-health attribute"
-            );
-            maxHealth.setBaseValue(BENCHMARK_HEALTH);
-
-            ItemStack sword = new ItemStack(Items.DIAMOND_SWORD);
-            var knockback = helper.getLevel()
-                    .registryAccess()
-                    .lookupOrThrow(Registries.ENCHANTMENT)
-                    .getOrThrow(Enchantments.KNOCKBACK);
-            sword.enchant(knockback, 2);
-            if (sword.getEnchantments().getLevel(knockback) != 2) {
-                throw new IllegalStateException("Failed to equip Knockback II for the benchmark player");
-            }
-            player.setItemInHand(InteractionHand.MAIN_HAND, sword);
-            resetPlayerForTrial();
-        }
-
-        private void resetPlayerForTrial() {
-            player.setHealth(BENCHMARK_HEALTH);
-            player.setPos(helper.absoluteVec(CHAMBER_CENTER));
-            player.setYRot(0.0F);
-            player.setXRot(0.0F);
-            player.setDeltaMovement(Vec3.ZERO);
-            player.resetAttackStrengthTicker();
-            trialAttacks = 0;
-            trialAcceptedAttacks = 0;
-            trialObservedKnockbacks = 0;
-        }
-
         private void attackIfReady() {
-            if (trialTick == 0 || trialTick % ATTACK_INTERVAL_TICKS != 0) {
-                return;
-            }
-
-            Zombie target = zombies.get(trialAttacks % zombies.size());
-            Vec3 movementBefore = target.getDeltaMovement();
-            player.attack(target);
-            Vec3 movementAfter = target.getDeltaMovement();
-
-            trialAttacks++;
-            totalAttacks++;
-            if (target.getLastHurtByPlayer() == player) {
-                trialAcceptedAttacks++;
-                totalAcceptedAttacks++;
-            }
-            double horizontalChange = Math.abs(movementAfter.x - movementBefore.x)
-                    + Math.abs(movementAfter.z - movementBefore.z);
-            if (horizontalChange > 1.0E-9) {
-                trialObservedKnockbacks++;
-                totalObservedKnockbacks++;
-            }
+            layers.forEach(layer -> layer.attackIfReady(trialTick));
         }
 
         private void spawnPopulation() {
-            for (int index = 0; index < ENTITY_COUNT; index++) {
-                Zombie zombie = helper.spawn(EntityTypes.ZOMBIE, CHAMBER_CENTER);
-                AttributeInstance maxHealth = Objects.requireNonNull(
-                        zombie.getAttribute(Attributes.MAX_HEALTH),
-                        "Zombie max-health attribute"
-                );
-                maxHealth.setBaseValue(BENCHMARK_HEALTH);
-                zombie.setHealth(BENCHMARK_HEALTH);
-                zombie.setPersistenceRequired();
-                zombies.add(zombie);
+            for (ZombieBenchmarkLayer layer : layers) {
+                layer.spawnPopulation();
+                zombies.addAll(layer.zombies);
             }
             MovementScanDiagnostics.population(zombies);
         }
 
         private void verifyPopulation() {
-            long alive = zombies.stream().filter(zombie -> !zombie.isRemoved() && zombie.isAlive()).count();
-            if (alive != ENTITY_COUNT) {
-                throw new IllegalStateException(
-                        "Benchmark population changed: " + alive + " of " + ENTITY_COUNT + " zombies remain"
-                );
-            }
-            if (player == null || player.isRemoved() || !player.isAlive()) {
-                throw new IllegalStateException("Benchmark player did not survive the trial");
-            }
-            if (trialAttacks == 0 || trialAcceptedAttacks == 0) {
-                throw new IllegalStateException(
-                        "None of the " + trialAttacks + " player attacks were accepted by the vanilla damage path"
-                );
-            }
-            if (trialObservedKnockbacks != trialAcceptedAttacks) {
-                throw new IllegalStateException(
-                        trialObservedKnockbacks + " of " + trialAcceptedAttacks
-                                + " accepted Knockback II attacks changed horizontal velocity"
-                );
+            for (ZombieBenchmarkLayer layer : layers) {
+                layer.verifyPopulation();
+                EntityCollisionOptimizer.LOGGER.info(
+                        "ECO_BENCHMARK_LAYER index={} entities={} attacks={} accepted_attacks={} observed_knockbacks={}",
+                        layer.index, layer.zombies.size(), layer.trialAttacks,
+                        layer.trialAcceptedAttacks, layer.trialObservedKnockbacks);
             }
         }
 
         private void discardPopulation() {
-            for (Zombie zombie : zombies) {
-                zombie.discard();
-            }
+            layers.forEach(ZombieBenchmarkLayer::discardPopulation);
             zombies.clear();
         }
 
@@ -428,9 +300,9 @@ public final class ZombieCollisionBenchmark {
                         profile.mean,
                         profile.median,
                         profile.p95,
-                        totalAttacks,
-                        totalAcceptedAttacks,
-                        totalObservedKnockbacks
+                        layers.stream().mapToInt(layer -> layer.totalAttacks).sum(),
+                        layers.stream().mapToInt(layer -> layer.totalAcceptedAttacks).sum(),
+                        layers.stream().mapToInt(layer -> layer.totalObservedKnockbacks).sum()
                 ));
                 done = true;
                 return;
@@ -458,9 +330,9 @@ public final class ZombieCollisionBenchmark {
                     saved,
                     improvement,
                     speedup,
-                    totalAttacks,
-                    totalAcceptedAttacks,
-                    totalObservedKnockbacks
+                    layers.stream().mapToInt(layer -> layer.totalAttacks).sum(),
+                    layers.stream().mapToInt(layer -> layer.totalAcceptedAttacks).sum(),
+                    layers.stream().mapToInt(layer -> layer.totalObservedKnockbacks).sum()
             ));
             done = true;
         }
@@ -468,14 +340,7 @@ public final class ZombieCollisionBenchmark {
         private void cleanup() {
             CollisionOptimizerConfig.enableEntityCollision = originalCollisionSetting;
             discardPopulation();
-            if (player != null) {
-                helper.getLevel().getServer().getPlayerList().remove(player);
-                player = null;
-            }
-            if (playerChannel != null) {
-                playerChannel.close();
-                playerChannel = null;
-            }
+            layers.forEach(ZombieBenchmarkLayer::cleanup);
             restoreHealthLimit();
         }
 
