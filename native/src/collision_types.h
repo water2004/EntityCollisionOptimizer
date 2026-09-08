@@ -37,6 +37,7 @@ struct EntityMetadata {
 
 struct Cell {
     std::int64_t x;
+    std::int64_t y;
     std::int64_t z;
 
     bool operator==(const Cell&) const = default;
@@ -54,6 +55,8 @@ struct CellMembers {
 struct CandidateCursor {
     const std::vector<int>* ids;
     std::size_t index;
+    Cell cell;
+    unsigned ownershipAxes;
     int entity() const noexcept { return (*ids)[index]; }
 };
 

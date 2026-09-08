@@ -25,6 +25,7 @@ public final class VanillaCollisionParityGameTests {
     @GameTest(maxTicks = 200, padding = 48)
     public void nativeQueryContract(GameTestHelper helper) {
         org.edtp.entitycollisionoptimizer.natives.NativeQueryChecks.verify(helper);
+        org.edtp.entitycollisionoptimizer.natives.VerticalIndexChecks.verify(helper);
         org.edtp.entitycollisionoptimizer.natives.NativeHardQueryChecks.verify(helper);
         helper.succeed();
     }

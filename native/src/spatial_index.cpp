@@ -9,6 +9,7 @@ namespace eco {
 
 std::size_t CellHash::operator()(const Cell& cell) const noexcept {
     std::uint64_t x = static_cast<std::uint64_t>(cell.x);
+    std::uint64_t y = static_cast<std::uint64_t>(cell.y);
     std::uint64_t z = static_cast<std::uint64_t>(cell.z);
     x ^= x >> 30;
     x *= 0xbf58476d1ce4e5b9ULL;
@@ -20,6 +21,12 @@ std::size_t CellHash::operator()(const Cell& cell) const noexcept {
     z ^= z >> 27;
     z *= 0x94d049bb133111ebULL;
     z ^= z >> 31;
+    y ^= y >> 30;
+    y *= 0xbf58476d1ce4e5b9ULL;
+    y ^= y >> 27;
+    y *= 0x94d049bb133111ebULL;
+    y ^= y >> 31;
+    x ^= y + 0x9e3779b97f4a7c15ULL + (x << 6) + (x >> 2);
     return static_cast<std::size_t>(x ^ (z + 0x9e3779b97f4a7c15ULL + (x << 6) + (x >> 2)));
 }
 
@@ -59,15 +66,22 @@ std::vector<Cell> coveredCells(const Aabb& box, int gridSize) {
     const double negativeInfinity = -std::numeric_limits<double>::infinity();
     const std::int64_t minCellX = cellCoordinate(box.minX, gridSize);
     const std::int64_t maxCellX = cellCoordinate(std::nextafter(box.maxX, negativeInfinity), gridSize);
+    const std::int64_t minCellY = cellCoordinate(box.minY, gridSize);
+    const std::int64_t maxCellY = cellCoordinate(std::nextafter(box.maxY, negativeInfinity), gridSize);
     const std::int64_t minCellZ = cellCoordinate(box.minZ, gridSize);
     const std::int64_t maxCellZ = cellCoordinate(std::nextafter(box.maxZ, negativeInfinity), gridSize);
 
     const std::size_t width = static_cast<std::size_t>(maxCellX - minCellX + 1);
+    const std::size_t height = static_cast<std::size_t>(maxCellY - minCellY + 1);
     const std::size_t depth = static_cast<std::size_t>(maxCellZ - minCellZ + 1);
-    result.reserve(width * depth);
+    result.reserve(width * height * depth);
+    // The first membership is the component-wise minimum cell; ordered queries
+    // use it to assign each candidate to its unique lowest common cell.
     for (std::int64_t x = minCellX; x <= maxCellX; ++x) {
         for (std::int64_t z = minCellZ; z <= maxCellZ; ++z) {
-            result.push_back({x, z});
+            for (std::int64_t y = minCellY; y <= maxCellY; ++y) {
+                result.push_back({x, y, z});
+            }
         }
     }
     return result;

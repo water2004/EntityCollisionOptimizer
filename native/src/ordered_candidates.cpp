@@ -26,6 +26,21 @@ struct Later {
     }
 };
 
+// Two axis-aligned cell ranges have one component-wise minimum common cell.
+// Emit the candidate only there, before heap merging rather than after it.
+// Filtering each sorted stream preserves its order, including section/insertion order.
+bool seekOwned(CollisionContext& context, CandidateCursor& cursor) {
+    if (cursor.ownershipAxes == 0) return cursor.index < cursor.ids->size();
+    while (cursor.index < cursor.ids->size()) {
+        const Cell& minimum = context.memberships[cursor.entity()].front();
+        if (((cursor.ownershipAxes & 1) == 0 || minimum.x == cursor.cell.x)
+                && ((cursor.ownershipAxes & 2) == 0 || minimum.y == cursor.cell.y)
+                && ((cursor.ownershipAxes & 4) == 0 || minimum.z == cursor.cell.z)) return true;
+        ++cursor.index;
+    }
+    return false;
+}
+
 } // namespace
 
 void invalidateCandidateOrder(CollisionContext& context, int entityId) {
@@ -38,6 +53,8 @@ void invalidateCandidateOrder(CollisionContext& context, int entityId) {
 OrderedCandidates::OrderedCandidates(CollisionContext& context, int sourceId) : context(context) {
     auto& heap = context.candidateHeap;
     heap.clear(); // Previous query's cursors must never survive mutation of the spatial index.
+    if (context.memberships[sourceId].empty()) return;
+    const Cell& minimum = context.memberships[sourceId].front();
     for (const auto& cell : context.memberships[sourceId]) {
         auto found = context.cells.find(cell);
         if (found == context.cells.end()) continue;
@@ -48,27 +65,38 @@ OrderedCandidates::OrderedCandidates(CollisionContext& context, int sourceId) : 
             });
             members.orderDirty = false;
         }
-        if (!members.ids.empty()) heap.push_back({&members.ids, 0});
+        unsigned ownershipAxes = (cell.x > minimum.x ? 1u : 0u)
+                | (cell.y > minimum.y ? 2u : 0u) | (cell.z > minimum.z ? 4u : 0u);
+        CandidateCursor cursor{&members.ids, 0, cell, ownershipAxes};
+        if (seekOwned(context, cursor)) heap.push_back(cursor);
     }
     std::make_heap(heap.begin(), heap.end(), Later{context});
 }
 
 int OrderedCandidates::next() {
     auto& heap = context.candidateHeap;
-    while (!heap.empty()) {
-        std::pop_heap(heap.begin(), heap.end(), Later{context});
-        auto cursor = heap.back();
+    if (heap.empty()) return -1;
+    const int id = heap.front().entity();
+    ++heap.front().index;
+    if (!seekOwned(context, heap.front())) {
+        heap.front() = heap.back();
         heap.pop_back();
-        int id = cursor.entity();
-        if (++cursor.index < cursor.ids->size()) {
-            heap.push_back(cursor);
-            std::push_heap(heap.begin(), heap.end(), Later{context});
-        }
-        if (id == previous) continue;
-        previous = id;
-        return id;
     }
-    return -1;
+    if (heap.empty()) return id;
+
+    // A stream only advances forward. Repair the root once instead of doing
+    // separate pop/push heap operations (and moving the cursor twice).
+    const CandidateCursor cursor = heap.front();
+    std::size_t parent = 0;
+    for (std::size_t child = 1; child < heap.size(); child = parent * 2 + 1) {
+        if (child + 1 < heap.size()
+                && before(context, heap[child + 1].entity(), heap[child].entity())) ++child;
+        if (!before(context, heap[child].entity(), cursor.entity())) break;
+        heap[parent] = heap[child];
+        parent = child;
+    }
+    heap[parent] = cursor;
+    return id;
 }
 
 } // namespace eco

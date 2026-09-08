@@ -81,29 +81,33 @@ int queryHardCollisionEntities(
         const double negativeInfinity = -std::numeric_limits<double>::infinity();
         const std::int64_t minCellX = eco::cellCoordinate(scan.minX, context.gridSize);
         const std::int64_t maxCellX = eco::cellCoordinate(std::nextafter(scan.maxX, negativeInfinity), context.gridSize);
+        const std::int64_t minCellY = eco::cellCoordinate(scan.minY, context.gridSize);
+        const std::int64_t maxCellY = eco::cellCoordinate(std::nextafter(scan.maxY, negativeInfinity), context.gridSize);
         const std::int64_t minCellZ = eco::cellCoordinate(scan.minZ, context.gridSize);
         const std::int64_t maxCellZ = eco::cellCoordinate(std::nextafter(scan.maxZ, negativeInfinity), context.gridSize);
         int resultSize = 0;
         for (std::int64_t cellX = minCellX; cellX <= maxCellX; ++cellX) {
             for (std::int64_t cellZ = minCellZ; cellZ <= maxCellZ; ++cellZ) {
-                const auto iterator = context.cells.find({cellX, cellZ});
-                if (iterator == context.cells.end()) {
-                    continue;
-                }
-                for (const int candidateId : iterator->second.ids) {
-                    if (candidateId == excludeId
-                            || context.queryMarks[candidateId] == context.queryGeneration) {
+                for (std::int64_t cellY = minCellY; cellY <= maxCellY; ++cellY) {
+                    const auto iterator = context.cells.find({cellX, cellY, cellZ});
+                    if (iterator == context.cells.end()) {
                         continue;
                     }
-                    context.queryMarks[candidateId] = context.queryGeneration;
-                    if ((hardOnly != 0 && !context.metadata[candidateId].hardCollidable)
-                            || !eco::intersects(scan, context.boxes[candidateId])) {
-                        continue;
+                    for (const int candidateId : iterator->second.ids) {
+                        if ((hardOnly != 0 && !context.metadata[candidateId].hardCollidable)
+                                || candidateId == excludeId
+                                || context.queryMarks[candidateId] == context.queryGeneration) {
+                            continue;
+                        }
+                        context.queryMarks[candidateId] = context.queryGeneration;
+                        if (!eco::intersects(scan, context.boxes[candidateId])) {
+                            continue;
+                        }
+                        if (resultSize >= outputCapacity) {
+                            return -2;
+                        }
+                        output[resultSize++] = candidateId;
                     }
-                    if (resultSize >= outputCapacity) {
-                        return -2;
-                    }
-                    output[resultSize++] = candidateId;
                 }
             }
         }
