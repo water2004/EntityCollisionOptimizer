@@ -15,11 +15,9 @@ import net.minecraft.world.scores.PlayerTeam;
 import net.minecraft.world.scores.Scoreboard;
 import net.minecraft.world.scores.Team;
 import org.edtp.entitycollisionoptimizer.collision.VanillaEntityCollision;
-import org.edtp.entitycollisionoptimizer.compat.CarpetCompatibility;
 import org.edtp.entitycollisionoptimizer.natives.CollisionFrame;
 import org.edtp.entitycollisionoptimizer.natives.FFMBackend;
 
-import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -121,31 +119,6 @@ final class CollisionPredicateParity {
                 entity.discard();
             }
             CollisionFrame.end(level);
-        }
-    }
-
-    static void verifyCarpetOwnership(GameTestHelper helper) {
-        if (!CarpetCompatibility.isCarpetLoaded()) {
-            return;
-        }
-
-        try {
-            Field collisionLimit = Class.forName("carpet.CarpetSettings")
-                    .getField("maxEntityCollisions");
-            int originalLimit = collisionLimit.getInt(null);
-            try {
-                collisionLimit.setInt(null, 1);
-                helper.assertTrue(
-                        CarpetCompatibility.ownsEntityCollisions(),
-                        "Carpet must own collisions when maxEntityCollisions is active"
-                );
-                CollisionPushParity.verifyPushOutcome(helper, false);
-            } finally {
-                collisionLimit.setInt(null, originalLimit);
-                CarpetCompatibility.refreshCollisionOwnership();
-            }
-        } catch (ReflectiveOperationException failure) {
-            throw new IllegalStateException("Cannot exercise Carpet collision ownership", failure);
         }
     }
 

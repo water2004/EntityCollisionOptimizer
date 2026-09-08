@@ -1,6 +1,5 @@
 package org.edtp.entitycollisionoptimizer.mixin;
 
-import org.edtp.entitycollisionoptimizer.compat.CarpetCompatibility;
 import org.edtp.entitycollisionoptimizer.config.CollisionOptimizerConfig;
 import org.edtp.entitycollisionoptimizer.natives.CollisionFrame;
 import net.minecraft.server.level.ServerLevel;
@@ -27,7 +26,7 @@ public abstract class ServerLevelMixin {
             CallbackInfo ci
     ) {
         ServerLevel self = (ServerLevel) (Object) this;
-        if (CollisionOptimizerConfig.enableEntityCollision && !CarpetCompatibility.ownsEntityCollisions()) {
+        if (CollisionOptimizerConfig.enableEntityCollision) {
             CollisionFrame.begin(self);
         } else {
             CollisionFrame.suspend(self);

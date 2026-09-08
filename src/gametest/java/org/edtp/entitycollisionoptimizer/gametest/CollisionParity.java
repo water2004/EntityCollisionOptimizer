@@ -27,7 +27,6 @@ final class CollisionParity {
             CollisionDispatchParity.verify(helper);
             CollisionTransitionParity.verify(helper);
             CollisionRepeatedFrameParity.verify(helper);
-            CollisionPredicateParity.verifyCarpetOwnership(helper);
         } finally {
             CollisionOptimizerConfig.enableEntityCollision = originalCollisionMode;
             level.getGameRules().set(GameRules.MAX_ENTITY_CRAMMING, originalCramming, level.getServer());
