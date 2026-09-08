@@ -146,6 +146,8 @@ final class ChunkLoadParity {
             helper.assertTrue(overworld.getChunkSource().getChunkNow(weak.x(), weak.z()) != null, "weak chunk");
             helper.assertTrue(overworld.getChunkSource().getChunkNow(loaded.x(), loaded.z()) != null, "loaded chunk");
             helper.assertTrue(nether().getChunkSource().getChunkNow(netherDest.x(), netherDest.z()) != null, "nether dest");
+            helper.assertTrue(nether().isPositionEntityTicking(netherDest.getWorldPosition()),
+                    "nether destination entity ticking ready");
             helper.assertTrue(overworld.isPositionEntityTicking(portalSource.getWorldPosition()), "portal source ready");
             BlockPos strongPos = strong.getWorldPosition().offset(8, 70, 8);
             BlockPos weakPos = weak.getWorldPosition().offset(8, 70, 8);
