@@ -17,6 +17,7 @@ int updateCollisionEntityMetadata(
         int teamId,
         int collisionRule,
         int bodySlot,
+        int hardCollidable,
         std::int64_t sectionOrder
 ) {
     if (contextPointer == nullptr || entityId < 0 || bodySlot < 0) {
@@ -34,6 +35,7 @@ int updateCollisionEntityMetadata(
         metadata.noPhysics = noPhysics != 0;
         metadata.vanillaEntityPush = vanillaEntityPush != 0;
         metadata.vanillaVectorPush = vanillaVectorPush != 0;
+        metadata.hardCollidable = hardCollidable != 0;
         metadata.teamId = teamId;
         metadata.collisionRule = collisionRule;
         metadata.bodySlot = bodySlot;

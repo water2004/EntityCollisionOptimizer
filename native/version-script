@@ -11,6 +11,7 @@
         invalidateCollisionEntityMetadata;
         invalidateCollisionMetadata;
         queryCollisionEntities;
+        queryHardCollisionEntities;
         queryPushableEntities;
         executePushRun;
         solveMovement;

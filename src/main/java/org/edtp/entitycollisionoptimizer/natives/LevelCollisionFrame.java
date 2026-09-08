@@ -11,6 +11,8 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.shapes.Shapes;
+import net.minecraft.world.phys.shapes.VoxelShape;
 import net.minecraft.world.scores.PlayerTeam;
 import net.minecraft.world.scores.Team;
 
@@ -25,6 +27,7 @@ final class LevelCollisionFrame {
     private static final long UNCACHED = Long.MIN_VALUE;
     private static final int INVALIDATE_SELECTABLE = 1;
     private static final int INVALIDATE_TEAM = 2;
+    private static final int[] NO_HARD_COLLISIONS = new int[0];
 
     private final TempID ids = new TempID();
     private final FFMBackend.Context nativeContext = FFMBackend.createContext();
@@ -74,6 +77,12 @@ final class LevelCollisionFrame {
                 entities.size(),
                 CollisionOptimizerConfig.gridSize
         );
+        for (int index = 0; index < entities.size(); index++) {
+            Entity entity = entities.get(index);
+            if (!VanillaEntityCollision.classNeverHardCollides(entity)) {
+                refreshNativeMetadata(index, entity);
+            }
+        }
         active = true;
     }
 
@@ -124,6 +133,9 @@ final class LevelCollisionFrame {
         ensureSemanticCapacity(nativeId + 1);
         selectableEntityRevisions[nativeId] = UNCACHED;
         teamRevisions[nativeId] = UNCACHED;
+        if (!VanillaEntityCollision.classNeverHardCollides(entity)) {
+            refreshNativeMetadata(nativeId, entity);
+        }
     }
 
     synchronized void updateBoundingBox(Entity entity) {
@@ -153,6 +165,80 @@ final class LevelCollisionFrame {
     synchronized FFMBackend.QueryResult query(Entity source) {
         addEntity(source);
         return FFMBackend.query(nativeContext, ids.getId(source), ids.size());
+    }
+
+    synchronized int[] hardCollision(Entity source, AABB scan) {
+        addEntity(source);
+        if (scan.getSize() < 1.0E-7) {
+            return NO_HARD_COLLISIONS;
+        }
+        FFMBackend.QueryResult result = FFMBackend.queryHard(
+                nativeContext,
+                scan.inflate(1.0E-7),
+                ids.getId(source),
+                VanillaEntityCollision.usesVanillaHardCollision(source),
+                ids.size()
+        );
+        int[] matches = new int[result.size()];
+        int count = 0;
+        for (int index = 0; index < result.size(); index++) {
+            int nativeId = result.get(index);
+            Entity target = ids.getEntity(nativeId);
+            if (target == null) {
+                throw new IllegalStateException("Native hard collision query returned unknown entity " + nativeId);
+            }
+            if (target.isRemoved() || target.isSpectator() || !source.canCollideWith(target)) {
+                continue;
+            }
+            matches[count++] = nativeId;
+        }
+        return count == matches.length ? matches : Arrays.copyOf(matches, count);
+    }
+
+    synchronized void addHardCubes(int[] hardIds, NativeShapeBatch shapes) {
+        for (int nativeId : hardIds) {
+            Entity target = ids.getEntity(nativeId);
+            if (target == null) {
+                throw new IllegalStateException("Native hard collision cube requested unknown entity " + nativeId);
+            }
+            shapes.addCube(bodies.movementRow(bodies.slot(target)));
+        }
+    }
+
+    synchronized List<VoxelShape> entityCollisions(Entity source, AABB scan) {
+        if (source != null) {
+            addEntity(source);
+        }
+        if (scan.getSize() < 1.0E-7) {
+            return List.of();
+        }
+        int excludeId = source == null ? -1 : ids.getId(source);
+        FFMBackend.QueryResult result = FFMBackend.queryHard(
+                nativeContext,
+                scan.inflate(1.0E-7),
+                excludeId,
+                source == null || VanillaEntityCollision.usesVanillaHardCollision(source),
+                ids.size()
+        );
+        if (result.size() == 0) {
+            return List.of();
+        }
+        List<VoxelShape> shapes = new ArrayList<>(result.size());
+        for (int index = 0; index < result.size(); index++) {
+            int nativeId = result.get(index);
+            Entity target = ids.getEntity(nativeId);
+            if (target == null) {
+                throw new IllegalStateException("Native hard collision query returned unknown entity " + nativeId);
+            }
+            if (target.isRemoved() || target.isSpectator()) {
+                continue;
+            }
+            if (source == null ? !target.canBeCollidedWith(null) : !source.canCollideWith(target)) {
+                continue;
+            }
+            shapes.add(Shapes.create(target.getBoundingBox()));
+        }
+        return shapes.isEmpty() ? List.of() : List.copyOf(shapes);
     }
 
     synchronized FFMBackend.QueryResult queryPushable(
@@ -287,6 +373,8 @@ final class LevelCollisionFrame {
                 teamId(targetTeam),
                 collisionRuleId(VanillaEntityCollision.collisionRule(targetTeam)),
                 bodies.slot(entity),
+                !entity.isRemoved() && !entity.isSpectator()
+                        && !VanillaEntityCollision.classNeverHardCollides(entity),
                 ((CollisionOrderState) entity).eco$sectionOrder()
         );
     }

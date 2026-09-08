@@ -6,6 +6,7 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import net.minecraft.world.phys.shapes.CollisionContext;
+import org.edtp.entitycollisionoptimizer.natives.CollisionFrame;
 import org.edtp.entitycollisionoptimizer.natives.NativeMovement;
 import org.edtp.entitycollisionoptimizer.natives.NativeShapeBatch;
 
@@ -25,16 +26,16 @@ public final class EntityMovementCollision {
         NativeMovement movement = new NativeMovement(entity, requested, null, true);
         try {
             AABB scan = movement.stepScan();
-            List<VoxelShape> entities = level.getEntityCollisions(entity, scan);
+            int[] hardIds = CollisionFrame.hardCollision(entity, scan);
             movement.steppingState();
             try (NativeShapeBatch shapes = new NativeShapeBatch()) {
                 if (requested.lengthSqr() != 0.0) {
                     OrderedBlockColliders.collectNative(level, CollisionContext.of(entity), entity,
-                            scan, entities, shapes);
+                            scan, hardIds, shapes);
                 }
                 movement.solve(shapes, false);
             }
-            if (movement.needsStep()) collectStep(entity, entities, movement);
+            if (movement.needsStep()) collectStep(entity, hardIds, movement);
             return movement;
         } catch (RuntimeException | Error failure) {
             movement.close();
@@ -42,10 +43,10 @@ public final class EntityMovementCollision {
         }
     }
 
-    private static void collectStep(Entity entity, List<VoxelShape> entities, NativeMovement movement) {
+    private static void collectStep(Entity entity, int[] hardIds, NativeMovement movement) {
         try (NativeShapeBatch shapes = new NativeShapeBatch()) {
             OrderedBlockColliders.collectNative(entity.level(), CollisionContext.of(entity), entity,
-                    movement.stepScan(), entities, shapes);
+                    movement.stepScan(), hardIds, shapes);
             movement.solve(shapes, true);
         }
     }

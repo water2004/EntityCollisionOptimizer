@@ -97,7 +97,7 @@ public final class NativeOrderChecks {
 
     private static void metadata(FFMBackend.Context context, int id, Body body) {
         FFMBackend.updateEntityMetadata(context, id, body.selectable, body.passenger, false, false,
-                true, true, -1, 0, 100 + id, body.order);
+                true, true, -1, 0, 100 + id, false, body.order);
     }
 
     private static final class Body {

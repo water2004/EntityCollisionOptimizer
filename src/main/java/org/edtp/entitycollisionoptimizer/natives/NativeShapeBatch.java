@@ -2,6 +2,7 @@ package org.edtp.entitycollisionoptimizer.natives;
 
 import net.minecraft.world.phys.shapes.VoxelShape;
 import org.edtp.entitycollisionoptimizer.collision.blocks.NativeVoxelAccess;
+import org.edtp.entitycollisionoptimizer.collision.blocks.NativeVoxelGeometry;
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
@@ -30,8 +31,16 @@ public final class NativeShapeBatch implements AutoCloseable {
 
     public void add(VoxelShape shape) { add(shape, 0, 0, 0, false); }
     public void addTranslated(VoxelShape shape, double x, double y, double z) { add(shape, x, y, z, true); }
+    public void addCube(MemorySegment bounds) {
+        if (closed) throw new IllegalStateException("Closed shape batch");
+        retain(NativeVoxelGeometry.createCube(bounds), false, 0, 0, 0);
+    }
 
     private void add(VoxelShape shape, double x, double y, double z, boolean translated) {
+        retain(((NativeVoxelAccess) shape).eco$nativeGeometry(), translated, x, y, z);
+    }
+
+    private void retain(MemorySegment geometry, boolean translated, double x, double y, double z) {
         if (closed) throw new IllegalStateException("Closed shape batch");
         if (count == storage.retained.length) {
             int capacity = count + (count >> 1) + 16;
@@ -40,7 +49,6 @@ public final class NativeShapeBatch implements AutoCloseable {
             storage.references = next;
             storage.retained = Arrays.copyOf(storage.retained, capacity);
         }
-        MemorySegment geometry = ((NativeVoxelAccess) shape).eco$nativeGeometry();
         storage.retained[count] = geometry; // Native pointers alone do not keep automatic arenas alive.
         long offset = (long) count++ * STRIDE;
         MemorySegment references = storage.references;

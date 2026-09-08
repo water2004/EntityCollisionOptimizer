@@ -9,6 +9,7 @@ import net.minecraft.world.phys.shapes.BooleanOp;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
+import org.edtp.entitycollisionoptimizer.natives.CollisionFrame;
 import org.edtp.entitycollisionoptimizer.natives.NativeShapeBatch;
 import org.edtp.entitycollisionoptimizer.natives.NativeBlockScan;
 
@@ -40,6 +41,17 @@ public final class OrderedBlockColliders {
     public static void collectNative(Level level, CollisionContext context, Entity entity,
                                      AABB box, List<VoxelShape> entityShapes, NativeShapeBatch result) {
         for (VoxelShape shape : entityShapes) result.add(shape);
+        collectWorld(level, context, entity, box, result);
+    }
+
+    public static void collectNative(Level level, CollisionContext context, Entity entity,
+                                     AABB box, int[] hardIds, NativeShapeBatch result) {
+        CollisionFrame.addHardCubes(entity, hardIds, result);
+        collectWorld(level, context, entity, box, result);
+    }
+
+    private static void collectWorld(Level level, CollisionContext context, Entity entity,
+                                     AABB box, NativeShapeBatch result) {
         var border = level.getWorldBorder();
         if (entity != null && border.isInsideCloseToBorder(entity, box)) result.add(border.getCollisionShape());
         new Scan(level, context, box, result::addTranslated).run();

@@ -122,7 +122,7 @@ public final class NativeQueryChecks {
 
     private static void metadata(FFMBackend.Context context, int id, Body b) {
         FFMBackend.updateEntityMetadata(context, id, b.selectable, b.passenger, false, false,
-                b.entityPush, b.vectorPush, b.team, b.rule, 900 - id, b.order);
+                b.entityPush, b.vectorPush, b.team, b.rule, 900 - id, false, b.order);
     }
 
     private record Body(AABB box, int x, int y, int z, int team, int rule, boolean selectable,

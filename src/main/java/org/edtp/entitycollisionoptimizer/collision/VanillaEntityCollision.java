@@ -14,6 +14,16 @@ import net.minecraft.world.phys.Vec3;
  */
 public final class VanillaEntityCollision {
     private static final ClassValue<Boolean> SCOREBOARD_TEAM = declaringClass("getTeam", Entity.class);
+    private static final ClassValue<Boolean> VANILLA_HARD_TARGET = declaringClass(
+            "canBeCollidedWith",
+            Entity.class,
+            Entity.class
+    );
+    private static final ClassValue<Boolean> VANILLA_HARD_SOURCE = declaringClass(
+            "canCollideWith",
+            Entity.class,
+            Entity.class
+    );
 
     /** Only Entity's scoreboard lookup is revision-cached; derived vanilla teams are read live. */
     public static boolean usesScoreboardTeam(Entity entity) {
@@ -101,6 +111,16 @@ public final class VanillaEntityCollision {
         }
         return (sourceRule != Team.CollisionRule.PUSH_OTHER_TEAMS
                 && targetRule != Team.CollisionRule.PUSH_OTHER_TEAMS) || allied;
+    }
+
+    /** Entity's default canBeCollidedWith is always false; boats/shulkers/etc. override it. */
+    public static boolean classNeverHardCollides(Entity entity) {
+        return VANILLA_HARD_TARGET.get(entity.getClass());
+    }
+
+    /** Entity.canCollideWith only keeps hard targets; boats also keep pushable entities. */
+    public static boolean usesVanillaHardCollision(Entity source) {
+        return VANILLA_HARD_SOURCE.get(source.getClass());
     }
 
     public static boolean usesVanillaDoPush(LivingEntity source) {

@@ -8,6 +8,7 @@
     "BodyFieldConsumersMixin",
     "InterfaceBodyFieldConsumersMixin",
     "CreakingMixin",
+    "CommonLevelAccessorMixin",
     "EntityMixin",
     "EntityBodyMixin",
     "EntitySectionMixin",

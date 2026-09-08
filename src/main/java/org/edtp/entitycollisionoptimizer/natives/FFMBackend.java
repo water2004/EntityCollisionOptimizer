@@ -42,6 +42,7 @@ public final class FFMBackend {
     private static MethodHandle invalidateEntityMetadata;
     private static MethodHandle invalidateMetadata;
     private static MethodHandle query;
+    private static MethodHandle queryHard;
     private static MethodHandle queryPushable;
     private static MethodHandle executeRun;
     private static MethodHandle movement;
@@ -238,6 +239,7 @@ public final class FFMBackend {
             int teamId,
             int collisionRule,
             int bodySlot,
+            boolean hardCollidable,
             long sectionOrder
     ) {
         synchronized (nativeContext) {
@@ -255,6 +257,7 @@ public final class FFMBackend {
                         teamId,
                         collisionRule,
                         bodySlot,
+                        hardCollidable ? 1 : 0,
                         sectionOrder
                 );
                 checkStatus("update native entity collision metadata", status);
@@ -311,6 +314,48 @@ public final class FFMBackend {
                 return result;
             } catch (Throwable failure) {
                 throw new IllegalStateException("FFM collision query failed", failure);
+            }
+        }
+    }
+
+    public static QueryResult queryHard(
+            Context nativeContext,
+            AABB scan,
+            int excludeId,
+            boolean hardOnly,
+            int entityCount
+    ) {
+        synchronized (nativeContext) {
+            nativeContext.ensureOpen();
+            nativeContext.ensureOutputCapacity(entityCount);
+            try {
+                int resultSize = (int) queryHard.invokeExact(
+                        nativeContext.address,
+                        scan.minX,
+                        scan.minY,
+                        scan.minZ,
+                        scan.maxX,
+                        scan.maxY,
+                        scan.maxZ,
+                        excludeId,
+                        hardOnly ? 1 : 0,
+                        nativeContext.outputBuffer,
+                        nativeContext.outputCapacity
+                );
+                if (resultSize < 0 || resultSize > nativeContext.outputCapacity) {
+                    throw new IllegalStateException(
+                            "Native hard collision query returned invalid size " + resultSize
+                    );
+                }
+                QueryResult result = nativeContext.queryResult;
+                result.offset = 0;
+                result.size = resultSize;
+                result.metadataRequired = false;
+                result.pushableCount = 0;
+                result.nonPassengerCount = 0;
+                return result;
+            } catch (Throwable failure) {
+                throw new IllegalStateException("FFM hard collision query failed", failure);
             }
         }
     }
@@ -500,6 +545,7 @@ public final class FFMBackend {
                         JAVA_INT,
                         JAVA_INT,
                         JAVA_INT,
+                        JAVA_INT,
                         JAVA_LONG
                 )
         );
@@ -516,6 +562,24 @@ public final class FFMBackend {
         query = linker.downcallHandle(
                 library.find("queryCollisionEntities").orElseThrow(() -> missingSymbol("queryCollisionEntities")),
                 FunctionDescriptor.of(JAVA_INT, ADDRESS, JAVA_INT, ADDRESS, JAVA_INT)
+        );
+        queryHard = linker.downcallHandle(
+                library.find("queryHardCollisionEntities")
+                        .orElseThrow(() -> missingSymbol("queryHardCollisionEntities")),
+                FunctionDescriptor.of(
+                        JAVA_INT,
+                        ADDRESS,
+                        JAVA_DOUBLE,
+                        JAVA_DOUBLE,
+                        JAVA_DOUBLE,
+                        JAVA_DOUBLE,
+                        JAVA_DOUBLE,
+                        JAVA_DOUBLE,
+                        JAVA_INT,
+                        JAVA_INT,
+                        ADDRESS,
+                        JAVA_INT
+                )
         );
         queryPushable = linker.downcallHandle(
                 library.find("queryPushableEntities")
@@ -592,6 +656,7 @@ public final class FFMBackend {
         invalidateEntityMetadata = null;
         invalidateMetadata = null;
         query = null;
+        queryHard = null;
         queryPushable = null;
         executeRun = null;
         movement = null;

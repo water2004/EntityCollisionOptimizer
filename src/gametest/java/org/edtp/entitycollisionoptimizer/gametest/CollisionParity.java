@@ -17,6 +17,7 @@ final class CollisionParity {
         try {
             CollisionPredicateParity.verifyPushabilityPredicate(helper);
             CollisionPredicateParity.verifyLiveSpatialIndex(helper);
+            HardCollisionParity.verify(helper);
             level.getGameRules().set(GameRules.MAX_ENTITY_CRAMMING, 0, level.getServer());
             CollisionPushParity.verifyPushOutcome(helper, false);
             CollisionPushParity.verifyPushOutcome(helper, true);

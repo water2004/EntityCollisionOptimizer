@@ -3,9 +3,12 @@ package org.edtp.entitycollisionoptimizer.natives;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.shapes.VoxelShape;
 import net.minecraft.world.scores.PlayerTeam;
 import net.minecraft.world.scores.Team;
 
+import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -78,6 +81,18 @@ public final class CollisionFrame {
         return frameFor(source).query(source);
     }
 
+    public static int[] hardCollision(Entity source, AABB scan) {
+        return frameFor(source).hardCollision(source, scan);
+    }
+
+    public static void addHardCubes(Entity source, int[] hardIds, NativeShapeBatch shapes) {
+        frameFor(source).addHardCubes(hardIds, shapes);
+    }
+
+    public static List<VoxelShape> entityCollisions(ServerLevel level, Entity source, AABB scan) {
+        return frameFor(level).entityCollisions(source, scan);
+    }
+
     public static FFMBackend.QueryResult queryPushable(
             LivingEntity source,
             PlayerTeam sourceTeam,
@@ -122,6 +137,10 @@ public final class CollisionFrame {
         if (!(entity.level() instanceof ServerLevel level)) {
             throw new IllegalArgumentException("Native entity collision queries require a server level");
         }
+        return frameFor(level);
+    }
+
+    private static LevelCollisionFrame frameFor(ServerLevel level) {
         LevelCollisionFrame frame = LEVEL_FRAMES.computeIfAbsent(level, ignored -> new LevelCollisionFrame());
         if (!frame.isActive()) {
             frame.begin(level);

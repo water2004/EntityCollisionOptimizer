@@ -6,7 +6,9 @@
 #include "ordered_candidates.h"
 
 #include <algorithm>
+#include <cmath>
 #include <cstddef>
+#include <limits>
 
 int queryCollisionEntities(void* contextPointer, int sourceId, int* output, int outputCapacity) {
     if (contextPointer == nullptr || sourceId < 0 || output == nullptr || outputCapacity < 0) {
@@ -33,6 +35,71 @@ int queryCollisionEntities(void* contextPointer, int sourceId, int* output, int 
                 }
                 context.queryMarks[candidateId] = context.queryGeneration;
                 if (eco::intersects(source, context.boxes[candidateId])) {
+                    if (resultSize >= outputCapacity) {
+                        return -2;
+                    }
+                    output[resultSize++] = candidateId;
+                }
+            }
+        }
+        return resultSize;
+    } catch (...) {
+        return -3;
+    }
+}
+
+int queryHardCollisionEntities(
+        void* contextPointer,
+        double minX,
+        double minY,
+        double minZ,
+        double maxX,
+        double maxY,
+        double maxZ,
+        int excludeId,
+        int hardOnly,
+        int* output,
+        int outputCapacity
+) {
+    if (contextPointer == nullptr || output == nullptr || outputCapacity < 0) {
+        return -1;
+    }
+    try {
+        auto& context = *static_cast<eco::CollisionContext*>(contextPointer);
+        if (excludeId < -1
+                || (excludeId >= 0
+                        && static_cast<std::size_t>(excludeId) >= context.boxes.size())) {
+            return -1;
+        }
+
+        const eco::Aabb scan = eco::makeAabb(minX, minY, minZ, maxX, maxY, maxZ);
+        if (!eco::isIndexable(scan)) {
+            return 0;
+        }
+
+        eco::beginQuery(context);
+        const double negativeInfinity = -std::numeric_limits<double>::infinity();
+        const std::int64_t minCellX = eco::cellCoordinate(scan.minX, context.gridSize);
+        const std::int64_t maxCellX = eco::cellCoordinate(std::nextafter(scan.maxX, negativeInfinity), context.gridSize);
+        const std::int64_t minCellZ = eco::cellCoordinate(scan.minZ, context.gridSize);
+        const std::int64_t maxCellZ = eco::cellCoordinate(std::nextafter(scan.maxZ, negativeInfinity), context.gridSize);
+        int resultSize = 0;
+        for (std::int64_t cellX = minCellX; cellX <= maxCellX; ++cellX) {
+            for (std::int64_t cellZ = minCellZ; cellZ <= maxCellZ; ++cellZ) {
+                const auto iterator = context.cells.find({cellX, cellZ});
+                if (iterator == context.cells.end()) {
+                    continue;
+                }
+                for (const int candidateId : iterator->second.ids) {
+                    if (candidateId == excludeId
+                            || context.queryMarks[candidateId] == context.queryGeneration) {
+                        continue;
+                    }
+                    context.queryMarks[candidateId] = context.queryGeneration;
+                    if ((hardOnly != 0 && !context.metadata[candidateId].hardCollidable)
+                            || !eco::intersects(scan, context.boxes[candidateId])) {
+                        continue;
+                    }
                     if (resultSize >= outputCapacity) {
                         return -2;
                     }

@@ -30,6 +30,7 @@ struct EntityMetadata {
     bool noPhysics = false;
     bool vanillaEntityPush = false;
     bool vanillaVectorPush = false;
+    bool hardCollidable = false;
     bool selectableValid = false;
     bool teamValid = false;
 };
