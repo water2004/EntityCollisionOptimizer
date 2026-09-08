@@ -154,17 +154,15 @@ int queryPushableEntities(
         int pushableCount = 0;
         int nonPassengerCount = 0;
         int actionableCount = 0;
-#if ECO_VANILLA_ORDER
-        eco::OrderedCandidates candidates(context, sourceId);
-#else
-        eco::UnorderedCandidates candidates(context, sourceId);
-#endif
-        for (int candidateId = candidates.next(); candidateId != -1; candidateId = candidates.next()) {
-            if (candidateId == sourceId) continue;
+        auto consume = [&](int candidateId) -> int {
+            if (candidateId == sourceId) return 0;
             const eco::EntityMetadata& target = context.metadata[candidateId];
-            if (!eco::intersects(source, context.boxes[candidateId])
-                    || !lookup.contains(target)) {
-                continue;
+            if (
+#if ECO_VANILLA_ORDER
+                    !eco::intersects(source, context.boxes[candidateId]) ||
+#endif
+                    !lookup.contains(target)) {
+                return 0;
             }
             if (!target.selectableValid || (target.selectable && !target.teamValid)) {
                 if (context.metadataMisses.size()
@@ -172,7 +170,7 @@ int queryPushableEntities(
                     return -2;
                 }
                 context.metadataMisses.push_back(candidateId);
-                continue;
+                return 0;
             }
             if (!target.selectable
                     || !eco::passesTeamRules(
@@ -181,7 +179,7 @@ int queryPushableEntities(
                             target.teamId,
                             target.collisionRule
                     )) {
-                continue;
+                return 0;
             }
             ++pushableCount;
             if (!target.passenger) {
@@ -195,7 +193,18 @@ int queryPushableEntities(
             nativePushOutput[actionableCount] = nativeSource
                     && target.vanillaEntityPush && target.vanillaVectorPush;
             ++actionableCount;
+            return 0;
+        };
+#if ECO_VANILLA_ORDER
+        eco::OrderedCandidates candidates(context, sourceId);
+        for (int id = candidates.next(); id != -1; id = candidates.next()) {
+            int status = consume(id);
+            if (status != 0) return status;
         }
+#else
+        int status = eco::visitIntersectingCandidates(context, sourceId, consume);
+        if (status != 0) return status;
+#endif
         if (!context.metadataMisses.empty()) {
             std::copy(
                     context.metadataMisses.begin(),
