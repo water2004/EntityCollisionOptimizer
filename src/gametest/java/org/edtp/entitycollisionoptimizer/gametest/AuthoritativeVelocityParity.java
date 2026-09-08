@@ -30,6 +30,8 @@ final class AuthoritativeVelocityParity {
             LivingEntity source = entities.getFirst();
             reset(entities);
             Vec3[] before = snapshot(entities);
+            Field storage = storageField();
+            Object[] unpublished = entities.stream().map(entity -> stored(storage, entity)).toArray();
             CollisionFrame.begin(helper.getLevel());
             try (var batch = CollisionFrame.collectPushable(source, null, Team.CollisionRule.ALWAYS, true)) {
                 helper.assertValueEqual(batch.size(), count - 1, "authoritative batch candidates");
@@ -47,9 +49,8 @@ final class AuthoritativeVelocityParity {
                 for (int run = 0; run < 7; run++) batch.applyNativeRun(source, 0, batch.size());
                 // Reflection is deliberately NOT the public velocity contract. It checks that
                 // this fixture truly skipped eager field publication; accessor checks follow.
-                Field storage = storageField();
                 for (int i = 0; i < count; i++) {
-                    helper.assertTrue(stored(storage, entities.get(i)) == before[i], "no eager Vec3 publication");
+                    helper.assertTrue(stored(storage, entities.get(i)) == unpublished[i], "no eager Vec3 publication");
                     helper.assertValueEqual(entities.get(i).needsSync, expectedSync[i], "sync is immediate");
                     entities.get(i).needsSync = false;
                     entities.get(i).setDeltaMovement(Double.NaN, 0, 0);

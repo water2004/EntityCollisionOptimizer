@@ -22,14 +22,14 @@ import java.util.Arrays;
 import java.util.IdentityHashMap;
 import java.util.List;
 
-/** One level's native frame, snapshots and semantic metadata; no cross-level scratch state. */
+/** One level's persistent spatial index and semantic metadata; no cross-level scratch state. */
 final class LevelCollisionFrame {
     private static final long UNCACHED = Long.MIN_VALUE;
     private static final int INVALIDATE_SELECTABLE = 1;
     private static final int INVALIDATE_TEAM = 2;
     private static final int[] NO_HARD_COLLISIONS = new int[0];
 
-    private final TempID ids = new TempID();
+    private final PersistentEntityIds ids = new PersistentEntityIds();
     private final FFMBackend.Context nativeContext = FFMBackend.createContext();
     private final CollisionStateTable bodies = new CollisionStateTable();
     private final IdentityHashMap<PlayerTeam, Integer> teamIds = new IdentityHashMap<>();
@@ -43,46 +43,17 @@ final class LevelCollisionFrame {
     private long nativeBlockRevision;
     private long nativeTeamRevision;
     private boolean active;
+    private boolean initialized;
 
     synchronized void begin(ServerLevel level) {
-        ids.tickStart();
-        teamIds.clear();
-        derivedTeams.clear();
-
-        List<Entity> entities = new ArrayList<>();
-        for (Entity entity : level.getAllEntities()) {
-            if (!entity.isRemoved()) {
-                ((CollisionCacheState) entity).entityCollisionOptimizer$resetPushabilityCache();
-                ids.addEntity(entity);
-                if (!VanillaEntityCollision.usesScoreboardTeam(entity)) derivedTeams.add(entity);
-                entities.add(entity);
+        if (!initialized) {
+            initialized = true;
+            // Bootstrap once. Tracking callbacks own membership after this point.
+            for (Entity entity : level.getAllEntities()) {
+                if (!entity.isRemoved()) addEntity(entity);
             }
         }
-
-        bodies.prune(ids::contains);
-        double[] boxes = new double[entities.size() * 6];
-        int[] sections = new int[entities.size() * 3];
-        for (int index = 0; index < entities.size(); index++) {
-            Entity entity = entities.get(index);
-            writeBox(boxes, index * 6, entity.getBoundingBox());
-            writeLocation(sections, index, entity);
-        }
-        prepareSemanticCaches(entities.size());
-        nativeBlockRevision = CollisionCacheEpochs.blockRevision();
-        nativeTeamRevision = CollisionCacheEpochs.teamRevision();
-        FFMBackend.beginFrame(
-                nativeContext,
-                boxes,
-                sections,
-                entities.size(),
-                CollisionOptimizerConfig.gridSize
-        );
-        for (int index = 0; index < entities.size(); index++) {
-            Entity entity = entities.get(index);
-            if (!VanillaEntityCollision.classNeverHardCollides(entity)) {
-                refreshNativeMetadata(index, entity);
-            }
-        }
+        synchronizeGlobalInvalidations();
         active = true;
     }
 
@@ -93,7 +64,9 @@ final class LevelCollisionFrame {
     synchronized void suspend() {
         active = false;
         bodies.clear();
-        ids.tickStart();
+        ids.clear();
+        initialized = false;
+        FFMBackend.beginFrame(nativeContext, new double[0], new int[0], 0, CollisionOptimizerConfig.gridSize);
         teamIds.clear();
         derivedTeams.clear();
         Arrays.fill(teams, null);
@@ -111,25 +84,17 @@ final class LevelCollisionFrame {
     }
 
     synchronized void addEntity(Entity entity) {
-        if (!active || entity.isRemoved() || ids.contains(entity)) {
+        if (!initialized || entity.isRemoved() || ids.contains(entity)) {
             return;
         }
 
-        int expectedId = ids.addEntity(entity);
+        int nativeId = ids.addEntity(entity);
         if (!VanillaEntityCollision.usesScoreboardTeam(entity)) derivedTeams.add(entity);
         BlockPos position = entity.blockPosition();
-        int nativeId = FFMBackend.addEntity(
-                nativeContext,
-                entity.getBoundingBox(),
+        FFMBackend.putEntity(nativeContext, nativeId, entity.getBoundingBox(),
                 SectionPos.blockToSectionCoord(position.getX()),
                 SectionPos.blockToSectionCoord(position.getY()),
-                SectionPos.blockToSectionCoord(position.getZ())
-        );
-        if (nativeId != expectedId) {
-            throw new IllegalStateException(
-                    "Native collision index assigned entity " + nativeId + "; expected " + expectedId
-            );
-        }
+                SectionPos.blockToSectionCoord(position.getZ()));
         ensureSemanticCapacity(nativeId + 1);
         selectableEntityRevisions[nativeId] = UNCACHED;
         teamRevisions[nativeId] = UNCACHED;
@@ -139,7 +104,7 @@ final class LevelCollisionFrame {
     }
 
     synchronized void updateBoundingBox(Entity entity) {
-        if (!active || !ids.contains(entity)) {
+        if (!initialized || !ids.contains(entity)) {
             return;
         }
         int nativeId = ids.getId(entity);
@@ -157,9 +122,25 @@ final class LevelCollisionFrame {
     }
 
     synchronized void invalidateEntity(Entity entity) {
-        if (active && ids.contains(entity)) {
-            FFMBackend.invalidateEntityMetadata(nativeContext, ids.getId(entity));
+        if (initialized && ids.contains(entity)) {
+            int id = ids.getId(entity);
+            BlockPos p = entity.blockPosition();
+            FFMBackend.updateLocation(nativeContext, id,
+                    SectionPos.blockToSectionCoord(p.getX()),
+                    SectionPos.blockToSectionCoord(p.getY()),
+                    SectionPos.blockToSectionCoord(p.getZ()));
+            if (!VanillaEntityCollision.classNeverHardCollides(entity)) refreshNativeMetadata(id, entity);
         }
+    }
+
+    synchronized void removeEntity(Entity entity) {
+        int id = ids.getId(entity);
+        if (id < 0) return;
+        FFMBackend.removeEntity(nativeContext, id);
+        ids.remove(entity);
+        derivedTeams.remove(entity);
+        teams[id] = null;
+        bodies.retire(entity);
     }
 
     synchronized FFMBackend.QueryResult query(Entity source) {
@@ -393,13 +374,6 @@ final class LevelCollisionFrame {
         return id;
     }
 
-    private void prepareSemanticCaches(int entityCount) {
-        ensureSemanticCapacity(entityCount);
-        Arrays.fill(selectableEntityRevisions, 0, entityCount, UNCACHED);
-        Arrays.fill(teamRevisions, 0, entityCount, UNCACHED);
-        Arrays.fill(teams, 0, entityCount, null);
-    }
-
     private void ensureSemanticCapacity(int requiredCapacity) {
         if (requiredCapacity <= selectableValues.length) {
             return;
@@ -416,27 +390,6 @@ final class LevelCollisionFrame {
         teams = Arrays.copyOf(teams, newCapacity);
         Arrays.fill(selectableEntityRevisions, oldCapacity, newCapacity, UNCACHED);
         Arrays.fill(teamRevisions, oldCapacity, newCapacity, UNCACHED);
-    }
-
-    private static void writeBox(double[] target, int offset, AABB box) {
-        target[offset] = box.minX;
-        target[offset + 1] = box.minY;
-        target[offset + 2] = box.minZ;
-        target[offset + 3] = box.maxX;
-        target[offset + 4] = box.maxY;
-        target[offset + 5] = box.maxZ;
-    }
-
-    private static void writeLocation(
-            int[] sections,
-            int index,
-            Entity entity
-    ) {
-        BlockPos position = entity.blockPosition();
-        int sectionOffset = index * 3;
-        sections[sectionOffset] = SectionPos.blockToSectionCoord(position.getX());
-        sections[sectionOffset + 1] = SectionPos.blockToSectionCoord(position.getY());
-        sections[sectionOffset + 2] = SectionPos.blockToSectionCoord(position.getZ());
     }
 
     private static int collisionRuleId(Team.CollisionRule rule) {

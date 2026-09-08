@@ -8,6 +8,9 @@
 #include <cstdint>
 
 extern "C" {
+ECO_EXPORT int putCollisionEntity(void* context, int id, const double* bounds, int x, int y, int z);
+ECO_EXPORT int removeCollisionEntity(void* context, int id);
+ECO_EXPORT int updateCollisionLocation(void* context, int id, int x, int y, int z);
 ECO_EXPORT int scanCollisionBlocks(const std::uint16_t* const* rows, int* query, int* output, int capacity);
 
 ECO_EXPORT void* createCollisionContext();

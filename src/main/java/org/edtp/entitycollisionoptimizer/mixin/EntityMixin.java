@@ -85,6 +85,10 @@ public abstract class EntityMixin implements CollisionCacheState {
             CallbackInfo ci
     ) {
         entityCollisionOptimizer$invalidateCollisionCache();
+        Entity self = (Entity) (Object) this;
+        if (self.level() instanceof net.minecraft.server.level.ServerLevel level) {
+            CollisionFrame.trackingEnded(level, self);
+        }
     }
 
     @Inject(method = {"baseTick", "setPosRaw"}, at = @At(value = "FIELD",

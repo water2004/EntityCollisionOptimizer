@@ -5,6 +5,12 @@ import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 
 public final class VanillaCollisionParityGameTests {
+    @GameTest(maxTicks = 200)
+    public void emptyWorldSpawnQuery(GameTestHelper helper) {
+        org.edtp.entitycollisionoptimizer.natives.NativeHardQueryChecks.emptyWorld(helper);
+        helper.succeed();
+    }
+
     @GameTest(maxTicks = 200, padding = 48)
     public void nativeMovementContract(GameTestHelper helper) {
         NativeVoxelParity.edges(helper);

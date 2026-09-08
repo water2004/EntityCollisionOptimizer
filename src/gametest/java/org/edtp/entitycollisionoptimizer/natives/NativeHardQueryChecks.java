@@ -11,6 +11,19 @@ import java.util.Set;
 
 /** Scan-AABB hard query contract, independent of the native cell walk. */
 public final class NativeHardQueryChecks {
+    public static void emptyWorld(GameTestHelper helper) {
+        AABB player = new AABB(-0.3, 64, -0.3, 0.3, 65.8, 0.3);
+        for (boolean snapshot : new boolean[]{false, true}) {
+            try (var context = FFMBackend.createContext()) {
+                if (snapshot) FFMBackend.beginFrame(context, new double[0], new int[0], 0, 1);
+                for (boolean hardOnly : new boolean[]{true, false}) {
+                    helper.assertValueEqual(FFMBackend.queryHard(context, player, -1, hardOnly, 0).size(),
+                            0, "spawn query in empty world, snapshot=" + snapshot);
+                }
+            }
+        }
+    }
+
     public static void verify(GameTestHelper helper) {
         int queries = 0;
         for (int count : new int[]{2, 8, 20}) {

@@ -34,7 +34,7 @@ public final class CollisionFrame {
         }
     }
 
-    /** Explicit vanilla/Carpet ownership: materialize outstanding velocities on this level's thread. */
+    /** Disabling native collision materializes outstanding state on this level's thread. */
     public static void suspend(ServerLevel level) {
         LevelCollisionFrame frame = LEVEL_FRAMES.get(level);
         if (frame != null) frame.suspend();
@@ -55,6 +55,16 @@ public final class CollisionFrame {
         if (frame != null) {
             frame.addEntity(entity);
         }
+    }
+
+    public static void trackingStarted(ServerLevel level, Entity entity) {
+        LevelCollisionFrame frame = LEVEL_FRAMES.get(level);
+        if (frame != null) frame.addEntity(entity);
+    }
+
+    public static void trackingEnded(ServerLevel level, Entity entity) {
+        LevelCollisionFrame frame = LEVEL_FRAMES.get(level);
+        if (frame != null) frame.removeEntity(entity);
     }
 
     public static void updateBoundingBox(Entity entity) {

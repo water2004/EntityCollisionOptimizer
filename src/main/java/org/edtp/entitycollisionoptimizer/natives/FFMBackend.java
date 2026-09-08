@@ -37,6 +37,7 @@ public final class FFMBackend {
     private static MethodHandle beginFrame;
     private static MethodHandle setGridSize;
     private static MethodHandle addEntity;
+    private static MethodHandle putEntity, removeEntity, updateLocation;
     private static MethodHandle updateEntity;
     private static MethodHandle updateEntityMetadata;
     private static MethodHandle invalidateEntityMetadata;
@@ -224,6 +225,38 @@ public final class FFMBackend {
             } catch (Throwable failure) {
                 throw new IllegalStateException("FFM updateEntity call failed", failure);
             }
+        }
+    }
+
+    public static void putEntity(Context context, int id, AABB box, int x, int y, int z) {
+        synchronized (context) {
+            context.ensureOpen();
+            context.ensureOutputCapacity(id + 1);
+            MemorySegment bounds = context.boundsBuffer;
+            bounds.set(JAVA_DOUBLE, 0, box.minX);
+            bounds.set(JAVA_DOUBLE, 8, box.minY);
+            bounds.set(JAVA_DOUBLE, 16, box.minZ);
+            bounds.set(JAVA_DOUBLE, 24, box.maxX);
+            bounds.set(JAVA_DOUBLE, 32, box.maxY);
+            bounds.set(JAVA_DOUBLE, 40, box.maxZ);
+            try { checkStatus("insert persistent entity", (int) putEntity.invokeExact(context.address, id, bounds, x, y, z)); }
+            catch (Throwable failure) { throw new IllegalStateException("Persistent entity insertion failed", failure); }
+        }
+    }
+
+    public static void removeEntity(Context context, int id) {
+        synchronized (context) {
+            context.ensureOpen();
+            try { checkStatus("remove persistent entity", (int) removeEntity.invokeExact(context.address, id)); }
+            catch (Throwable failure) { throw new IllegalStateException("Persistent entity removal failed", failure); }
+        }
+    }
+
+    public static void updateLocation(Context context, int id, int x, int y, int z) {
+        synchronized (context) {
+            context.ensureOpen();
+            try { checkStatus("update persistent location", (int) updateLocation.invokeExact(context.address, id, x, y, z)); }
+            catch (Throwable failure) { throw new IllegalStateException("Persistent location update failed", failure); }
         }
     }
 
@@ -502,6 +535,12 @@ public final class FFMBackend {
                 library.find("setCollisionGridSize").orElseThrow(() -> missingSymbol("setCollisionGridSize")),
                 FunctionDescriptor.of(JAVA_INT, ADDRESS, JAVA_INT)
         );
+        putEntity = linker.downcallHandle(library.find("putCollisionEntity").orElseThrow(),
+                FunctionDescriptor.of(JAVA_INT, ADDRESS, JAVA_INT, ADDRESS, JAVA_INT, JAVA_INT, JAVA_INT));
+        removeEntity = linker.downcallHandle(library.find("removeCollisionEntity").orElseThrow(),
+                FunctionDescriptor.of(JAVA_INT, ADDRESS, JAVA_INT));
+        updateLocation = linker.downcallHandle(library.find("updateCollisionLocation").orElseThrow(),
+                FunctionDescriptor.of(JAVA_INT, ADDRESS, JAVA_INT, JAVA_INT, JAVA_INT, JAVA_INT));
         addEntity = linker.downcallHandle(
                 library.find("addCollisionEntity").orElseThrow(() -> missingSymbol("addCollisionEntity")),
                 FunctionDescriptor.of(
@@ -660,6 +699,7 @@ public final class FFMBackend {
         beginFrame = null;
         setGridSize = null;
         addEntity = null;
+        putEntity = removeEntity = updateLocation = null;
         updateEntity = null;
         updateEntityMetadata = null;
         invalidateEntityMetadata = null;
@@ -677,6 +717,7 @@ public final class FFMBackend {
         private MemorySegment outputBuffer = MemorySegment.NULL;
         private MemorySegment nativePushBuffer = MemorySegment.NULL;
         private MemorySegment runIdBuffer = MemorySegment.NULL;
+        private MemorySegment boundsBuffer = MemorySegment.NULL;
         private int outputCapacity;
         private final QueryResult queryResult = new QueryResult();
 
@@ -691,7 +732,7 @@ public final class FFMBackend {
         }
 
         private void ensureOutputCapacity(int requiredElements) {
-            if (requiredElements <= outputCapacity) {
+            if (outputArena != null && requiredElements <= outputCapacity) {
                 return;
             }
             int newCapacity = Math.max(
@@ -702,6 +743,7 @@ public final class FFMBackend {
                 outputArena.close();
             }
             outputArena = Arena.ofShared();
+            boundsBuffer = outputArena.allocate(48, Double.BYTES);
             outputBuffer = outputArena.allocate(
                     ((long) newCapacity * 2 + 3) * Integer.BYTES,
                     Integer.BYTES
@@ -742,6 +784,7 @@ public final class FFMBackend {
                 outputBuffer = MemorySegment.NULL;
                 nativePushBuffer = MemorySegment.NULL;
                 runIdBuffer = MemorySegment.NULL;
+                boundsBuffer = MemorySegment.NULL;
                 outputCapacity = 0;
                 queryResult.output = MemorySegment.NULL;
                 queryResult.nativePush = MemorySegment.NULL;

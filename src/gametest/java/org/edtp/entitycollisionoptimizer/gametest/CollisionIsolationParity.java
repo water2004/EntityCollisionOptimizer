@@ -61,6 +61,7 @@ final class CollisionIsolationParity {
             throw new IllegalStateException("Concurrent level collision test failed", failure);
         } finally {
             for (LevelQueryGroup group : groups) {
+                for (Entity entity : group.entities()) entity.discard();
                 CollisionFrame.end(group.level());
             }
         }
@@ -71,7 +72,8 @@ final class CollisionIsolationParity {
             int entityCount,
             double coordinate
     ) {
-        CollisionFrame.end(level);
+        // Reset the fixture explicitly; ending a tick no longer discards persistent members.
+        CollisionFrame.suspend(level);
         CollisionFrame.begin(level);
         List<Zombie> entities = new ArrayList<>(entityCount);
         Vec3 position = new Vec3(coordinate, 64.0, coordinate);

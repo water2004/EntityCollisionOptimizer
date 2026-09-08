@@ -15,7 +15,7 @@ import static java.lang.foreign.ValueLayout.JAVA_DOUBLE;
 import static java.lang.foreign.ValueLayout.JAVA_INT;
 import static java.lang.foreign.ValueLayout.JAVA_LONG;
 
-/** Level-owned persistent body slots, separate from the spatial index's per-frame IDs. */
+/** Level-owned body slots with leases independent of persistent spatial membership. */
 public final class CollisionStateTable implements AutoCloseable {
     public static final int STRIDE_BYTES = 80, VERSION_OFFSET = 40, STATE_OFFSET = 48,
             ROOT_OFFSET = 52, SYNC_OFFSET = 56, Y_OFFSET = 64, POSITION_VERSION_OFFSET = 72;
@@ -32,8 +32,10 @@ public final class CollisionStateTable implements AutoCloseable {
     private Arena arena;
     private MemorySegment memory = MemorySegment.NULL;
     private int size, borrowers;
+    private final IdentityHashMap<Entity, Boolean> retired = new IdentityHashMap<>();
 
     int slot(Entity entity) {
+        retired.remove(entity);
         Integer existing = slots.get(entity);
         int slot;
         if (existing != null) slot = existing;
@@ -58,6 +60,27 @@ public final class CollisionStateTable implements AutoCloseable {
     void borrow() { borrowers++; }
     void release() {
         if (--borrowers < 0) throw new IllegalStateException("Unbalanced collision table lease");
+        if (borrowers == 0 && !retired.isEmpty()) {
+            var iterator = retired.keySet().iterator();
+            while (iterator.hasNext()) {
+                Entity entity = iterator.next();
+                iterator.remove();
+                retire(entity);
+            }
+        }
+    }
+
+    void retire(Entity entity) {
+        Integer slot = slots.get(entity);
+        if (slot == null) return;
+        if (borrowers != 0) { retired.put(entity, true); return; }
+        ((CollisionBodyAccess) entity).eco$detachBody(this, slot);
+        slots.remove(entity);
+        entities[slot] = null;
+        velocities[slot] = null;
+        positions[slot] = null;
+        bounds.forget(slot);
+        free.addLast(slot);
     }
 
     void prune(Predicate<Entity> live) {
@@ -182,6 +205,7 @@ public final class CollisionStateTable implements AutoCloseable {
             if (entities[slot] != null) ((CollisionBodyAccess) entities[slot]).eco$detachBody(this, slot);
         }
         slots.clear();
+        retired.clear();
         free.clear();
         Arrays.fill(entities, 0, size, null);
         Arrays.fill(velocities, 0, size, null);

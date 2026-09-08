@@ -97,6 +97,7 @@ else()
 endif()
 
 set(ECO_COMMON_SOURCES
+        src/persistent_index.cpp
         src/collision_rules.cpp
         src/context_api.cpp
         src/metadata_api.cpp

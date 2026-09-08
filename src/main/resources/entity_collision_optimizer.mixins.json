@@ -10,6 +10,7 @@
     "CreakingMixin",
     "CommonLevelAccessorMixin",
     "EntityMixin",
+    "EntityTrackingMixin",
     "EntityBodyMixin",
     "EntitySectionMixin",
     "EntityOrderMixin",
