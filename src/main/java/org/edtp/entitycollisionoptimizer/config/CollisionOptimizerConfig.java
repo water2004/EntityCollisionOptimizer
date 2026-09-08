@@ -15,12 +15,16 @@ import java.nio.file.Files;
 public final class CollisionOptimizerConfig {
     public static volatile boolean enableEntityCollision = true;
     public static volatile int gridSize = 1;
+    public static volatile boolean vanillaOrder = true;
 
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final File CONFIG_FILE = FabricLoader.getInstance()
             .getConfigDir()
             .resolve("entity_collision_optimizer.json")
             .toFile();
+
+    static { loadConfig(); }
+    public static final boolean STARTUP_VANILLA_ORDER = vanillaOrder;
 
     private CollisionOptimizerConfig() {
     }
@@ -77,10 +81,12 @@ public final class CollisionOptimizerConfig {
         JsonObject defaults = new JsonObject();
         defaults.addProperty("enableEntityCollision", true);
         defaults.addProperty("gridSize", 1);
+        defaults.addProperty("vanillaOrder", true);
         return defaults;
     }
 
     private static void applyJson(JsonObject config) {
+        vanillaOrder = !config.has("vanillaOrder") || config.get("vanillaOrder").getAsBoolean();
         if (config.has("enableEntityCollision")) {
             enableEntityCollision = config.get("enableEntityCollision").getAsBoolean();
         }

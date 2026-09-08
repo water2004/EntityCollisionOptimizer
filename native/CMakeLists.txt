@@ -96,11 +96,10 @@ else()
     message(FATAL_ERROR "Unsupported target")
 endif()
 
-add_library(EntityCollisionOptimizer SHARED
+set(ECO_COMMON_SOURCES
         src/collision_rules.cpp
         src/context_api.cpp
         src/metadata_api.cpp
-        src/ordered_candidates.cpp
         src/query_api.cpp
         src/push_run.cpp
         src/movement_solver.cpp
@@ -108,6 +107,10 @@ add_library(EntityCollisionOptimizer SHARED
         src/voxel_geometry.cpp
         src/spatial_index.cpp
 )
+
+add_library(EntityCollisionOptimizer SHARED ${ECO_COMMON_SOURCES} src/ordered_candidates.cpp)
+add_library(EntityCollisionOptimizerUnordered SHARED ${ECO_COMMON_SOURCES})
+target_compile_definitions(EntityCollisionOptimizerUnordered PRIVATE ECO_VANILLA_ORDER=0)
 
 # Batch velocity accumulation must not fuse/reassociate vanilla's individual operations.
 if(AR_WINDOWS)
@@ -121,4 +124,6 @@ endif()
 if(ECO_NATIVE_SYMBOLS AND AR_WINDOWS)
     target_compile_options(EntityCollisionOptimizer PRIVATE /Z7)
     target_link_options(EntityCollisionOptimizer PRIVATE /DEBUG:FULL)
+    target_compile_options(EntityCollisionOptimizerUnordered PRIVATE /Z7)
+    target_link_options(EntityCollisionOptimizerUnordered PRIVATE /DEBUG:FULL)
 endif()

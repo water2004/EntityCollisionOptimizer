@@ -48,6 +48,7 @@ config/entity_collision_optimizer.json
 ```json
 {
   "enableEntityCollision": true,
+  "vanillaOrder": true,
   "gridSize": 1
 }
 ```
@@ -56,7 +57,13 @@ config/entity_collision_optimizer.json
 
 `gridSize` 是原生 X/Z 空间索引的格子边长，必须大于 `0`。实现始终返回所有相交候选，不包含候选上限、密度阈值、多线程开关或按密度分流的路径。
 
-可使用 `/entitycollisionoptimizer` 查看、修改和保存配置。命令需要游戏管理员权限。
+可使用 `/eco` 查看、修改和保存配置。命令需要游戏管理员权限。
+
+`/eco vanillaOrder true` 开启原版实体推动候选顺序（默认）；
+`/eco vanillaOrder false` 关闭排序专用维护，保留完整候选、去重、过滤与挤压计数。
+此开关自动保存，下次重启生效；`check` 同时显示当前启动值和配置值。
+无序启动不安装顺序记录注入，并加载编译时移除顺序字段、失效维护、排序及归并堆的 native 变体；运行期间不检查此开关。
+关闭后不保证推动顺序、浮点累加及特殊实体回调与原版一致；不影响 Vanilla 后端，也不改变方块扫描顺序。
 
 ## 行为与兼容性
 

@@ -12,6 +12,7 @@
     "EntityMixin",
     "EntityBodyMixin",
     "EntitySectionMixin",
+    "EntityOrderMixin",
     "EntityMovementMixin",
     "EntityCollisionInvoker",
     "VoxelGeometryMixin",

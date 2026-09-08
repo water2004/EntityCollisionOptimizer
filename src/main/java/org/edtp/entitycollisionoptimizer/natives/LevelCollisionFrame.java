@@ -375,7 +375,8 @@ final class LevelCollisionFrame {
                 bodies.slot(entity),
                 !entity.isRemoved() && !entity.isSpectator()
                         && !VanillaEntityCollision.classNeverHardCollides(entity),
-                ((CollisionOrderState) entity).eco$sectionOrder()
+                CollisionOptimizerConfig.STARTUP_VANILLA_ORDER
+                        ? ((CollisionOrderState) entity).eco$sectionOrder() : 0L
         );
     }
 

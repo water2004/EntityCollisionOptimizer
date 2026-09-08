@@ -449,7 +449,8 @@ public final class FFMBackend {
     }
 
     private static void loadNativeLibrary() throws IOException {
-        String libraryName = System.mapLibraryName("EntityCollisionOptimizer");
+        String libraryName = System.mapLibraryName(CollisionOptimizerConfig.STARTUP_VANILLA_ORDER
+                ? "EntityCollisionOptimizer" : "EntityCollisionOptimizerUnordered");
         String resourcePath = platformNativePath() + libraryName;
         File extractedLibrary;
 
@@ -529,10 +530,7 @@ public final class FFMBackend {
                         JAVA_INT
                 )
         );
-        updateEntityMetadata = linker.downcallHandle(
-                library.find("updateCollisionEntityMetadata")
-                        .orElseThrow(() -> missingSymbol("updateCollisionEntityMetadata")),
-                FunctionDescriptor.of(
+        FunctionDescriptor metadataDescriptor = FunctionDescriptor.of(
                         JAVA_INT,
                         ADDRESS,
                         JAVA_INT,
@@ -547,8 +545,19 @@ public final class FFMBackend {
                         JAVA_INT,
                         JAVA_INT,
                         JAVA_LONG
-                )
-        );
+                );
+        if (!CollisionOptimizerConfig.STARTUP_VANILLA_ORDER) {
+            var layouts = metadataDescriptor.argumentLayouts();
+            metadataDescriptor = FunctionDescriptor.of(JAVA_INT,
+                    layouts.subList(0, layouts.size() - 1).toArray(java.lang.foreign.MemoryLayout[]::new));
+        }
+        updateEntityMetadata = linker.downcallHandle(
+                library.find("updateCollisionEntityMetadata")
+                        .orElseThrow(() -> missingSymbol("updateCollisionEntityMetadata")), metadataDescriptor);
+        if (!CollisionOptimizerConfig.STARTUP_VANILLA_ORDER) {
+            // Discard the constant placeholder before crossing FFM; unordered native has no order argument.
+            updateEntityMetadata = java.lang.invoke.MethodHandles.dropArguments(updateEntityMetadata, 12, long.class);
+        }
         invalidateEntityMetadata = linker.downcallHandle(
                 library.find("invalidateCollisionEntityMetadata")
                         .orElseThrow(() -> missingSymbol("invalidateCollisionEntityMetadata")),

@@ -17,8 +17,10 @@ int updateCollisionEntityMetadata(
         int teamId,
         int collisionRule,
         int bodySlot,
-        int hardCollidable,
-        std::int64_t sectionOrder
+        int hardCollidable
+#if ECO_VANILLA_ORDER
+        , std::int64_t sectionOrder
+#endif
 ) {
     if (contextPointer == nullptr || entityId < 0 || bodySlot < 0) {
         return -1;
@@ -39,10 +41,12 @@ int updateCollisionEntityMetadata(
         metadata.teamId = teamId;
         metadata.collisionRule = collisionRule;
         metadata.bodySlot = bodySlot;
+#if ECO_VANILLA_ORDER
         if (metadata.sectionOrder != sectionOrder) {
             metadata.sectionOrder = sectionOrder;
             eco::invalidateCandidateOrder(context, entityId);
         }
+#endif
         metadata.selectableValid = true;
         metadata.teamValid = true;
         return 0;

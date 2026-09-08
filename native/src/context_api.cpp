@@ -127,9 +127,11 @@ int updateCollisionEntity(
                 eco::makeAabb(bounds[0], bounds[1], bounds[2], bounds[3], bounds[4], bounds[5])
         );
         eco::EntityMetadata& metadata = context.metadata[entityId];
+#if ECO_VANILLA_ORDER
         if (metadata.sectionX != sectionX || metadata.sectionY != sectionY || metadata.sectionZ != sectionZ) {
             eco::invalidateCandidateOrder(context, entityId);
         }
+#endif
         metadata.sectionX = sectionX;
         metadata.sectionY = sectionY;
         metadata.sectionZ = sectionZ;

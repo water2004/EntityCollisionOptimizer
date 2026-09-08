@@ -1,5 +1,9 @@
 #pragma once
 
+#ifndef ECO_VANILLA_ORDER
+#define ECO_VANILLA_ORDER 1
+#endif
+
 #include <cstddef>
 #include <cstdint>
 #include <unordered_map>
@@ -20,7 +24,9 @@ struct EntityMetadata {
     std::int64_t sectionX = 0;
     std::int64_t sectionY = 0;
     std::int64_t sectionZ = 0;
+#if ECO_VANILLA_ORDER
     std::int64_t sectionOrder = 0;
+#endif
     int teamId = -1;
     int collisionRule = 0;
     int bodySlot = -1;
@@ -49,7 +55,9 @@ struct CellHash {
 
 struct CellMembers {
     std::vector<int> ids;
+#if ECO_VANILLA_ORDER
     bool orderDirty = true;
+#endif
 };
 
 struct CandidateCursor {
@@ -66,7 +74,9 @@ struct CollisionContext {
     std::vector<EntityMetadata> metadata;
     std::vector<std::vector<Cell>> memberships;
     std::unordered_map<Cell, CellMembers, CellHash> cells;
+#if ECO_VANILLA_ORDER
     std::vector<CandidateCursor> candidateHeap;
+#endif
     std::vector<std::uint32_t> queryMarks;
     std::vector<int> metadataMisses;
     std::uint32_t queryGeneration = 0;

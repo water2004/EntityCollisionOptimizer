@@ -4,6 +4,7 @@
 #include "collision_types.h"
 #include "spatial_index.h"
 #include "ordered_candidates.h"
+#include "unordered_candidates.h"
 
 #include <algorithm>
 #include <cmath>
@@ -153,7 +154,11 @@ int queryPushableEntities(
         int pushableCount = 0;
         int nonPassengerCount = 0;
         int actionableCount = 0;
+#if ECO_VANILLA_ORDER
         eco::OrderedCandidates candidates(context, sourceId);
+#else
+        eco::UnorderedCandidates candidates(context, sourceId);
+#endif
         for (int candidateId = candidates.next(); candidateId != -1; candidateId = candidates.next()) {
             if (candidateId == sourceId) continue;
             const eco::EntityMetadata& target = context.metadata[candidateId];

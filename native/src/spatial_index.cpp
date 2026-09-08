@@ -95,7 +95,9 @@ void insertMemberships(
     for (const Cell& cell : memberships) {
         auto& members = context.cells[cell];
         members.ids.push_back(entityId);
+#if ECO_VANILLA_ORDER
         members.orderDirty = true;
+#endif
     }
 }
 
@@ -114,7 +116,9 @@ void removeMemberships(
         if (entityIterator != entities.end()) {
             *entityIterator = entities.back();
             entities.pop_back();
+#if ECO_VANILLA_ORDER
             cellIterator->second.orderDirty = true;
+#endif
         }
         if (entities.empty()) {
             context.cells.erase(cellIterator);
@@ -123,7 +127,9 @@ void removeMemberships(
 }
 
 void rebuildSpatialIndex(CollisionContext& context) {
+#if ECO_VANILLA_ORDER
     context.candidateHeap.clear();
+#endif
     context.cells.clear();
     context.memberships.clear();
     context.memberships.resize(context.boxes.size());

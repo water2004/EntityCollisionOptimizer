@@ -2,7 +2,6 @@ package org.edtp.entitycollisionoptimizer.mixin;
 
 import org.edtp.entitycollisionoptimizer.collision.CollisionCacheState;
 import org.edtp.entitycollisionoptimizer.collision.CollisionBodyAccess;
-import org.edtp.entitycollisionoptimizer.collision.CollisionOrderState;
 import org.edtp.entitycollisionoptimizer.collision.CollisionCacheEpochs;
 import org.edtp.entitycollisionoptimizer.natives.CollisionFrame;
 import net.minecraft.world.entity.Entity;
@@ -17,15 +16,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.objectweb.asm.Opcodes;
 
 @Mixin(Entity.class)
-public abstract class EntityMixin implements CollisionCacheState, CollisionOrderState {
-    @Unique private long eco$sectionOrder;
-
-    @Override public long eco$sectionOrder() { return eco$sectionOrder; }
-
-    @Override public void eco$sectionOrder(long order) {
-        eco$sectionOrder = order;
-        entityCollisionOptimizer$invalidateCollisionCache();
-    }
+public abstract class EntityMixin implements CollisionCacheState {
 
     @Unique
     private long entityCollisionOptimizer$collisionRevision;

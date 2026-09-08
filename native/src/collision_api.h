@@ -1,5 +1,9 @@
 #pragma once
 
+#ifndef ECO_VANILLA_ORDER
+#define ECO_VANILLA_ORDER 1
+#endif
+
 #include "export.h"
 #include <cstdint>
 
@@ -48,8 +52,10 @@ ECO_EXPORT int updateCollisionEntityMetadata(
         int teamId,
         int collisionRule,
         int bodySlot,
-        int hardCollidable,
-        std::int64_t sectionOrder
+        int hardCollidable
+#if ECO_VANILLA_ORDER
+        , std::int64_t sectionOrder
+#endif
 );
 ECO_EXPORT int invalidateCollisionEntityMetadata(void* context, int entityId);
 ECO_EXPORT int invalidateCollisionMetadata(void* context, int mask);

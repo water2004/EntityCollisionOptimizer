@@ -18,6 +18,9 @@ loom {
     runs {
         configureEach {
             vmArg "--enable-native-access=ALL-UNNAMED"
+            if (providers.gradleProperty("gameTestFilter").isPresent()) {
+                vmArg "-Dfabric-api.gametest.filter=${providers.gradleProperty('gameTestFilter').get()}"
+            }
             if (providers.gradleProperty("benchmark").isPresent()) {
                 vmArg "-Dentity_collision_optimizer.runBenchmark=true"
             }

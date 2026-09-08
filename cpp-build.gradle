@@ -77,16 +77,19 @@ def prepareNativeResources = tasks.register("prepareNativeResources", Sync) {
     // Windows x64
     from("${cppProjectDir}/out/entity-collision-optimizer/win-x64/") {
         include "EntityCollisionOptimizer.dll"
+        include "EntityCollisionOptimizerUnordered.dll"
         into "natives/windows-x64"
     }
     // Linux x64
     from("${cppProjectDir}/out/entity-collision-optimizer/linux-x64/") {
         include "libEntityCollisionOptimizer.so"
+        include "libEntityCollisionOptimizerUnordered.so"
         into "natives/linux-x64"
     }
     // MacOS x64 (Intel)
     from("${cppProjectDir}/out/entity-collision-optimizer/macos-x64/") {
         include "libEntityCollisionOptimizer.dylib"
+        include "libEntityCollisionOptimizerUnordered.dylib"
         into "natives/macos-x64"
     }
 }

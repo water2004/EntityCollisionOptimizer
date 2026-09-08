@@ -2,7 +2,6 @@ package org.edtp.entitycollisionoptimizer;
 
 import com.mojang.logging.LogUtils;
 import org.edtp.entitycollisionoptimizer.commands.CollisionOptimizerCommand;
-import org.edtp.entitycollisionoptimizer.config.CollisionOptimizerConfig;
 import org.edtp.entitycollisionoptimizer.natives.CollisionFrame;
 import org.edtp.entitycollisionoptimizer.natives.FFMBackend;
 import net.fabricmc.api.ModInitializer;
@@ -16,7 +15,6 @@ public class EntityCollisionOptimizer implements ModInitializer {
 
     @Override
     public void onInitialize() {
-        CollisionOptimizerConfig.loadConfig();
         CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) ->
                 CollisionOptimizerCommand.register(dispatcher));
         ServerLifecycleEvents.SERVER_STOPPING.register(server -> {

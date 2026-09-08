@@ -22,7 +22,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 
 public class CollisionOptimizerCommand {
-    private static final String COMMAND = "entitycollisionoptimizer";
+    private static final String COMMAND = "eco";
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
@@ -80,6 +80,14 @@ public class CollisionOptimizerCommand {
     private static int setFieldValue(CommandContext<CommandSourceStack> context, Field field, Object newValue) {
         try {
             field.set(null, newValue);
+            if (field.getName().equals("vanillaOrder")) {
+                int result = save(context);
+                if (result == 0) return 0;
+                context.getSource().sendSuccess(() -> Component.literal(
+                        "vanillaOrder=" + newValue + " saved for next restart; current="
+                                + CollisionOptimizerConfig.STARTUP_VANILLA_ORDER), false);
+                return result;
+            }
             sendSuccessMessage(context.getSource(), field.getName(), newValue);
             FFMBackend.applyConfig();
             return 1;
@@ -133,6 +141,8 @@ public class CollisionOptimizerCommand {
 
         message.append(Component.literal("\n--------------------\n")
                 .withStyle(ChatFormatting.DARK_GRAY));
+        message.append(Component.literal("  vanillaOrder active: "
+                + CollisionOptimizerConfig.STARTUP_VANILLA_ORDER + " (changes require restart)\n"));
 
         String mode = CollisionOptimizerConfig.enableEntityCollision ? "FFM (enabled)" : "Vanilla (disabled)";
         message.append(Component.literal("  Backend: ")
