@@ -13,7 +13,6 @@
     "EntityMovementTestInvoker",
     "EntityVelocityAccessor",
     "EntityBodyTestAccess",
-    "RangedAttributeAccessor",
     "PistonProgressAccessor",
     "MovementScanMixin",
     "BlockScanMixin",
