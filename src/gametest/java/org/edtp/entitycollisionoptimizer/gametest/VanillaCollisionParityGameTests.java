@@ -180,4 +180,9 @@ public final class VanillaCollisionParityGameTests {
         );
         helper.succeed();
     }
+
+    @GameTest(maxTicks = 800, padding = 48, environment = "entity_collision_optimizer:chunk_load")
+    public void chunkLoadBoundaries(GameTestHelper helper) {
+        ChunkLoadParity.verify(helper);
+    }
 }
