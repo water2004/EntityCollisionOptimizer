@@ -8,9 +8,9 @@ Example capture arguments in addition to the normal benchmark options:
 
 ```text
 -PnativeSymbols
--PjitMapAgent=D:\ar-profiles\jit-map-build\EcoJitMap.dll
--PjitMapOutput=D:\ar-profiles\capture.tsv
--PjfrOutput=D:\ar-profiles\capture.jfr
+-PjitMapAgent=<profile-dir>\jit-map-build\EcoJitMap.dll
+-PjitMapOutput=<profile-dir>\capture.tsv
+-PjfrOutput=<profile-dir>\capture.jfr
 ```
 
 With user authorization, launch `tools/profiling/WprCapture.ps1` elevated with `-BenchmarkLog`, `-Trace`, and `-StatusLog`. It records CPU only during the benchmark, stops only a recording it started, and times out if the benchmark does not finish. Freeze the matching collision DLL/PDB before rebuilding. Raw ETL is system-wide and stays local.
