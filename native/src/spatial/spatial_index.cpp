@@ -107,6 +107,7 @@ void insertMemberships(
         const std::size_t index = members.ids.size() - 1;
         members.geometry.resize(members.ids.size());
         members.geometry.write(index, context.boxes[entityId]);
+        members.geometry.writeHard(index, context.metadata[entityId].hardCollidable);
         slots.push_back({&members, index});
 #endif
     }
@@ -144,6 +145,7 @@ void removeMemberships(
         if (slot.index != members.ids.size() - 1) {
             members.ids[slot.index] = movedId;
             members.geometry.write(slot.index, context.boxes[movedId]);
+            members.geometry.writeHard(slot.index, context.metadata[movedId].hardCollidable);
             for (auto& movedSlot : context.memberSlots[movedId]) {
                 if (movedSlot.members == slot.members) {
                     movedSlot.index = slot.index;
@@ -151,6 +153,7 @@ void removeMemberships(
                 }
             }
         }
+        members.geometry.writeHard(members.ids.size() - 1, false);
         members.ids.pop_back();
         members.geometry.resize(members.ids.size());
         if (members.ids.empty()) context.cells.erase(memberships[cellIndex]);

@@ -7,6 +7,7 @@
 #include "spatial/unordered_candidates.h"
 
 #include <algorithm>
+#include <bit>
 #include <cmath>
 #include <cstddef>
 #include <limits>
@@ -94,6 +95,7 @@ int queryHardCollisionEntities(
                     if (iterator == context.cells.end()) {
                         continue;
                     }
+#if ECO_VANILLA_ORDER
                     for (const int candidateId : iterator->second.ids) {
                         if ((hardOnly != 0 && !context.metadata[candidateId].hardCollidable)
                                 || candidateId == excludeId
@@ -109,6 +111,33 @@ int queryHardCollisionEntities(
                         }
                         output[resultSize++] = candidateId;
                     }
+#else
+                    const auto& members = iterator->second;
+                    constexpr auto width = eco::CellGeometryBlock::WIDTH;
+                    for (std::size_t offset = 0; offset < members.ids.size(); offset += width) {
+                        const auto count = std::min<std::size_t>(width, members.ids.size() - offset);
+                        const auto& geometry = members.geometry.block(offset / width);
+                        unsigned pending = (1u << count) - 1;
+                        if (hardOnly != 0) pending &= geometry.hardMask;
+                        unsigned eligible = 0;
+                        while (pending != 0) {
+                            const unsigned lane = std::countr_zero(pending);
+                            pending &= pending - 1;
+                            const int id = members.ids[offset + lane];
+                            if (id == excludeId || context.queryMarks[id] == context.queryGeneration) continue;
+                            context.queryMarks[id] = context.queryGeneration;
+                            eligible |= 1u << lane;
+                        }
+                        if (eligible == 0) continue;
+                        unsigned hits = eco::intersectionMask(scan, geometry) & eligible;
+                        while (hits != 0) {
+                            const unsigned lane = std::countr_zero(hits);
+                            hits &= hits - 1;
+                            if (resultSize >= outputCapacity) return -2;
+                            output[resultSize++] = members.ids[offset + lane];
+                        }
+                    }
+#endif
                 }
             }
         }
