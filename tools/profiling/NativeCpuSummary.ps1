@@ -13,6 +13,7 @@ if ($EndUs -le $StartUs) { throw 'EndUs must follow StartUs' }
 # Symbol names come from xperf's resolution of the matching PDB, not address guesses.
 $ecoBase = [uint64]0
 $ecoEnd = [uint64]0
+$ecoImageStart = [long]::MaxValue
 $ecoTotal = [long]0
 $ecoNative = [long]0
 $ecoAddresses = @{}
@@ -20,12 +21,17 @@ $ecoModules = @{}
 $ecoProcessTag = "($GameProcessId)"
 foreach ($ecoLine in [System.IO.File]::ReadLines((Resolve-Path -LiteralPath $Samples).Path)) {
     if (!$ecoLine.Contains($ecoProcessTag)) { continue }
-    if ($ecoLine.Contains('I-DCStart,') -and $ecoLine.Contains('_EntityCollisionOptimizer.dll')) {
+    if (($ecoLine.Contains('I-DCStart,') -or $ecoLine.Contains('I-Start,')) -and
+            $ecoLine.Contains($ecoProcessTag) -and
+            $ecoLine.IndexOf('entityCollisionOptimizer.dll', [System.StringComparison]::OrdinalIgnoreCase) -ge 0) {
         $ecoFields = $ecoLine.Split(',')
+        $ecoImageTime = [long]$ecoFields[1]
+        if ($ecoLine.Contains('I-Start,') -and $ecoImageTime -gt $ecoImageStart) { continue }
         $ecoNextBase = [Convert]::ToUInt64($ecoFields[3].Trim().Substring(2), 16)
         if ($ecoBase -ne 0 -and $ecoBase -ne $ecoNextBase) { throw 'Multiple native images; use an explicit image-lifetime analysis' }
         $ecoBase = $ecoNextBase
         $ecoEnd = [Convert]::ToUInt64($ecoFields[4].Trim().Substring(2), 16)
+        $ecoImageStart = $ecoImageTime
         continue
     }
     if (!$ecoLine.Contains('SampledProfile,')) { continue }

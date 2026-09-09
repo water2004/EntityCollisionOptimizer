@@ -7,6 +7,136 @@
 
 namespace eco {
 
+namespace {
+
+struct CellRange {
+    bool valid = false;
+    std::int64_t minX = 0, minY = 0, minZ = 0;
+    std::int64_t maxX = -1, maxY = -1, maxZ = -1;
+    std::size_t count = 0;
+};
+
+CellRange coveredCellRange(const Aabb& box, int gridSize) {
+    CellRange result;
+    if (!isIndexable(box)) return result;
+
+    const double negativeInfinity = -std::numeric_limits<double>::infinity();
+    result.valid = true;
+    result.minX = cellCoordinate(box.minX, gridSize);
+    result.maxX = cellCoordinate(std::nextafter(box.maxX, negativeInfinity), gridSize);
+    result.minY = cellCoordinate(box.minY, gridSize);
+    result.maxY = cellCoordinate(std::nextafter(box.maxY, negativeInfinity), gridSize);
+    result.minZ = cellCoordinate(box.minZ, gridSize);
+    result.maxZ = cellCoordinate(std::nextafter(box.maxZ, negativeInfinity), gridSize);
+
+    const std::size_t width = static_cast<std::size_t>(result.maxX - result.minX + 1);
+    const std::size_t height = static_cast<std::size_t>(result.maxY - result.minY + 1);
+    const std::size_t depth = static_cast<std::size_t>(result.maxZ - result.minZ + 1);
+    result.count = width * height * depth;
+    return result;
+}
+
+bool contains(const CellRange& range, const Cell& cell) noexcept {
+    return range.valid
+            && cell.x >= range.minX && cell.x <= range.maxX
+            && cell.y >= range.minY && cell.y <= range.maxY
+            && cell.z >= range.minZ && cell.z <= range.maxZ;
+}
+
+CellRange membershipRange(const std::vector<Cell>& memberships) noexcept {
+    if (memberships.empty()) return {};
+
+    CellRange result;
+    result.valid = true;
+    result.minX = memberships.front().x;
+    result.minY = memberships.front().y;
+    result.minZ = memberships.front().z;
+    result.maxX = memberships.back().x;
+    result.maxY = memberships.back().y;
+    result.maxZ = memberships.back().z;
+    result.count = memberships.size();
+    return result;
+}
+
+bool sameRange(const std::vector<Cell>& memberships, const CellRange& range) noexcept {
+    const CellRange current = membershipRange(memberships);
+    return current.valid == range.valid
+            && (!range.valid
+                    || (current.count == range.count
+                            && current.minX == range.minX && current.minY == range.minY
+                            && current.minZ == range.minZ
+                            && current.maxX == range.maxX && current.maxY == range.maxY
+                            && current.maxZ == range.maxZ));
+}
+
+bool cellBefore(const Cell& left, const Cell& right) noexcept {
+    if (left.x != right.x) return left.x < right.x;
+    if (left.z != right.z) return left.z < right.z;
+    return left.y < right.y;
+}
+
+void sortMemberships(
+        std::vector<Cell>& memberships,
+        std::vector<CellSlot>& slots
+) {
+    for (std::size_t index = 1; index < memberships.size(); ++index) {
+        std::size_t cursor = index;
+        while (cursor > 0 && cellBefore(memberships[cursor], memberships[cursor - 1])) {
+            std::swap(memberships[cursor], memberships[cursor - 1]);
+            std::swap(slots[cursor], slots[cursor - 1]);
+            --cursor;
+        }
+    }
+}
+
+void appendMembership(CollisionContext& context, int entityId, const Cell& cell) {
+    auto iterator = context.cells.try_emplace(cell, &context.geometryPool).first;
+    auto& members = iterator->second;
+    members.ids.push_back(entityId);
+#if ECO_VANILLA_ORDER
+    members.orderDirty = true;
+#endif
+    const std::size_t index = members.ids.size() - 1;
+    members.geometry.resize(members.ids.size());
+    members.geometry.write(index, context.boxes[entityId]);
+    members.geometry.writeHard(index, context.metadata[entityId].hardCollidable);
+    context.memberSlots[entityId].push_back({&members, index});
+}
+
+void removeMembershipSlot(
+        CollisionContext& context,
+        int entityId,
+        const Cell& cell,
+        const CellSlot slot
+) {
+    // CellSlot is the backreference created by appendMembership.  Reusing it
+    // avoids a hash lookup on every removal; the map is only touched when the
+    // cell becomes empty and must actually be retired.
+    if (slot.members == nullptr || slot.index >= slot.members->ids.size()) return;
+    auto& members = *slot.members;
+#if ECO_VANILLA_ORDER
+    members.orderDirty = true;
+#endif
+    const int movedId = members.ids.back();
+    if (slot.index != members.ids.size() - 1) {
+        members.ids[slot.index] = movedId;
+        members.geometry.write(slot.index, context.boxes[movedId]);
+        members.geometry.writeHard(slot.index, context.metadata[movedId].hardCollidable);
+        for (auto& movedSlot : context.memberSlots[movedId]) {
+            if (movedSlot.members == slot.members) {
+                movedSlot.index = slot.index;
+                break;
+            }
+        }
+    }
+    members.geometry.writeHard(members.ids.size() - 1, false);
+    members.ids.pop_back();
+    members.geometry.resize(members.ids.size());
+    if (members.ids.empty()) context.cells.erase(cell);
+}
+
+} // namespace
+
 std::size_t CellHash::operator()(const Cell& cell) const noexcept {
     std::uint64_t x = static_cast<std::uint64_t>(cell.x);
     std::uint64_t y = static_cast<std::uint64_t>(cell.y);
@@ -58,28 +188,16 @@ std::int64_t cellCoordinate(double value, int gridSize) noexcept {
 }
 
 std::vector<Cell> coveredCells(const Aabb& box, int gridSize) {
+    const CellRange range = coveredCellRange(box, gridSize);
     std::vector<Cell> result;
-    if (!isIndexable(box)) {
-        return result;
-    }
+    if (!range.valid) return result;
 
-    const double negativeInfinity = -std::numeric_limits<double>::infinity();
-    const std::int64_t minCellX = cellCoordinate(box.minX, gridSize);
-    const std::int64_t maxCellX = cellCoordinate(std::nextafter(box.maxX, negativeInfinity), gridSize);
-    const std::int64_t minCellY = cellCoordinate(box.minY, gridSize);
-    const std::int64_t maxCellY = cellCoordinate(std::nextafter(box.maxY, negativeInfinity), gridSize);
-    const std::int64_t minCellZ = cellCoordinate(box.minZ, gridSize);
-    const std::int64_t maxCellZ = cellCoordinate(std::nextafter(box.maxZ, negativeInfinity), gridSize);
-
-    const std::size_t width = static_cast<std::size_t>(maxCellX - minCellX + 1);
-    const std::size_t height = static_cast<std::size_t>(maxCellY - minCellY + 1);
-    const std::size_t depth = static_cast<std::size_t>(maxCellZ - minCellZ + 1);
-    result.reserve(width * height * depth);
+    result.reserve(range.count);
     // The first membership is the component-wise minimum cell; ordered queries
     // use it to assign each candidate to its unique lowest common cell.
-    for (std::int64_t x = minCellX; x <= maxCellX; ++x) {
-        for (std::int64_t z = minCellZ; z <= maxCellZ; ++z) {
-            for (std::int64_t y = minCellY; y <= maxCellY; ++y) {
+    for (std::int64_t x = range.minX; x <= range.maxX; ++x) {
+        for (std::int64_t z = range.minZ; z <= range.maxZ; ++z) {
+            for (std::int64_t y = range.minY; y <= range.maxY; ++y) {
                 result.push_back({x, y, z});
             }
         }
@@ -97,16 +215,7 @@ void insertMemberships(
     slots.clear();
     slots.reserve(memberships.size());
     for (const Cell& cell : memberships) {
-        auto& members = context.cells[cell];
-        members.ids.push_back(entityId);
-#if ECO_VANILLA_ORDER
-        members.orderDirty = true;
-#endif
-        const std::size_t index = members.ids.size() - 1;
-        members.geometry.resize(members.ids.size());
-        members.geometry.write(index, context.boxes[entityId]);
-        members.geometry.writeHard(index, context.metadata[entityId].hardCollidable);
-        slots.push_back({&members, index});
+        appendMembership(context, entityId, cell);
     }
 }
 
@@ -119,26 +228,7 @@ void removeMemberships(
     auto& slots = context.memberSlots[entityId];
     for (std::size_t cellIndex = 0; cellIndex < slots.size(); ++cellIndex) {
         const CellSlot slot = slots[cellIndex];
-        auto& members = *slot.members;
-#if ECO_VANILLA_ORDER
-        members.orderDirty = true;
-#endif
-        const int movedId = members.ids.back();
-        if (slot.index != members.ids.size() - 1) {
-            members.ids[slot.index] = movedId;
-            members.geometry.write(slot.index, context.boxes[movedId]);
-            members.geometry.writeHard(slot.index, context.metadata[movedId].hardCollidable);
-            for (auto& movedSlot : context.memberSlots[movedId]) {
-                if (movedSlot.members == slot.members) {
-                    movedSlot.index = slot.index;
-                    break;
-                }
-            }
-        }
-        members.geometry.writeHard(members.ids.size() - 1, false);
-        members.ids.pop_back();
-        members.geometry.resize(members.ids.size());
-        if (members.ids.empty()) context.cells.erase(memberships[cellIndex]);
+        removeMembershipSlot(context, entityId, memberships[cellIndex], slot);
     }
     slots.clear();
 }
@@ -148,6 +238,7 @@ void rebuildSpatialIndex(CollisionContext& context) {
     context.candidateHeap.clear();
 #endif
     context.cells.clear();
+    context.geometryPool.release();
     context.memberSlots.clear();
     context.memberSlots.resize(context.boxes.size());
     context.memberships.clear();
@@ -162,19 +253,56 @@ void rebuildSpatialIndex(CollisionContext& context) {
 }
 
 void updateEntityBounds(CollisionContext& context, int entityId, const Aabb& box) {
-    std::vector<Cell> newMemberships = coveredCells(box, context.gridSize);
+    const CellRange newRange = coveredCellRange(box, context.gridSize);
     std::vector<Cell>& oldMemberships = context.memberships[entityId];
     context.boxes[entityId] = box;
-    if (oldMemberships != newMemberships) {
-        removeMemberships(context, entityId, oldMemberships);
-        insertMemberships(context, entityId, newMemberships);
-        oldMemberships = std::move(newMemberships);
-    }
-    else if (static_cast<std::size_t>(entityId) < context.memberSlots.size()) {
-        for (const auto& slot : context.memberSlots[entityId]) {
+    context.memberSlots.resize(context.boxes.size());
+    auto& slots = context.memberSlots[entityId];
+
+    if (sameRange(oldMemberships, newRange)) {
+        for (const auto& slot : slots) {
             slot.members->geometry.write(slot.index, box);
         }
+        return;
     }
+
+    const CellRange oldRange = membershipRange(oldMemberships);
+    oldMemberships.reserve(newRange.count);
+    slots.reserve(newRange.count);
+    std::size_t writeIndex = 0;
+    for (std::size_t readIndex = 0; readIndex < oldMemberships.size(); ++readIndex) {
+        const Cell cell = oldMemberships[readIndex];
+        const CellSlot slot = slots[readIndex];
+        if (contains(newRange, cell)) {
+            slot.members->geometry.write(slot.index, box);
+            if (writeIndex != readIndex) {
+                oldMemberships[writeIndex] = cell;
+                slots[writeIndex] = slot;
+            }
+            ++writeIndex;
+            continue;
+        }
+
+        removeMembershipSlot(context, entityId, cell, slot);
+    }
+    oldMemberships.resize(writeIndex);
+    slots.resize(writeIndex);
+
+    if (newRange.valid) {
+        for (std::int64_t x = newRange.minX; x <= newRange.maxX; ++x) {
+            for (std::int64_t z = newRange.minZ; z <= newRange.maxZ; ++z) {
+                for (std::int64_t y = newRange.minY; y <= newRange.maxY; ++y) {
+                    const Cell cell{x, y, z};
+                    if (!contains(oldRange, cell)) {
+                        appendMembership(context, entityId, cell);
+                        oldMemberships.push_back(cell);
+                    }
+                }
+            }
+        }
+    }
+
+    sortMemberships(oldMemberships, slots);
 }
 
 bool intersects(const Aabb& first, const Aabb& second) noexcept {

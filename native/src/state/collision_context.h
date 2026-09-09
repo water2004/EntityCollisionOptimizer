@@ -10,6 +10,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <memory_resource>
 #include <unordered_map>
 #include <vector>
 
@@ -33,6 +34,10 @@ struct CellMembers {
     bool orderDirty = true;
 #endif
     CellGeometry geometry;
+
+    explicit CellMembers(
+            std::pmr::memory_resource* resource = std::pmr::get_default_resource()
+    ) : geometry(resource) {}
 };
 
 // unordered_map rehash preserves element addresses. Erasure retires the corresponding slots.
@@ -55,6 +60,10 @@ struct CollisionContext {
     std::vector<EntityMetadata> metadata;
     std::vector<std::vector<Cell>> memberships;
     std::vector<std::vector<CellSlot>> memberSlots;
+    // Cell geometry is short-lived as entities cross grid cells.  Recycle its
+    // aligned blocks per context so cell retirement does not hit the process
+    // allocator on every empty-cell transition.
+    std::pmr::unsynchronized_pool_resource geometryPool;
     std::unordered_map<Cell, CellMembers, CellHash> cells;
 #if ECO_VANILLA_ORDER
     std::vector<CandidateCursor> candidateHeap;

@@ -2,6 +2,7 @@
 
 #include "geometry/aabb.h"
 #include <cstddef>
+#include <memory_resource>
 #include <vector>
 
 namespace eco {
@@ -14,8 +15,12 @@ struct alignas(32) CellGeometryBlock {
 };
 
 class CellGeometry {
-    std::vector<CellGeometryBlock> blocks;
+    std::pmr::vector<CellGeometryBlock> blocks;
 public:
+    explicit CellGeometry(
+            std::pmr::memory_resource* resource = std::pmr::get_default_resource()
+    ) : blocks(resource) {}
+
     const CellGeometryBlock& block(std::size_t index) const { return blocks[index]; }
     void resize(std::size_t count) { blocks.resize((count + CellGeometryBlock::WIDTH - 1) / CellGeometryBlock::WIDTH); }
     void writeHard(std::size_t index, bool hard) {
