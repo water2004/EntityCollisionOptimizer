@@ -12,10 +12,9 @@ template<class Consumer>
 int visitIntersectingCandidates(CollisionContext& context, int sourceId, Consumer&& consume) {
     beginQuery(context);
     const Aabb source = context.boxes[sourceId];
-    for (const Cell& cell : context.memberships[sourceId]) {
-        auto found = context.cells.find(cell);
-        if (found == context.cells.end()) continue;
-        const auto& ids = found->second.ids;
+    for (const CellSlot& slot : context.memberSlots[sourceId]) {
+        const auto& members = *slot.members;
+        const auto& ids = members.ids;
         constexpr auto width = CellGeometryBlock::WIDTH;
         for (std::size_t offset = 0; offset < ids.size(); offset += width) {
             unsigned count = static_cast<unsigned>(std::min<std::size_t>(width, ids.size() - offset));
@@ -28,7 +27,7 @@ int visitIntersectingCandidates(CollisionContext& context, int sourceId, Consume
                 unseen |= 1u << lane;
             }
             if (unseen == 0) continue;
-            unsigned hits = intersectionMask(source, found->second.geometry.block(offset / width)) & unseen;
+            unsigned hits = intersectionMask(source, members.geometry.block(offset / width)) & unseen;
             while (hits != 0) {
                 unsigned lane = std::countr_zero(hits);
                 hits &= hits - 1;
