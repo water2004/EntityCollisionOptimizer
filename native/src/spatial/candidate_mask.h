@@ -1,19 +1,21 @@
 #pragma once
 
-#include "spatial/spatial_index.h"
+#include "spatial/cell_geometry.h"
+#include <cstdint>
 
 namespace eco {
-/** Read cell IDs in place. Independent comparisons expose the small batch to the vectorizer. */
-inline unsigned intersectionMask(const Aabb& source, const Aabb* boxes, const int* ids, unsigned count) {
-    unsigned mask = 0;
-    for (unsigned lane = 0; lane < count; ++lane) {
-        const Aabb& target = boxes[ids[lane]];
+/** Contiguous field columns permit automatic vectorization across candidates. */
+inline unsigned intersectionMask(const Aabb& source, const CellGeometryBlock& targets) {
+    std::uint64_t lanes[CellGeometryBlock::WIDTH];
+    for (unsigned lane = 0; lane < CellGeometryBlock::WIDTH; ++lane) {
         // Non-short-circuit comparisons retain strict boundary/NaN semantics without control flow.
-        const bool hit = (source.minX < target.maxX) & (source.maxX > target.minX)
-                & (source.minY < target.maxY) & (source.maxY > target.minY)
-                & (source.minZ < target.maxZ) & (source.maxZ > target.minZ);
-        mask |= static_cast<unsigned>(hit) << lane;
+        const bool hit = (source.minX < targets.maxX[lane]) & (source.maxX > targets.minX[lane])
+                & (source.minY < targets.maxY[lane]) & (source.maxY > targets.minY[lane])
+                & (source.minZ < targets.maxZ[lane]) & (source.maxZ > targets.minZ[lane]);
+        lanes[lane] = static_cast<std::uint64_t>(hit) << lane;
     }
-    return mask;
+    std::uint64_t mask = 0;
+    for (auto lane : lanes) mask |= lane;
+    return static_cast<unsigned>(mask);
 }
 } // namespace eco

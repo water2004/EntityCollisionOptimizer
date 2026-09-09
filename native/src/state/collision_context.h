@@ -6,6 +6,9 @@
 
 #include "geometry/aabb.h"
 #include "state/entity_metadata.h"
+#if !ECO_VANILLA_ORDER
+#include "spatial/cell_geometry.h"
+#endif
 
 #include <cstddef>
 #include <cstdint>
@@ -30,8 +33,18 @@ struct CellMembers {
     std::vector<int> ids;
 #if ECO_VANILLA_ORDER
     bool orderDirty = true;
+#else
+    CellGeometry geometry;
 #endif
 };
+
+#if !ECO_VANILLA_ORDER
+// unordered_map rehash preserves element addresses. Erasure retires the corresponding slots.
+struct CellSlot {
+    CellMembers* members;
+    std::size_t index;
+};
+#endif
 
 struct CandidateCursor {
     const std::vector<int>* ids;
@@ -46,6 +59,9 @@ struct CollisionContext {
     std::vector<Aabb> boxes;
     std::vector<EntityMetadata> metadata;
     std::vector<std::vector<Cell>> memberships;
+#if !ECO_VANILLA_ORDER
+    std::vector<std::vector<CellSlot>> memberSlots;
+#endif
     std::unordered_map<Cell, CellMembers, CellHash> cells;
 #if ECO_VANILLA_ORDER
     std::vector<CandidateCursor> candidateHeap;
