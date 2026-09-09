@@ -24,6 +24,7 @@ import java.util.Random;
 /** Real one-block bore: original elder-guardian dimensions may overlap the walls. */
 final class ElderGuardianPipe extends BenchmarkScenario {
     private static final int SPAWN_Y = -50, BOTTOM_Y = -64, SPAWN_PER_TICK = 100;
+    private static final int DRAIN_TICKS = 100;
     private final GameTestHelper helper;
     private final List<Resident> residents = new ArrayList<>();
     private final Random random = new Random(0xEC0262L);
@@ -123,6 +124,18 @@ final class ElderGuardianPipe extends BenchmarkScenario {
     @Override void verify(int ticks) {
         if (spawned != ticks * SPAWN_PER_TICK) throw new IllegalStateException("Incomplete guardian spawning");
         // Report physical obstruction rather than changing entity dimensions to manufacture a fall.
+    }
+    @Override int drainTicks() { return DRAIN_TICKS; }
+    @Override void drain(int tick) {
+        observe();
+        if (tick % 20 == 0) population(200 + tick);
+    }
+    @Override void verifyDrain(int ticks) {
+        observe();
+        if (removed == 0 || residents.size() >= spawned) {
+            throw new IllegalStateException("Void drain did not remove guardians: removed=" + removed
+                    + " resident=" + residents.size() + " spawned=" + spawned);
+        }
     }
     @Override String summary() {
         return "spawned=" + spawned + " removed=" + removed + " entered_void=" + enteredVoid + " min_y=" + minimumY;

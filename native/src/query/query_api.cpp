@@ -88,38 +88,70 @@ int queryHardCollisionEntities(
         const std::int64_t minCellZ = eco::cellCoordinate(scan.minZ, context.gridSize);
         const std::int64_t maxCellZ = eco::cellCoordinate(std::nextafter(scan.maxZ, negativeInfinity), context.gridSize);
         int resultSize = 0;
+        const auto scanMembers = [&](const eco::CellMembers& members) {
+            constexpr auto width = eco::CellGeometryBlock::WIDTH;
+            for (std::size_t offset = 0; offset < members.ids.size(); offset += width) {
+                const auto count = std::min<std::size_t>(width, members.ids.size() - offset);
+                const auto& geometry = members.geometry.block(offset / width);
+                unsigned pending = (1u << count) - 1;
+                if (hardOnly != 0) pending &= geometry.hardMask;
+                unsigned eligible = 0;
+                while (pending != 0) {
+                    const unsigned lane = std::countr_zero(pending);
+                    pending &= pending - 1;
+                    const int id = members.ids[offset + lane];
+                    if (id == excludeId || context.queryMarks[id] == context.queryGeneration) continue;
+                    context.queryMarks[id] = context.queryGeneration;
+                    eligible |= 1u << lane;
+                }
+                if (eligible == 0) continue;
+                unsigned hits = eco::intersectionMask(scan, geometry) & eligible;
+                while (hits != 0) {
+                    const unsigned lane = std::countr_zero(hits);
+                    hits &= hits - 1;
+                    if (resultSize >= outputCapacity) return false;
+                    output[resultSize++] = members.ids[offset + lane];
+                }
+            }
+            return true;
+        };
+
+        // A movement scan normally stays inside the source entity's covered
+        // cells.  In that case every possible candidate cell is already in
+        // the source's backreference list, so scan it directly and avoid one
+        // hash lookup per cell.  intersectionMask still rejects candidates
+        // whose boxes do not overlap the actual scan AABB.
+        if (excludeId >= 0) {
+            const auto& memberships = context.memberships[excludeId];
+            if (!memberships.empty()) {
+                const auto& first = memberships.front();
+                const auto& last = memberships.back();
+                const bool scanInsideSource = minCellX >= first.x && maxCellX <= last.x
+                        && minCellY >= first.y && maxCellY <= last.y
+                        && minCellZ >= first.z && maxCellZ <= last.z;
+                if (scanInsideSource
+                        && context.memberSlots[excludeId].size() == memberships.size()) {
+                    const auto& slots = context.memberSlots[excludeId];
+                    for (std::size_t index = 0; index < slots.size(); ++index) {
+                        const auto& cell = memberships[index];
+                        if (cell.x < minCellX || cell.x > maxCellX
+                                || cell.y < minCellY || cell.y > maxCellY
+                                || cell.z < minCellZ || cell.z > maxCellZ) {
+                            continue;
+                        }
+                        const auto& slot = slots[index];
+                        if (slot.members != nullptr && !scanMembers(*slot.members)) return -2;
+                    }
+                    return resultSize;
+                }
+            }
+        }
         for (std::int64_t cellX = minCellX; cellX <= maxCellX; ++cellX) {
             for (std::int64_t cellZ = minCellZ; cellZ <= maxCellZ; ++cellZ) {
                 for (std::int64_t cellY = minCellY; cellY <= maxCellY; ++cellY) {
                     const auto iterator = context.cells.find({cellX, cellY, cellZ});
-                    if (iterator == context.cells.end()) {
-                        continue;
-                    }
-                    const auto& members = iterator->second;
-                    constexpr auto width = eco::CellGeometryBlock::WIDTH;
-                    for (std::size_t offset = 0; offset < members.ids.size(); offset += width) {
-                        const auto count = std::min<std::size_t>(width, members.ids.size() - offset);
-                        const auto& geometry = members.geometry.block(offset / width);
-                        unsigned pending = (1u << count) - 1;
-                        if (hardOnly != 0) pending &= geometry.hardMask;
-                        unsigned eligible = 0;
-                        while (pending != 0) {
-                            const unsigned lane = std::countr_zero(pending);
-                            pending &= pending - 1;
-                            const int id = members.ids[offset + lane];
-                            if (id == excludeId || context.queryMarks[id] == context.queryGeneration) continue;
-                            context.queryMarks[id] = context.queryGeneration;
-                            eligible |= 1u << lane;
-                        }
-                        if (eligible == 0) continue;
-                        unsigned hits = eco::intersectionMask(scan, geometry) & eligible;
-                        while (hits != 0) {
-                            const unsigned lane = std::countr_zero(hits);
-                            hits &= hits - 1;
-                            if (resultSize >= outputCapacity) return -2;
-                            output[resultSize++] = members.ids[offset + lane];
-                        }
-                    }
+                    if (iterator == context.cells.end()) continue;
+                    if (!scanMembers(iterator->second)) return -2;
                 }
             }
         }

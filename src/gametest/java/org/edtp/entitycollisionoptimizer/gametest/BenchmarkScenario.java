@@ -9,6 +9,9 @@ abstract class BenchmarkScenario {
     abstract void tick(int tick);
     abstract void population(int tick);
     abstract void verify(int tick);
+    int drainTicks() { return 0; }
+    void drain(int tick) {}
+    void verifyDrain(int tick) {}
     abstract String summary();
     abstract void cleanup();
 }

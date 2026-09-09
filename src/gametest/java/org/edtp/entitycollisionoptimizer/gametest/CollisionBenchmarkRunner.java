@@ -51,7 +51,8 @@ public final class CollisionBenchmarkRunner {
             if (run.tick == 0) run.logWindow("start");
             MovementScanDiagnostics.beginTick(run.optimized, true);
             run.tickStartedAt = System.nanoTime();
-            run.chamber.tick(run.tick);
+            if (run.tick < DURATION_TICKS) run.chamber.tick(run.tick);
+            else run.chamber.drain(run.drainTick);
         } catch (RuntimeException | Error failure) {
             run.fail(failure);
         }
@@ -65,14 +66,24 @@ public final class CollisionBenchmarkRunner {
             run.tickStartedAt = 0L;
             MovementScanDiagnostics.endTick();
             run.tick++;
-            if (run.tick % 20 == 0) run.chamber.population(run.tick);
+            if (run.tick <= DURATION_TICKS && run.tick % 20 == 0) run.chamber.population(run.tick);
             if (run.tick == DURATION_TICKS) {
                 run.logWindow("end");
                 run.chamber.verify(run.tick);
                 run.report();
-                run.cleanup();
-                activeRun = null;
-                run.done = true;
+                if (run.chamber.drainTicks() == 0) {
+                    run.cleanup();
+                    activeRun = null;
+                    run.done = true;
+                }
+            } else if (run.tick > DURATION_TICKS) {
+                run.drainTick++;
+                if (run.drainTick >= run.chamber.drainTicks()) {
+                    run.chamber.verifyDrain(run.tick);
+                    run.cleanup();
+                    activeRun = null;
+                    run.done = true;
+                }
             }
         } catch (RuntimeException | Error failure) {
             run.fail(failure);
@@ -86,6 +97,7 @@ public final class CollisionBenchmarkRunner {
         private final boolean optimized;
         private final List<Double> samples = new ArrayList<>(DURATION_TICKS);
         private int tick;
+        private int drainTick;
         private long tickStartedAt;
         private boolean done;
         private String failure;
