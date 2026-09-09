@@ -35,7 +35,7 @@ import java.util.Random;
 import java.util.UUID;
 
 /** A one-block spawn pedestal above a real 3x3 chamber and its bottom attacker. */
-final class ZombieBenchmarkChamber {
+final class ZombieBenchmarkChamber extends BenchmarkScenario {
     static final int SPAWN_PER_TICK = 100;
     static final int DROP_HEIGHT = 5;
     static final int ATTACK_INTERVAL_TICKS = 13;
@@ -51,6 +51,20 @@ final class ZombieBenchmarkChamber {
 
     ZombieBenchmarkChamber(GameTestHelper helper) {
         this.helper = helper;
+    }
+
+    @Override String name() { return "falling_zombies"; }
+    @Override String description() {
+        return "spawn_per_tick=100 total_spawned=20000 drop_height=5 chamber=3x3 spawn_pedestal=1x1 "
+                + "health=default players=1 player=invulnerable_survival weapon=diamond_sword "
+                + "knockback_level=2 attack_interval_ticks=13 warmup_ticks=0";
+    }
+    @Override void start() { build(); spawnPlayer(); }
+    @Override void tick(int tick) { tickConnection(); spawnWave(); attackIfReady(tick); }
+    @Override String summary() {
+        return "spawned=" + spawned + " attacks=" + attacks + " accepted_attacks=" + acceptedAttacks
+                + " observed_knockbacks=" + observedKnockbacks + " sweep_attacks=" + sweepAttacks
+                + " sweep_victims=" + sweepVictims;
     }
 
     void build() {
@@ -163,7 +177,7 @@ final class ZombieBenchmarkChamber {
         sweepVictims += secondaryHits;
     }
 
-    void reportPopulation(int tick) {
+    @Override void population(int tick) {
         long alive = zombies.stream().filter(z -> !z.isRemoved() && z.isAlive()).count();
         long dying = zombies.stream().filter(z -> !z.isRemoved() && !z.isAlive()).count();
         long despawned = removed + zombies.stream().filter(Entity::isRemoved).count();

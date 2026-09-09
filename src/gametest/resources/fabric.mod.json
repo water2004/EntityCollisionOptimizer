@@ -7,6 +7,7 @@
   "entrypoints": {
     "fabric-gametest": [
       "org.edtp.entitycollisionoptimizer.gametest.ZombieCollisionBenchmark",
+      "org.edtp.entitycollisionoptimizer.gametest.ElderGuardianBenchmark",
       "org.edtp.entitycollisionoptimizer.gametest.VanillaCollisionParityGameTests"
     ]
   },
