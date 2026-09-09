@@ -95,23 +95,6 @@ int queryHardCollisionEntities(
                     if (iterator == context.cells.end()) {
                         continue;
                     }
-#if ECO_VANILLA_ORDER
-                    for (const int candidateId : iterator->second.ids) {
-                        if ((hardOnly != 0 && !context.metadata[candidateId].hardCollidable)
-                                || candidateId == excludeId
-                                || context.queryMarks[candidateId] == context.queryGeneration) {
-                            continue;
-                        }
-                        context.queryMarks[candidateId] = context.queryGeneration;
-                        if (!eco::intersects(scan, context.boxes[candidateId])) {
-                            continue;
-                        }
-                        if (resultSize >= outputCapacity) {
-                            return -2;
-                        }
-                        output[resultSize++] = candidateId;
-                    }
-#else
                     const auto& members = iterator->second;
                     constexpr auto width = eco::CellGeometryBlock::WIDTH;
                     for (std::size_t offset = 0; offset < members.ids.size(); offset += width) {
@@ -137,7 +120,6 @@ int queryHardCollisionEntities(
                             output[resultSize++] = members.ids[offset + lane];
                         }
                     }
-#endif
                 }
             }
         }

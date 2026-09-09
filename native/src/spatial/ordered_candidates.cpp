@@ -44,9 +44,9 @@ bool seekOwned(CollisionContext& context, CandidateCursor& cursor) {
 } // namespace
 
 void invalidateCandidateOrder(CollisionContext& context, int entityId) {
-    for (const auto& cell : context.memberships[entityId]) {
-        auto found = context.cells.find(cell);
-        if (found != context.cells.end()) found->second.orderDirty = true;
+    if (context.memberships[entityId].empty()) return;
+    for (const auto& slot : context.memberSlots[entityId]) {
+        slot.members->orderDirty = true;
     }
 }
 
@@ -55,14 +55,23 @@ OrderedCandidates::OrderedCandidates(CollisionContext& context, int sourceId) : 
     heap.clear(); // Previous query's cursors must never survive mutation of the spatial index.
     if (context.memberships[sourceId].empty()) return;
     const Cell& minimum = context.memberships[sourceId].front();
-    for (const auto& cell : context.memberships[sourceId]) {
-        auto found = context.cells.find(cell);
-        if (found == context.cells.end()) continue;
-        auto& members = found->second;
+    for (std::size_t i = 0; i < context.memberSlots[sourceId].size(); ++i) {
+        const auto& cell = context.memberships[sourceId][i];
+        auto& members = *context.memberSlots[sourceId][i].members;
         if (members.orderDirty) {
             std::sort(members.ids.begin(), members.ids.end(), [&context](int a, int b) {
                 return before(context, a, b);
             });
+            // Sorting changes physical lanes. Repair both geometry and backreferences
+            // together, before any cursor can observe the reordered cell.
+            for (std::size_t index = 0; index < members.ids.size(); ++index) {
+                const int id = members.ids[index];
+                members.geometry.write(index, context.boxes[id]);
+                members.geometry.writeHard(index, context.metadata[id].hardCollidable);
+                for (auto& slot : context.memberSlots[id]) {
+                    if (slot.members == &members) { slot.index = index; break; }
+                }
+            }
             members.orderDirty = false;
         }
         unsigned ownershipAxes = (cell.x > minimum.x ? 1u : 0u)

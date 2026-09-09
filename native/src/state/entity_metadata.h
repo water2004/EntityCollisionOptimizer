@@ -7,29 +7,25 @@
 #include <cstdint>
 
 namespace eco {
-#if ECO_VANILLA_ORDER
-struct EntityMetadata {
-    std::int64_t sectionX = 0;
-    std::int64_t sectionY = 0;
-    std::int64_t sectionZ = 0;
-    std::int64_t sectionOrder = 0;
-    int teamId = -1;
-    int collisionRule = 0;
-    int bodySlot = -1;
-    bool selectable = false;
-    bool passenger = false;
-    bool vehicle = false;
-    bool noPhysics = false;
-    bool vanillaEntityPush = false;
-    bool vanillaVectorPush = false;
-    bool hardCollidable = false;
-    bool selectableValid = false;
-    bool teamValid = false;
-};
-#else
 // Every section coordinate enters through an int32 ABI parameter. Keep the
 // complete query record in one half cache line; no per-cell metadata copies.
 struct alignas(32) EntityMetadata {
+#if ECO_VANILLA_ORDER
+    std::int64_t sectionOrder = 0;
+    std::int32_t sectionX = 0, sectionY = 0, sectionZ = 0;
+    int teamId = -1;
+    int bodySlot = -1;
+    std::uint32_t collisionRule : 2 = 0;
+    std::uint32_t selectable : 1 = false;
+    std::uint32_t passenger : 1 = false;
+    std::uint32_t vehicle : 1 = false;
+    std::uint32_t noPhysics : 1 = false;
+    std::uint32_t vanillaEntityPush : 1 = false;
+    std::uint32_t vanillaVectorPush : 1 = false;
+    std::uint32_t hardCollidable : 1 = false;
+    std::uint32_t selectableValid : 1 = false;
+    std::uint32_t teamValid : 1 = false;
+#else
     std::int32_t sectionX = 0, sectionY = 0, sectionZ = 0;
     int teamId = -1;
     int collisionRule = 0;
@@ -43,9 +39,9 @@ struct alignas(32) EntityMetadata {
     bool hardCollidable : 1 = false;
     bool selectableValid : 1 = false;
     bool teamValid : 1 = false;
+#endif
 };
 static_assert(sizeof(EntityMetadata) == 32);
-#endif
 
 inline constexpr int METADATA_SELECTABLE = 1;
 inline constexpr int METADATA_TEAM = 2;

@@ -92,24 +92,21 @@ void insertMemberships(
         int entityId,
         const std::vector<Cell>& memberships
 ) {
-#if !ECO_VANILLA_ORDER
     context.memberSlots.resize(context.boxes.size());
     auto& slots = context.memberSlots[entityId];
     slots.clear();
     slots.reserve(memberships.size());
-#endif
     for (const Cell& cell : memberships) {
         auto& members = context.cells[cell];
         members.ids.push_back(entityId);
 #if ECO_VANILLA_ORDER
         members.orderDirty = true;
-#else
+#endif
         const std::size_t index = members.ids.size() - 1;
         members.geometry.resize(members.ids.size());
         members.geometry.write(index, context.boxes[entityId]);
         members.geometry.writeHard(index, context.metadata[entityId].hardCollidable);
         slots.push_back({&members, index});
-#endif
     }
 }
 
@@ -118,29 +115,14 @@ void removeMemberships(
         int entityId,
         const std::vector<Cell>& memberships
 ) {
-#if ECO_VANILLA_ORDER
-    for (const Cell& cell : memberships) {
-        auto cellIterator = context.cells.find(cell);
-        if (cellIterator == context.cells.end()) {
-            continue;
-        }
-        std::vector<int>& entities = cellIterator->second.ids;
-        const auto entityIterator = std::find(entities.begin(), entities.end(), entityId);
-        if (entityIterator != entities.end()) {
-            *entityIterator = entities.back();
-            entities.pop_back();
-            cellIterator->second.orderDirty = true;
-        }
-        if (entities.empty()) {
-            context.cells.erase(cellIterator);
-        }
-    }
-#else
     if (memberships.empty()) return;
     auto& slots = context.memberSlots[entityId];
     for (std::size_t cellIndex = 0; cellIndex < slots.size(); ++cellIndex) {
         const CellSlot slot = slots[cellIndex];
         auto& members = *slot.members;
+#if ECO_VANILLA_ORDER
+        members.orderDirty = true;
+#endif
         const int movedId = members.ids.back();
         if (slot.index != members.ids.size() - 1) {
             members.ids[slot.index] = movedId;
@@ -159,7 +141,6 @@ void removeMemberships(
         if (members.ids.empty()) context.cells.erase(memberships[cellIndex]);
     }
     slots.clear();
-#endif
 }
 
 void rebuildSpatialIndex(CollisionContext& context) {
@@ -167,10 +148,8 @@ void rebuildSpatialIndex(CollisionContext& context) {
     context.candidateHeap.clear();
 #endif
     context.cells.clear();
-#if !ECO_VANILLA_ORDER
     context.memberSlots.clear();
     context.memberSlots.resize(context.boxes.size());
-#endif
     context.memberships.clear();
     context.memberships.resize(context.boxes.size());
     context.queryMarks.assign(context.boxes.size(), 0);
@@ -191,13 +170,11 @@ void updateEntityBounds(CollisionContext& context, int entityId, const Aabb& box
         insertMemberships(context, entityId, newMemberships);
         oldMemberships = std::move(newMemberships);
     }
-#if !ECO_VANILLA_ORDER
     else if (static_cast<std::size_t>(entityId) < context.memberSlots.size()) {
         for (const auto& slot : context.memberSlots[entityId]) {
             slot.members->geometry.write(slot.index, box);
         }
     }
-#endif
 }
 
 bool intersects(const Aabb& first, const Aabb& second) noexcept {
