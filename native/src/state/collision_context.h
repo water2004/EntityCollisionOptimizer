@@ -22,13 +22,12 @@ struct CellSlot {
     std::size_t index;
 };
 
-struct CandidateCursor {
-    const std::vector<int>* ids;
-    std::size_t index;
-    Cell cell;
-    unsigned ownershipAxes;
-    int entity() const noexcept { return (*ids)[index]; }
+#if ECO_VANILLA_ORDER
+struct OrderedSectionCandidates {
+    const std::vector<int>* ids = nullptr;
+    std::vector<std::uint64_t> bits;
 };
+#endif
 
 struct CollisionContext {
     int gridSize = 1;
@@ -36,11 +35,6 @@ struct CollisionContext {
     std::vector<EntityMetadata> metadata;
     std::vector<std::vector<Cell>> memberships;
     std::vector<std::vector<CellSlot>> memberSlots;
-#if ECO_VANILLA_ORDER
-    // Ownership cell per entity (the component-wise minimum covered cell),
-    // kept contiguous so seekOwned avoids chasing per-entity vectors.
-    std::vector<Cell> ownerCells;
-#endif
     CellMap cells;
     std::deque<CellMembers> membersPool;
     CellMembers* freeMembers = nullptr;
@@ -49,7 +43,10 @@ struct CollisionContext {
     CellMembers* freeSectionMembers = nullptr;
     std::vector<CellSlot> sectionSlots;
 #if ECO_VANILLA_ORDER
-    std::vector<CandidateCursor> candidateHeap;
+    // Reused query scratch.  Bits select fine-grid hits while ids retain the
+    // persistent section/insertion order.
+    std::vector<OrderedSectionCandidates> orderedSections;
+    std::size_t orderedSectionCount = 0;
 #endif
     std::vector<std::uint32_t> queryMarks;
     std::vector<int> metadataMisses;
@@ -70,6 +67,9 @@ struct CollisionContext {
 
     void retireMembers(CellMembers* members) {
         members->ids.clear();
+#if ECO_VANILLA_ORDER
+        members->bounds.clear();
+#endif
         members->hardCount = 0;
 #if ECO_VANILLA_ORDER
         members->orderDirty = true;

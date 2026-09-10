@@ -8,6 +8,10 @@
 #include <cstdint>
 #include <vector>
 
+#if ECO_VANILLA_ORDER
+#include "spatial/cell_bounds_soa.h"
+#endif
+
 namespace eco {
 
 struct Cell {
@@ -24,6 +28,9 @@ struct CellHash {
 
 struct CellMembers {
     std::vector<int> ids;
+#if ECO_VANILLA_ORDER
+    CellBoundsSoa bounds;
+#endif
     // Hard members resident in this cell; hard-only scans skip empty cells outright.
     std::size_t hardCount = 0;
 #if ECO_VANILLA_ORDER

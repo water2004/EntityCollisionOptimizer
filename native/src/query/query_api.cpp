@@ -1,16 +1,50 @@
 #include "eco/collision_api.h"
 
+#include "query/cell_bounds_batch.h"
 #include "query/collision_rules.h"
 #include "state/collision_context.h"
 #include "spatial/spatial_index.h"
 #include "spatial/section_index.h"
-#include "spatial/ordered_candidates.h"
 #include "spatial/unordered_candidates.h"
 
 #include <algorithm>
+#include <bit>
 #include <cmath>
 #include <cstddef>
 #include <limits>
+
+namespace {
+
+#if ECO_VANILLA_ORDER
+template<class Visitor>
+bool visitPackedRange(std::int64_t minimum, std::int64_t maximum, Visitor&& visitor) {
+    if (maximum >= 0) {
+        for (std::int64_t value = std::max<std::int64_t>(minimum, 0); value <= maximum; ++value) {
+            if (!visitor(value)) return false;
+        }
+    }
+    if (minimum < 0) {
+        for (std::int64_t value = minimum; value <= std::min<std::int64_t>(maximum, -1); ++value) {
+            if (!visitor(value)) return false;
+        }
+    }
+    return true;
+}
+
+template<class Visitor>
+bool visitOrderedSections(const eco::LookupSections& sections, Visitor&& visitor) {
+    for (std::int64_t x = sections.minX; x <= sections.maxX; ++x) {
+        if (!visitPackedRange(sections.minZ, sections.maxZ, [&](std::int64_t z) {
+            return visitPackedRange(sections.minY, sections.maxY, [&](std::int64_t y) {
+                return visitor(x, y, z);
+            });
+        })) return false;
+    }
+    return true;
+}
+#endif
+
+} // namespace
 
 int queryCollisionEntities(void* contextPointer, int sourceId, int* output, int outputCapacity) {
     if (contextPointer == nullptr || sourceId < 0 || output == nullptr || outputCapacity < 0) {
@@ -171,15 +205,7 @@ int queryEntitiesInBox(
         const eco::Aabb scan = eco::makeAabb(minX, minY, minZ, maxX, maxY, maxZ);
         if (!eco::isIndexable(scan)) return 0;
 
-        const auto section = [](double coordinate) -> std::int64_t {
-            return static_cast<std::int64_t>(std::floor(coordinate / 16.0));
-        };
-        const std::int64_t minSectionX = section(scan.minX - 2.0);
-        const std::int64_t maxSectionX = section(scan.maxX + 2.0);
-        const std::int64_t minSectionY = section(scan.minY - 4.0);
-        const std::int64_t maxSectionY = section(scan.maxY);
-        const std::int64_t minSectionZ = section(scan.minZ - 2.0);
-        const std::int64_t maxSectionZ = section(scan.maxZ + 2.0);
+        const eco::LookupSections sections(scan);
 
         int resultSize = 0;
         const auto scanSection = [&](std::int64_t sectionX, std::int64_t sectionY, std::int64_t sectionZ) {
@@ -195,30 +221,11 @@ int queryEntitiesInBox(
             return true;
         };
 #if ECO_VANILLA_ORDER
-        const auto packedRange = [](std::int64_t minimum, std::int64_t maximum, const auto& visitor) {
-            if (maximum >= 0) {
-                for (std::int64_t value = std::max<std::int64_t>(minimum, 0); value <= maximum; ++value) {
-                    if (!visitor(value)) return false;
-                }
-            }
-            if (minimum < 0) {
-                for (std::int64_t value = minimum; value <= std::min<std::int64_t>(maximum, -1); ++value) {
-                    if (!visitor(value)) return false;
-                }
-            }
-            return true;
-        };
-        for (std::int64_t sectionX = minSectionX; sectionX <= maxSectionX; ++sectionX) {
-            if (!packedRange(minSectionZ, maxSectionZ, [&](std::int64_t sectionZ) {
-                return packedRange(minSectionY, maxSectionY, [&](std::int64_t sectionY) {
-                    return scanSection(sectionX, sectionY, sectionZ);
-                });
-            })) return -4;
-        }
+        if (!visitOrderedSections(sections, scanSection)) return -4;
 #else
-        for (std::int64_t sectionX = minSectionX; sectionX <= maxSectionX; ++sectionX) {
-            for (std::int64_t sectionZ = minSectionZ; sectionZ <= maxSectionZ; ++sectionZ) {
-                for (std::int64_t sectionY = minSectionY; sectionY <= maxSectionY; ++sectionY) {
+        for (std::int64_t sectionX = sections.minX; sectionX <= sections.maxX; ++sectionX) {
+            for (std::int64_t sectionZ = sections.minZ; sectionZ <= sections.maxZ; ++sectionZ) {
+                for (std::int64_t sectionY = sections.minY; sectionY <= sections.maxY; ++sectionY) {
                     if (!scanSection(sectionX, sectionY, sectionZ)) return -4;
                 }
             }
@@ -270,7 +277,7 @@ int queryPushableEntities(
             if (candidateId == sourceId) return 0;
             const eco::EntityMetadata& target = context.metadata[candidateId];
             if (
-#if ECO_VANILLA_ORDER
+#if !ECO_VANILLA_ORDER
                     !eco::intersects(source, context.boxes[candidateId]) ||
 #endif
                     !lookup.contains(target)) {
@@ -302,10 +309,82 @@ int queryPushableEntities(
             return 0;
         };
 #if ECO_VANILLA_ORDER
-        eco::OrderedCandidates candidates(context, sourceId);
-        for (int id = candidates.next(); id != -1; id = candidates.next()) {
-            int status = consume(id);
-            if (status != 0) return status;
+        // The fine grid answers membership; the persistent section index supplies
+        // Minecraft's section/insertion order.  This avoids sorting and heap-merging
+        // every overlapping fine-cell stream.
+        context.orderedSectionCount = 0;
+        if (!visitOrderedSections(lookup, [&](std::int64_t x, std::int64_t y, std::int64_t z) {
+            const std::vector<int>* ids = eco::sectionEntities(context, {x, y, z});
+            if (ids == nullptr) return true;
+            const std::size_t scratchIndex = context.orderedSectionCount++;
+            if (scratchIndex == context.orderedSections.size()) {
+                context.orderedSections.emplace_back();
+            }
+            auto& scratch = context.orderedSections[scratchIndex];
+            scratch.ids = ids;
+            scratch.bits.resize((ids->size() + 63) / 64);
+            std::fill(scratch.bits.begin(), scratch.bits.end(), std::uint64_t{0});
+            return true;
+        })) return -3;
+
+        eco::beginQuery(context);
+        for (const eco::CellSlot& slot : context.memberSlots[sourceId]) {
+            const eco::CellMembers& members = *slot.members;
+            const auto selectCandidate = [&](int id) {
+                if (!lookup.contains(context.metadata[id])) return;
+                const eco::CellSlot sectionSlot = context.sectionSlots[id];
+                for (std::size_t sectionIndex = 0; sectionIndex < context.orderedSectionCount; ++sectionIndex) {
+                    auto& scratch = context.orderedSections[sectionIndex];
+                    if (scratch.ids != &sectionSlot.members->ids) continue;
+                    scratch.bits[sectionSlot.index / 64] |= std::uint64_t{1} << (sectionSlot.index % 64);
+                    break;
+                }
+            };
+
+            std::size_t index = 0;
+            for (; index + 4 <= members.ids.size(); index += 4) {
+                unsigned active = 0;
+                for (unsigned lane = 0; lane < 4; ++lane) {
+                    const int id = members.ids[index + lane];
+                    if (id == sourceId || context.queryMarks[id] == context.queryGeneration) continue;
+                    context.queryMarks[id] = context.queryGeneration;
+                    active |= 1U << lane;
+                }
+                unsigned hits = active & eco::intersectCellBounds4(source, members.bounds, index);
+                while (hits != 0) {
+                    const unsigned lane = std::countr_zero(hits);
+                    selectCandidate(members.ids[index + lane]);
+                    hits &= hits - 1;
+                }
+            }
+            for (; index < members.ids.size(); ++index) {
+                const int id = members.ids[index];
+                if (id == sourceId || context.queryMarks[id] == context.queryGeneration) continue;
+                context.queryMarks[id] = context.queryGeneration;
+                if (source.minX >= members.bounds.maxX[index]
+                        || source.maxX <= members.bounds.minX[index]
+                        || source.minY >= members.bounds.maxY[index]
+                        || source.maxY <= members.bounds.minY[index]
+                        || source.minZ >= members.bounds.maxZ[index]
+                        || source.maxZ <= members.bounds.minZ[index]) {
+                    continue;
+                }
+                selectCandidate(id);
+            }
+        }
+
+        for (std::size_t sectionIndex = 0; sectionIndex < context.orderedSectionCount; ++sectionIndex) {
+            const auto& scratch = context.orderedSections[sectionIndex];
+            for (std::size_t wordIndex = 0; wordIndex < scratch.bits.size(); ++wordIndex) {
+                std::uint64_t bits = scratch.bits[wordIndex];
+                while (bits != 0) {
+                    const unsigned bit = std::countr_zero(bits);
+                    const std::size_t memberIndex = wordIndex * 64 + bit;
+                    const int status = consume((*scratch.ids)[memberIndex]);
+                    if (status != 0) return status;
+                    bits &= bits - 1;
+                }
+            }
         }
 #else
         int status = eco::visitIntersectingCandidates(context, sourceId, consume);

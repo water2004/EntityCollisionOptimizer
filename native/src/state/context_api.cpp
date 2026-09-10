@@ -3,7 +3,6 @@
 #include "state/collision_context.h"
 #include "spatial/spatial_index.h"
 #include "spatial/section_index.h"
-#include "spatial/ordered_candidates.h"
 
 #include <cstddef>
 #include <new>

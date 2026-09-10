@@ -95,7 +95,7 @@ void appendMembership(CollisionContext& context, int entityId, const Cell& cell)
     auto& members = *slot;
     members.ids.push_back(entityId);
 #if ECO_VANILLA_ORDER
-    members.orderDirty = true;
+    members.bounds.push(context.boxes[entityId]);
 #endif
     const std::size_t index = members.ids.size() - 1;
     if (context.metadata[entityId].hardCollidable) ++members.hardCount;
@@ -114,10 +114,10 @@ void removeMembershipSlot(
     if (slot.members == nullptr || slot.index >= slot.members->ids.size()) return;
     auto& members = *slot.members;
     if (context.metadata[entityId].hardCollidable) --members.hardCount;
-#if ECO_VANILLA_ORDER
-    members.orderDirty = true;
-#endif
     const int movedId = members.ids.back();
+#if ECO_VANILLA_ORDER
+    members.bounds.swapErase(slot.index);
+#endif
     if (slot.index != members.ids.size() - 1) {
         members.ids[slot.index] = movedId;
         for (auto& movedSlot : context.memberSlots[movedId]) {
@@ -233,11 +233,6 @@ void removeMemberships(
 }
 
 void rebuildSpatialIndex(CollisionContext& context) {
-#if ECO_VANILLA_ORDER
-    context.candidateHeap.clear();
-    context.ownerCells.clear();
-    context.ownerCells.resize(context.boxes.size());
-#endif
     context.clearCellsAndPool();
     context.memberSlots.clear();
     context.memberSlots.resize(context.boxes.size());
@@ -249,11 +244,6 @@ void rebuildSpatialIndex(CollisionContext& context) {
         std::vector<Cell> memberships = coveredCells(context.boxes[index], context.gridSize);
         insertMemberships(context, static_cast<int>(index), memberships);
         context.memberships[index] = std::move(memberships);
-#if ECO_VANILLA_ORDER
-        if (!context.memberships[index].empty()) {
-            context.ownerCells[index] = context.memberships[index].front();
-        }
-#endif
     }
 }
 
@@ -262,19 +252,16 @@ void updateEntityBounds(CollisionContext& context, int entityId, const Aabb& box
     std::vector<Cell>& oldMemberships = context.memberships[entityId];
     context.boxes[entityId] = box;
     context.memberSlots.resize(context.boxes.size());
-#if ECO_VANILLA_ORDER
-    context.ownerCells.resize(context.boxes.size());
-#endif
     auto& slots = context.memberSlots[entityId];
 
     if (sameRange(oldMemberships, newRange)) {
+#if ECO_VANILLA_ORDER
+        for (const CellSlot slot : slots) {
+            slot.members->bounds.set(slot.index, box);
+        }
+#endif
         return;
     }
-#if ECO_VANILLA_ORDER
-    context.ownerCells[entityId] = newRange.valid
-            ? Cell{newRange.minX, newRange.minY, newRange.minZ} : Cell{};
-#endif
-
     const CellRange oldRange = membershipRange(oldMemberships);
     oldMemberships.reserve(newRange.count);
     slots.reserve(newRange.count);
@@ -283,6 +270,9 @@ void updateEntityBounds(CollisionContext& context, int entityId, const Aabb& box
         const Cell cell = oldMemberships[readIndex];
         const CellSlot slot = slots[readIndex];
         if (contains(newRange, cell)) {
+#if ECO_VANILLA_ORDER
+            slot.members->bounds.set(slot.index, box);
+#endif
             if (writeIndex != readIndex) {
                 oldMemberships[writeIndex] = cell;
                 slots[writeIndex] = slot;

@@ -20,5 +20,8 @@ void updateSectionEntity(
 #endif
 );
 const std::vector<int>* sectionEntities(CollisionContext& context, const Cell& section);
+#if ECO_VANILLA_ORDER
+void invalidateSectionOrder(CollisionContext& context, int entityId) noexcept;
+#endif
 
 } // namespace eco

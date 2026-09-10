@@ -110,7 +110,7 @@ set(ECO_COMMON_SOURCES
         src/blocks/block_scan.cpp
 )
 
-add_library(EntityCollisionOptimizer SHARED ${ECO_COMMON_SOURCES} src/spatial/ordered_candidates.cpp)
+add_library(EntityCollisionOptimizer SHARED ${ECO_COMMON_SOURCES})
 add_library(EntityCollisionOptimizerUnordered SHARED ${ECO_COMMON_SOURCES})
 target_compile_definitions(EntityCollisionOptimizerUnordered PRIVATE ECO_VANILLA_ORDER=0)
 

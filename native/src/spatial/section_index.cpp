@@ -1,9 +1,5 @@
 #include "spatial/section_index.h"
 
-#if ECO_VANILLA_ORDER
-#include "spatial/ordered_candidates.h"
-#endif
-
 #include <algorithm>
 
 namespace eco {
@@ -13,15 +9,22 @@ Cell sectionOf(const EntityMetadata& metadata) noexcept {
     return {metadata.sectionX, metadata.sectionY, metadata.sectionZ};
 }
 
-void markSectionOrderDirty(CollisionContext& context, int entityId) noexcept {
+bool candidateBefore(const CollisionContext& context, int leftId, int rightId) noexcept {
 #if ECO_VANILLA_ORDER
-    if (static_cast<std::size_t>(entityId) < context.sectionSlots.size()) {
-        CellMembers* members = context.sectionSlots[entityId].members;
-        if (members != nullptr) members->orderDirty = true;
-    }
+    const auto& left = context.metadata[leftId];
+    const auto& right = context.metadata[rightId];
+    if (left.sectionX != right.sectionX) return left.sectionX < right.sectionX;
+    const auto leftZ = left.sectionZ & 0x3fffff, rightZ = right.sectionZ & 0x3fffff;
+    if (leftZ != rightZ) return leftZ < rightZ;
+    const auto leftY = left.sectionY & 0xfffff, rightY = right.sectionY & 0xfffff;
+    if (leftY != rightY) return leftY < rightY;
+    if (left.sectionOrder != right.sectionOrder) return left.sectionOrder < right.sectionOrder;
+    return leftId < rightId;
 #else
     (void) context;
-    (void) entityId;
+    (void) leftId;
+    (void) rightId;
+    return false;
 #endif
 }
 
@@ -32,9 +35,13 @@ void insertSectionEntity(CollisionContext& context, int entityId) {
     const Cell section = sectionOf(context.metadata[entityId]);
     CellMembers*& entry = context.sections.entry(section);
     if (entry == nullptr) entry = &context.acquireSectionMembers();
+#if ECO_VANILLA_ORDER
+    const bool remainsOrdered = !entry->orderDirty
+            && (entry->ids.empty() || !candidateBefore(context, entityId, entry->ids.back()));
+#endif
     entry->ids.push_back(entityId);
 #if ECO_VANILLA_ORDER
-    entry->orderDirty = true;
+    entry->orderDirty = !remainsOrdered;
 #endif
     context.sectionSlots[entityId] = {entry, entry->ids.size() - 1};
 }
@@ -46,13 +53,14 @@ void removeSectionEntity(CollisionContext& context, int entityId) {
 
     CellMembers& members = *slot.members;
     const int movedId = members.ids.back();
-    if (slot.index != members.ids.size() - 1) {
+    const bool movedMember = slot.index != members.ids.size() - 1;
+    if (movedMember) {
         members.ids[slot.index] = movedId;
         context.sectionSlots[movedId].index = slot.index;
     }
     members.ids.pop_back();
 #if ECO_VANILLA_ORDER
-    members.orderDirty = true;
+    if (movedMember) members.orderDirty = true;
 #endif
     context.sectionSlots[entityId] = {nullptr, 0};
     if (members.ids.empty()) {
@@ -77,7 +85,6 @@ void updateSectionEntity(
             || metadata.sectionZ != sectionZ;
 #if ECO_VANILLA_ORDER
     const bool reordered = metadata.sectionOrder != sectionOrder;
-    if (moved || reordered) invalidateCandidateOrder(context, entityId);
 #endif
     if (moved) removeSectionEntity(context, entityId);
     metadata.sectionX = sectionX;
@@ -85,7 +92,7 @@ void updateSectionEntity(
     metadata.sectionZ = sectionZ;
 #if ECO_VANILLA_ORDER
     metadata.sectionOrder = sectionOrder;
-    if (!moved && reordered) markSectionOrderDirty(context, entityId);
+    if (!moved && reordered) invalidateSectionOrder(context, entityId);
 #endif
     if (moved) insertSectionEntity(context, entityId);
 }
@@ -114,5 +121,13 @@ const std::vector<int>* sectionEntities(CollisionContext& context, const Cell& s
 #endif
     return &members->ids;
 }
+
+#if ECO_VANILLA_ORDER
+void invalidateSectionOrder(CollisionContext& context, int entityId) noexcept {
+    if (static_cast<std::size_t>(entityId) >= context.sectionSlots.size()) return;
+    CellMembers* members = context.sectionSlots[entityId].members;
+    if (members != nullptr) members->orderDirty = true;
+}
+#endif
 
 } // namespace eco

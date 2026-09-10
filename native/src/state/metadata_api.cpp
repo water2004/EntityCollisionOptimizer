@@ -1,7 +1,7 @@
 #include "eco/collision_api.h"
 
 #include "state/collision_context.h"
-#include "spatial/ordered_candidates.h"
+#include "spatial/section_index.h"
 
 #include <cstddef>
 
@@ -54,7 +54,7 @@ int updateCollisionEntityMetadata(
 #if ECO_VANILLA_ORDER
         if (metadata.sectionOrder != sectionOrder) {
             metadata.sectionOrder = sectionOrder;
-            eco::invalidateCandidateOrder(context, entityId);
+            eco::invalidateSectionOrder(context, entityId);
         }
 #endif
         metadata.selectableValid = true;
