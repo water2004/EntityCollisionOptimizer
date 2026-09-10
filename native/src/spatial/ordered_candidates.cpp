@@ -62,12 +62,10 @@ OrderedCandidates::OrderedCandidates(CollisionContext& context, int sourceId) : 
             std::sort(members.ids.begin(), members.ids.end(), [&context](int a, int b) {
                 return before(context, a, b);
             });
-            // Sorting changes physical lanes. Repair both geometry and backreferences
-            // together, before any cursor can observe the reordered cell.
+            // Sorting changes physical lanes. Repair the backreferences before
+            // any cursor can observe the reordered cell.
             for (std::size_t index = 0; index < members.ids.size(); ++index) {
                 const int id = members.ids[index];
-                members.geometry.write(index, context.boxes[id]);
-                members.geometry.writeHard(index, context.metadata[id].hardCollidable);
                 for (auto& slot : context.memberSlots[id]) {
                     if (slot.members == &members) { slot.index = index; break; }
                 }

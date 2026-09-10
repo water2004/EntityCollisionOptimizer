@@ -4,11 +4,8 @@
 #define ECO_VANILLA_ORDER 1
 #endif
 
-#include "spatial/cell_geometry.h"
-
 #include <cstddef>
 #include <cstdint>
-#include <memory_resource>
 #include <vector>
 
 namespace eco {
@@ -32,12 +29,7 @@ struct CellMembers {
 #if ECO_VANILLA_ORDER
     bool orderDirty = true;
 #endif
-    CellGeometry geometry;
     CellMembers* poolNext = nullptr;
-
-    explicit CellMembers(
-            std::pmr::memory_resource* resource = std::pmr::get_default_resource()
-    ) : geometry(resource) {}
 };
 
 // Flat open-addressing cell lookup: linear probing over contiguous entries

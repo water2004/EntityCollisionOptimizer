@@ -98,9 +98,6 @@ void appendMembership(CollisionContext& context, int entityId, const Cell& cell)
     members.orderDirty = true;
 #endif
     const std::size_t index = members.ids.size() - 1;
-    members.geometry.resize(members.ids.size());
-    members.geometry.write(index, context.boxes[entityId]);
-    members.geometry.writeHard(index, context.metadata[entityId].hardCollidable);
     if (context.metadata[entityId].hardCollidable) ++members.hardCount;
     context.memberSlots[entityId].push_back({&members, index});
 }
@@ -123,8 +120,6 @@ void removeMembershipSlot(
     const int movedId = members.ids.back();
     if (slot.index != members.ids.size() - 1) {
         members.ids[slot.index] = movedId;
-        members.geometry.write(slot.index, context.boxes[movedId]);
-        members.geometry.writeHard(slot.index, context.metadata[movedId].hardCollidable);
         for (auto& movedSlot : context.memberSlots[movedId]) {
             if (movedSlot.members == slot.members) {
                 movedSlot.index = slot.index;
@@ -132,9 +127,7 @@ void removeMembershipSlot(
             }
         }
     }
-    members.geometry.writeHard(members.ids.size() - 1, false);
     members.ids.pop_back();
-    members.geometry.resize(members.ids.size());
     if (members.ids.empty()) {
         context.cells.erase(cell);
         context.retireMembers(&members);
@@ -244,7 +237,6 @@ void rebuildSpatialIndex(CollisionContext& context) {
     context.candidateHeap.clear();
 #endif
     context.clearCellsAndPool();
-    context.geometryPool.release();
     context.memberSlots.clear();
     context.memberSlots.resize(context.boxes.size());
     context.memberships.clear();
@@ -266,9 +258,6 @@ void updateEntityBounds(CollisionContext& context, int entityId, const Aabb& box
     auto& slots = context.memberSlots[entityId];
 
     if (sameRange(oldMemberships, newRange)) {
-        for (const auto& slot : slots) {
-            slot.members->geometry.write(slot.index, box);
-        }
         return;
     }
 
@@ -280,7 +269,6 @@ void updateEntityBounds(CollisionContext& context, int entityId, const Aabb& box
         const Cell cell = oldMemberships[readIndex];
         const CellSlot slot = slots[readIndex];
         if (contains(newRange, cell)) {
-            slot.members->geometry.write(slot.index, box);
             if (writeIndex != readIndex) {
                 oldMemberships[writeIndex] = cell;
                 slots[writeIndex] = slot;

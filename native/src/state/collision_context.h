@@ -11,7 +11,6 @@
 #include <cstddef>
 #include <cstdint>
 #include <deque>
-#include <memory_resource>
 #include <vector>
 
 namespace eco {
@@ -37,10 +36,6 @@ struct CollisionContext {
     std::vector<EntityMetadata> metadata;
     std::vector<std::vector<Cell>> memberships;
     std::vector<std::vector<CellSlot>> memberSlots;
-    // Cell geometry is short-lived as entities cross grid cells.  Recycle its
-    // aligned blocks per context so cell retirement does not hit the process
-    // allocator on every empty-cell transition.
-    std::pmr::unsynchronized_pool_resource geometryPool;
     CellMap cells;
     std::deque<CellMembers> membersPool;
     CellMembers* freeMembers = nullptr;
@@ -60,7 +55,7 @@ struct CollisionContext {
             members->poolNext = nullptr;
             return *members;
         }
-        membersPool.emplace_back(&geometryPool);
+        membersPool.emplace_back();
         return membersPool.back();
     }
 

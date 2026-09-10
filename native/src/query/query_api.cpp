@@ -7,7 +7,6 @@
 #include "spatial/unordered_candidates.h"
 
 #include <algorithm>
-#include <bit>
 #include <cmath>
 #include <cstddef>
 #include <limits>
@@ -93,29 +92,16 @@ int queryHardCollisionEntities(
         int resultSize = 0;
         const auto scanMembers = [&](const eco::CellMembers& members) {
             if (hardOnly != 0 && members.hardCount == 0) return true;
-            constexpr auto width = eco::CellGeometryBlock::WIDTH;
-            for (std::size_t offset = 0; offset < members.ids.size(); offset += width) {
-                const auto count = std::min<std::size_t>(width, members.ids.size() - offset);
-                const auto& geometry = members.geometry.block(offset / width);
-                unsigned pending = (1u << count) - 1;
-                if (hardOnly != 0) pending &= geometry.hardMask;
-                unsigned eligible = 0;
-                while (pending != 0) {
-                    const unsigned lane = std::countr_zero(pending);
-                    pending &= pending - 1;
-                    const int id = members.ids[offset + lane];
-                    if (id == excludeId || context.queryMarks[id] == context.queryGeneration) continue;
-                    context.queryMarks[id] = context.queryGeneration;
-                    eligible |= 1u << lane;
+            for (const int id : members.ids) {
+                if (id == excludeId
+                        || (hardOnly != 0 && !context.metadata[id].hardCollidable)
+                        || context.queryMarks[id] == context.queryGeneration) {
+                    continue;
                 }
-                if (eligible == 0) continue;
-                unsigned hits = eco::intersectionMask(scan, geometry) & eligible;
-                while (hits != 0) {
-                    const unsigned lane = std::countr_zero(hits);
-                    hits &= hits - 1;
-                    if (resultSize >= outputCapacity) return false;
-                    output[resultSize++] = members.ids[offset + lane];
-                }
+                context.queryMarks[id] = context.queryGeneration;
+                if (!eco::intersects(scan, context.boxes[id])) continue;
+                if (resultSize >= outputCapacity) return false;
+                output[resultSize++] = id;
             }
             return true;
         };
@@ -123,8 +109,8 @@ int queryHardCollisionEntities(
         // A movement scan normally stays inside the source entity's covered
         // cells.  In that case every possible candidate cell is already in
         // the source's backreference list, so scan it directly and avoid one
-        // hash lookup per cell.  intersectionMask still rejects candidates
-        // whose boxes do not overlap the actual scan AABB.
+        // hash lookup per cell.  The AABB test still rejects candidates whose
+        // boxes do not overlap the actual scan box.
         if (excludeId >= 0) {
             const auto& memberships = context.memberships[excludeId];
             if (!memberships.empty()) {
