@@ -41,14 +41,22 @@ final class CollisionBounds {
     }
 
     AABB get(int slot) {
+        // The shared row stays authoritative: external writers bump the
+        // version, and a single raw load keeps this path inlinable.
+        AABB box = boxes[slot];
+        if (box != null && versions[slot] == UNSAFE.getLong(address + (long) slot * STRIDE + VERSION)) {
+            return box;
+        }
+        return materialize(slot);
+    }
+
+    private AABB materialize(int slot) {
         long offset = address + (long) slot * STRIDE;
-        long version = UNSAFE.getLong(offset + VERSION);
-        if (boxes[slot] != null && versions[slot] == version) return boxes[slot];
         AABB box = new AABB(UNSAFE.getDouble(offset), UNSAFE.getDouble(offset + 8),
                 UNSAFE.getDouble(offset + 16), UNSAFE.getDouble(offset + 24),
                 UNSAFE.getDouble(offset + 32), UNSAFE.getDouble(offset + 40));
         boxes[slot] = box;
-        versions[slot] = version;
+        versions[slot] = UNSAFE.getLong(offset + VERSION);
         return box;
     }
 
