@@ -235,6 +235,8 @@ void removeMemberships(
 void rebuildSpatialIndex(CollisionContext& context) {
 #if ECO_VANILLA_ORDER
     context.candidateHeap.clear();
+    context.ownerCells.clear();
+    context.ownerCells.resize(context.boxes.size());
 #endif
     context.clearCellsAndPool();
     context.memberSlots.clear();
@@ -247,6 +249,11 @@ void rebuildSpatialIndex(CollisionContext& context) {
         std::vector<Cell> memberships = coveredCells(context.boxes[index], context.gridSize);
         insertMemberships(context, static_cast<int>(index), memberships);
         context.memberships[index] = std::move(memberships);
+#if ECO_VANILLA_ORDER
+        if (!context.memberships[index].empty()) {
+            context.ownerCells[index] = context.memberships[index].front();
+        }
+#endif
     }
 }
 
@@ -255,11 +262,18 @@ void updateEntityBounds(CollisionContext& context, int entityId, const Aabb& box
     std::vector<Cell>& oldMemberships = context.memberships[entityId];
     context.boxes[entityId] = box;
     context.memberSlots.resize(context.boxes.size());
+#if ECO_VANILLA_ORDER
+    context.ownerCells.resize(context.boxes.size());
+#endif
     auto& slots = context.memberSlots[entityId];
 
     if (sameRange(oldMemberships, newRange)) {
         return;
     }
+#if ECO_VANILLA_ORDER
+    context.ownerCells[entityId] = newRange.valid
+            ? Cell{newRange.minX, newRange.minY, newRange.minZ} : Cell{};
+#endif
 
     const CellRange oldRange = membershipRange(oldMemberships);
     oldMemberships.reserve(newRange.count);

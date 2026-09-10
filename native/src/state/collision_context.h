@@ -36,6 +36,11 @@ struct CollisionContext {
     std::vector<EntityMetadata> metadata;
     std::vector<std::vector<Cell>> memberships;
     std::vector<std::vector<CellSlot>> memberSlots;
+#if ECO_VANILLA_ORDER
+    // Ownership cell per entity (the component-wise minimum covered cell),
+    // kept contiguous so seekOwned avoids chasing per-entity vectors.
+    std::vector<Cell> ownerCells;
+#endif
     CellMap cells;
     std::deque<CellMembers> membersPool;
     CellMembers* freeMembers = nullptr;

@@ -32,7 +32,7 @@ struct Later {
 bool seekOwned(CollisionContext& context, CandidateCursor& cursor) {
     if (cursor.ownershipAxes == 0) return cursor.index < cursor.ids->size();
     while (cursor.index < cursor.ids->size()) {
-        const Cell& minimum = context.memberships[cursor.entity()].front();
+        const Cell& minimum = context.ownerCells[cursor.entity()];
         if (((cursor.ownershipAxes & 1) == 0 || minimum.x == cursor.cell.x)
                 && ((cursor.ownershipAxes & 2) == 0 || minimum.y == cursor.cell.y)
                 && ((cursor.ownershipAxes & 4) == 0 || minimum.z == cursor.cell.z)) return true;
@@ -54,7 +54,7 @@ OrderedCandidates::OrderedCandidates(CollisionContext& context, int sourceId) : 
     auto& heap = context.candidateHeap;
     heap.clear(); // Previous query's cursors must never survive mutation of the spatial index.
     if (context.memberships[sourceId].empty()) return;
-    const Cell& minimum = context.memberships[sourceId].front();
+    const Cell& minimum = context.ownerCells[sourceId];
     for (std::size_t i = 0; i < context.memberSlots[sourceId].size(); ++i) {
         const auto& cell = context.memberships[sourceId][i];
         auto& members = *context.memberSlots[sourceId][i].members;
