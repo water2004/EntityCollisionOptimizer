@@ -13,6 +13,7 @@
     "EntityTrackingMixin",
     "EntityBodyMixin",
     "EntitySectionMixin",
+    "EntitySectionStorageMixin",
     "EntityOrderMixin",
     "EntityMovementMixin",
     "EntityCollisionInvoker",
@@ -24,6 +25,8 @@
     "PalettedContainerMixin",
     "ScoreboardMixin",
     "ServerPlayerMixin",
+    "PersistentEntitySectionManagerAccessor",
+    "ServerLevelAccessor",
     "ServerLevelMixin"
   ],
   "injectors": {

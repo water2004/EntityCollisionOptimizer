@@ -44,6 +44,10 @@ struct CollisionContext {
     CellMap cells;
     std::deque<CellMembers> membersPool;
     CellMembers* freeMembers = nullptr;
+    CellMap sections;
+    std::deque<CellMembers> sectionMembersPool;
+    CellMembers* freeSectionMembers = nullptr;
+    std::vector<CellSlot> sectionSlots;
 #if ECO_VANILLA_ORDER
     std::vector<CandidateCursor> candidateHeap;
 #endif
@@ -78,6 +82,33 @@ struct CollisionContext {
         cells.clear();
         membersPool.clear();
         freeMembers = nullptr;
+    }
+
+    CellMembers& acquireSectionMembers() {
+        if (freeSectionMembers != nullptr) {
+            CellMembers* members = freeSectionMembers;
+            freeSectionMembers = members->poolNext;
+            members->poolNext = nullptr;
+            return *members;
+        }
+        sectionMembersPool.emplace_back();
+        return sectionMembersPool.back();
+    }
+
+    void retireSectionMembers(CellMembers* members) {
+        members->ids.clear();
+#if ECO_VANILLA_ORDER
+        members->orderDirty = true;
+#endif
+        members->poolNext = freeSectionMembers;
+        freeSectionMembers = members;
+    }
+
+    void clearSectionsAndPool() {
+        sections.clear();
+        sectionMembersPool.clear();
+        freeSectionMembers = nullptr;
+        sectionSlots.clear();
     }
 };
 

@@ -12,6 +12,11 @@ import java.util.function.BooleanSupplier;
 
 @Mixin(ServerLevel.class)
 public abstract class ServerLevelMixin {
+    @Inject(method = "<init>", at = @At("RETURN"))
+    private void entityCollisionOptimizer$attachEntityStorage(CallbackInfo ci) {
+        CollisionFrame.attach((ServerLevel) (Object) this);
+    }
+
     @Inject(
             method = "tick(Ljava/util/function/BooleanSupplier;)V",
             at = @At(

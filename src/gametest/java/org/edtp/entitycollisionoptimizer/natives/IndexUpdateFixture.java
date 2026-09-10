@@ -9,6 +9,11 @@ final class IndexUpdateFixture {
         var bounds = new CollisionBounds();
         bounds.capacity(1);
         bounds.set(0, box);
-        FFMBackend.updateEntity(context, id, bounds.row(0), sectionX, sectionY, sectionZ);
+        FFMBackend.updateEntity(context, id, bounds.row(0));
+        if (org.edtp.entitycollisionoptimizer.config.CollisionOptimizerConfig.STARTUP_VANILLA_ORDER) {
+            FFMBackend.updateOrderedLocation(context, id, sectionX, sectionY, sectionZ, 0L);
+        } else {
+            FFMBackend.updateLocation(context, id, sectionX, sectionY, sectionZ);
+        }
     }
 }

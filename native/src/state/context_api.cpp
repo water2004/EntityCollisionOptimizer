@@ -2,6 +2,7 @@
 
 #include "state/collision_context.h"
 #include "spatial/spatial_index.h"
+#include "spatial/section_index.h"
 #include "spatial/ordered_candidates.h"
 
 #include <cstddef>
@@ -66,6 +67,7 @@ int beginCollisionFrame(
             metadata.sectionZ = section[2];
         }
         eco::rebuildSpatialIndex(context);
+        eco::rebuildSectionIndex(context);
         return 0;
     } catch (...) {
         return -2;
@@ -100,6 +102,7 @@ int addCollisionEntity(
         context.memberships.push_back(eco::coveredCells(box, context.gridSize));
         context.queryMarks.push_back(0);
         eco::insertMemberships(context, entityId, context.memberships.back());
+        eco::insertSectionEntity(context, entityId);
         return entityId;
     } catch (...) {
         return -2;
@@ -109,10 +112,7 @@ int addCollisionEntity(
 int updateCollisionEntity(
         void* contextPointer,
         int entityId,
-        const double* bounds,
-        int sectionX,
-        int sectionY,
-        int sectionZ
+        const double* bounds
 ) {
     if (contextPointer == nullptr || entityId < 0 || !bounds) {
         return -1;
@@ -127,16 +127,7 @@ int updateCollisionEntity(
                 entityId,
                 eco::makeAabb(bounds[0], bounds[1], bounds[2], bounds[3], bounds[4], bounds[5])
         );
-        eco::EntityMetadata& metadata = context.metadata[entityId];
-#if ECO_VANILLA_ORDER
-        if (metadata.sectionX != sectionX || metadata.sectionY != sectionY || metadata.sectionZ != sectionZ) {
-            eco::invalidateCandidateOrder(context, entityId);
-        }
-#endif
-        metadata.sectionX = sectionX;
-        metadata.sectionY = sectionY;
-        metadata.sectionZ = sectionZ;
-        metadata.selectableValid = false;
+        context.metadata[entityId].selectableValid = false;
         return 0;
     } catch (...) {
         return -2;

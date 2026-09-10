@@ -8,9 +8,20 @@
 #include <cstdint>
 
 extern "C" {
-ECO_EXPORT int putCollisionEntity(void* context, int id, const double* bounds, int x, int y, int z);
+ECO_EXPORT int putCollisionEntity(
+        void* context, int id, const double* bounds, int x, int y, int z
+#if ECO_VANILLA_ORDER
+        ,
+        std::int64_t sectionOrder
+#endif
+);
 ECO_EXPORT int removeCollisionEntity(void* context, int id);
-ECO_EXPORT int updateCollisionLocation(void* context, int id, int x, int y, int z);
+ECO_EXPORT int updateCollisionLocation(
+        void* context, int id, int x, int y, int z
+#if ECO_VANILLA_ORDER
+        , std::int64_t sectionOrder
+#endif
+);
 ECO_EXPORT int scanCollisionBlocks(const std::uint16_t* const* rows, int* query, int* output, int capacity);
 
 ECO_EXPORT void* createCollisionContext();
@@ -38,10 +49,7 @@ ECO_EXPORT int addCollisionEntity(
 ECO_EXPORT int updateCollisionEntity(
         void* context,
         int entityId,
-        const double* bounds,
-        int sectionX,
-        int sectionY,
-        int sectionZ
+        const double* bounds
 );
 ECO_EXPORT int updateCollisionEntityMetadata(
         void* context,
@@ -73,6 +81,19 @@ ECO_EXPORT int queryHardCollisionEntities(
         double maxZ,
         int excludeId,
         int hardOnly,
+        int* output,
+        int outputCapacity
+);
+// Whole-level box scan for EntitySectionStorage.getEntities. The ordered build
+// preserves section and insertion order; the unordered build omits that cost.
+ECO_EXPORT int queryEntitiesInBox(
+        void* context,
+        double minX,
+        double minY,
+        double minZ,
+        double maxX,
+        double maxY,
+        double maxZ,
         int* output,
         int outputCapacity
 );

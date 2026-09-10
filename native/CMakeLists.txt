@@ -101,6 +101,7 @@ set(ECO_COMMON_SOURCES
         src/state/metadata_api.cpp
         src/state/persistent_index.cpp
         src/spatial/spatial_index.cpp
+        src/spatial/section_index.cpp
         src/query/collision_rules.cpp
         src/query/query_api.cpp
         src/motion/push_run.cpp

@@ -3,6 +3,7 @@
 #include "query/collision_rules.h"
 #include "state/collision_context.h"
 #include "spatial/spatial_index.h"
+#include "spatial/section_index.h"
 #include "spatial/ordered_candidates.h"
 #include "spatial/unordered_candidates.h"
 
@@ -148,6 +149,84 @@ int queryHardCollisionEntities(
         return resultSize;
     } catch (...) {
         return -3;
+    }
+}
+
+int queryEntitiesInBox(
+        void* contextPointer,
+        double minX,
+        double minY,
+        double minZ,
+        double maxX,
+        double maxY,
+        double maxZ,
+        int* output,
+        int outputCapacity
+) {
+    if (contextPointer == nullptr || output == nullptr || outputCapacity < 0) {
+        return -1;
+    }
+    try {
+        auto& context = *static_cast<eco::CollisionContext*>(contextPointer);
+        const eco::Aabb scan = eco::makeAabb(minX, minY, minZ, maxX, maxY, maxZ);
+        if (!eco::isIndexable(scan)) return 0;
+
+        const auto section = [](double coordinate) -> std::int64_t {
+            return static_cast<std::int64_t>(std::floor(coordinate / 16.0));
+        };
+        const std::int64_t minSectionX = section(scan.minX - 2.0);
+        const std::int64_t maxSectionX = section(scan.maxX + 2.0);
+        const std::int64_t minSectionY = section(scan.minY - 4.0);
+        const std::int64_t maxSectionY = section(scan.maxY);
+        const std::int64_t minSectionZ = section(scan.minZ - 2.0);
+        const std::int64_t maxSectionZ = section(scan.maxZ + 2.0);
+
+        int resultSize = 0;
+        const auto scanSection = [&](std::int64_t sectionX, std::int64_t sectionY, std::int64_t sectionZ) {
+            const std::vector<int>* members = eco::sectionEntities(
+                    context, {sectionX, sectionY, sectionZ}
+            );
+            if (members == nullptr) return true;
+            for (const int id : *members) {
+                if (!eco::intersects(scan, context.boxes[id])) continue;
+                if (resultSize >= outputCapacity) return false;
+                output[resultSize++] = id;
+            }
+            return true;
+        };
+#if ECO_VANILLA_ORDER
+        const auto packedRange = [](std::int64_t minimum, std::int64_t maximum, const auto& visitor) {
+            if (maximum >= 0) {
+                for (std::int64_t value = std::max<std::int64_t>(minimum, 0); value <= maximum; ++value) {
+                    if (!visitor(value)) return false;
+                }
+            }
+            if (minimum < 0) {
+                for (std::int64_t value = minimum; value <= std::min<std::int64_t>(maximum, -1); ++value) {
+                    if (!visitor(value)) return false;
+                }
+            }
+            return true;
+        };
+        for (std::int64_t sectionX = minSectionX; sectionX <= maxSectionX; ++sectionX) {
+            if (!packedRange(minSectionZ, maxSectionZ, [&](std::int64_t sectionZ) {
+                return packedRange(minSectionY, maxSectionY, [&](std::int64_t sectionY) {
+                    return scanSection(sectionX, sectionY, sectionZ);
+                });
+            })) return -4;
+        }
+#else
+        for (std::int64_t sectionX = minSectionX; sectionX <= maxSectionX; ++sectionX) {
+            for (std::int64_t sectionZ = minSectionZ; sectionZ <= maxSectionZ; ++sectionZ) {
+                for (std::int64_t sectionY = minSectionY; sectionY <= maxSectionY; ++sectionY) {
+                    if (!scanSection(sectionX, sectionY, sectionZ)) return -4;
+                }
+            }
+        }
+#endif
+        return resultSize;
+    } catch (...) {
+        return -2;
     }
 }
 

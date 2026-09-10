@@ -3,9 +3,8 @@
 #include <algorithm>
 
 namespace eco {
-namespace {
 
-bool before(const CollisionContext& context, int a, int b) noexcept {
+bool candidateBefore(const CollisionContext& context, int a, int b) noexcept {
     const auto& left = context.metadata[a];
     const auto& right = context.metadata[b];
     // Vanilla's signed packed section keys: signed X, unsigned Z/Y, then insertion order.
@@ -19,10 +18,12 @@ bool before(const CollisionContext& context, int a, int b) noexcept {
     return a < b;
 }
 
+namespace {
+
 struct Later {
     const CollisionContext& context;
     bool operator()(const CandidateCursor& a, const CandidateCursor& b) const noexcept {
-        return before(context, b.entity(), a.entity());
+        return candidateBefore(context, b.entity(), a.entity());
     }
 };
 
@@ -43,6 +44,26 @@ bool seekOwned(CollisionContext& context, CandidateCursor& cursor) {
 
 } // namespace
 
+namespace {
+
+void ensureCandidateOrder(CollisionContext& context, CellMembers& members) {
+    if (!members.orderDirty) return;
+    std::sort(members.ids.begin(), members.ids.end(), [&context](int a, int b) {
+        return candidateBefore(context, a, b);
+    });
+    // Sorting changes physical lanes. Repair the backreferences before
+    // any cursor can observe the reordered cell.
+    for (std::size_t index = 0; index < members.ids.size(); ++index) {
+        const int id = members.ids[index];
+        for (auto& slot : context.memberSlots[id]) {
+            if (slot.members == &members) { slot.index = index; break; }
+        }
+    }
+    members.orderDirty = false;
+}
+
+} // namespace
+
 void invalidateCandidateOrder(CollisionContext& context, int entityId) {
     if (context.memberships[entityId].empty()) return;
     for (const auto& slot : context.memberSlots[entityId]) {
@@ -58,20 +79,7 @@ OrderedCandidates::OrderedCandidates(CollisionContext& context, int sourceId) : 
     for (std::size_t i = 0; i < context.memberSlots[sourceId].size(); ++i) {
         const auto& cell = context.memberships[sourceId][i];
         auto& members = *context.memberSlots[sourceId][i].members;
-        if (members.orderDirty) {
-            std::sort(members.ids.begin(), members.ids.end(), [&context](int a, int b) {
-                return before(context, a, b);
-            });
-            // Sorting changes physical lanes. Repair the backreferences before
-            // any cursor can observe the reordered cell.
-            for (std::size_t index = 0; index < members.ids.size(); ++index) {
-                const int id = members.ids[index];
-                for (auto& slot : context.memberSlots[id]) {
-                    if (slot.members == &members) { slot.index = index; break; }
-                }
-            }
-            members.orderDirty = false;
-        }
+        ensureCandidateOrder(context, members);
         unsigned ownershipAxes = (cell.x > minimum.x ? 1u : 0u)
                 | (cell.y > minimum.y ? 2u : 0u) | (cell.z > minimum.z ? 4u : 0u);
         CandidateCursor cursor{&members.ids, 0, cell, ownershipAxes};
@@ -97,8 +105,8 @@ int OrderedCandidates::next() {
     std::size_t parent = 0;
     for (std::size_t child = 1; child < heap.size(); child = parent * 2 + 1) {
         if (child + 1 < heap.size()
-                && before(context, heap[child + 1].entity(), heap[child].entity())) ++child;
-        if (!before(context, heap[child].entity(), cursor.entity())) break;
+                && candidateBefore(context, heap[child + 1].entity(), heap[child].entity())) ++child;
+        if (!candidateBefore(context, heap[child].entity(), cursor.entity())) break;
         heap[parent] = heap[child];
         parent = child;
     }

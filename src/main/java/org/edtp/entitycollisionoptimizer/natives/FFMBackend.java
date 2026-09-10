@@ -44,6 +44,7 @@ public final class FFMBackend {
     private static MethodHandle invalidateMetadata;
     private static MethodHandle query;
     private static MethodHandle queryHard;
+    private static MethodHandle queryEntities;
     private static MethodHandle queryPushable;
     private static MethodHandle executeRun;
     private static MethodHandle movement;
@@ -205,10 +206,7 @@ public final class FFMBackend {
     public static void updateEntity(
             Context nativeContext,
             int nativeId,
-            MemorySegment bounds,
-            int sectionX,
-            int sectionY,
-            int sectionZ
+            MemorySegment bounds
     ) {
         synchronized (nativeContext) {
             nativeContext.ensureOpen();
@@ -216,10 +214,7 @@ public final class FFMBackend {
                 int status = (int) updateEntity.invokeExact(
                         nativeContext.address,
                         nativeId,
-                        bounds,
-                        sectionX,
-                        sectionY,
-                        sectionZ
+                        bounds
                 );
                 checkStatus("update native entity bounds", status);
             } catch (Throwable failure) {
@@ -228,20 +223,41 @@ public final class FFMBackend {
         }
     }
 
-    public static void putEntity(Context context, int id, AABB box, int x, int y, int z) {
+    public static void putEntity(
+            Context context, int id, AABB box, int x, int y, int z
+    ) {
         synchronized (context) {
-            context.ensureOpen();
-            context.ensureOutputCapacity(id + 1);
-            MemorySegment bounds = context.boundsBuffer;
-            bounds.set(JAVA_DOUBLE, 0, box.minX);
-            bounds.set(JAVA_DOUBLE, 8, box.minY);
-            bounds.set(JAVA_DOUBLE, 16, box.minZ);
-            bounds.set(JAVA_DOUBLE, 24, box.maxX);
-            bounds.set(JAVA_DOUBLE, 32, box.maxY);
-            bounds.set(JAVA_DOUBLE, 40, box.maxZ);
-            try { checkStatus("insert persistent entity", (int) putEntity.invokeExact(context.address, id, bounds, x, y, z)); }
+            MemorySegment bounds = prepareEntityBounds(context, id, box);
+            try { checkStatus("insert persistent entity", (int) putEntity.invokeExact(
+                    context.address, id, bounds, x, y, z
+            )); }
             catch (Throwable failure) { throw new IllegalStateException("Persistent entity insertion failed", failure); }
         }
+    }
+
+    public static void putOrderedEntity(
+            Context context, int id, AABB box, int x, int y, int z, long sectionOrder
+    ) {
+        synchronized (context) {
+            MemorySegment bounds = prepareEntityBounds(context, id, box);
+            try { checkStatus("insert persistent entity", (int) putEntity.invokeExact(
+                    context.address, id, bounds, x, y, z, sectionOrder
+            )); }
+            catch (Throwable failure) { throw new IllegalStateException("Persistent entity insertion failed", failure); }
+        }
+    }
+
+    private static MemorySegment prepareEntityBounds(Context context, int id, AABB box) {
+        context.ensureOpen();
+        context.ensureOutputCapacity(id + 1);
+        MemorySegment bounds = context.boundsBuffer;
+        bounds.set(JAVA_DOUBLE, 0, box.minX);
+        bounds.set(JAVA_DOUBLE, 8, box.minY);
+        bounds.set(JAVA_DOUBLE, 16, box.minZ);
+        bounds.set(JAVA_DOUBLE, 24, box.maxX);
+        bounds.set(JAVA_DOUBLE, 32, box.maxY);
+        bounds.set(JAVA_DOUBLE, 40, box.maxZ);
+        return bounds;
     }
 
     public static void removeEntity(Context context, int id) {
@@ -252,10 +268,26 @@ public final class FFMBackend {
         }
     }
 
-    public static void updateLocation(Context context, int id, int x, int y, int z) {
+    public static void updateLocation(
+            Context context, int id, int x, int y, int z
+    ) {
         synchronized (context) {
             context.ensureOpen();
-            try { checkStatus("update persistent location", (int) updateLocation.invokeExact(context.address, id, x, y, z)); }
+            try { checkStatus("update persistent location", (int) updateLocation.invokeExact(
+                    context.address, id, x, y, z
+            )); }
+            catch (Throwable failure) { throw new IllegalStateException("Persistent location update failed", failure); }
+        }
+    }
+
+    public static void updateOrderedLocation(
+            Context context, int id, int x, int y, int z, long sectionOrder
+    ) {
+        synchronized (context) {
+            context.ensureOpen();
+            try { checkStatus("update persistent location", (int) updateLocation.invokeExact(
+                    context.address, id, x, y, z, sectionOrder
+            )); }
             catch (Throwable failure) { throw new IllegalStateException("Persistent location update failed", failure); }
         }
     }
@@ -389,6 +421,45 @@ public final class FFMBackend {
                 return result;
             } catch (Throwable failure) {
                 throw new IllegalStateException("FFM hard collision query failed", failure);
+            }
+        }
+    }
+
+    /** Whole-level box scan, ordered when the startup configuration requires it. */
+    public static QueryResult queryEntities(
+            Context nativeContext,
+            AABB scan,
+            int entityCount
+    ) {
+        synchronized (nativeContext) {
+            nativeContext.ensureOpen();
+            nativeContext.ensureOutputCapacity(entityCount);
+            try {
+                int resultSize = (int) queryEntities.invokeExact(
+                        nativeContext.address,
+                        scan.minX,
+                        scan.minY,
+                        scan.minZ,
+                        scan.maxX,
+                        scan.maxY,
+                        scan.maxZ,
+                        nativeContext.outputBuffer,
+                        nativeContext.outputCapacity
+                );
+                if (resultSize < 0 || resultSize > nativeContext.outputCapacity) {
+                    throw new IllegalStateException("Invalid native entity query size: " + resultSize);
+                }
+                QueryResult result = new QueryResult();
+                result.offset = 0;
+                result.size = resultSize;
+                result.output = nativeContext.outputBuffer;
+                result.nativePush = nativeContext.nativePushBuffer;
+                result.metadataRequired = false;
+                result.pushableCount = 0;
+                result.nonPassengerCount = 0;
+                return result;
+            } catch (Throwable failure) {
+                throw new IllegalStateException("FFM entity query failed", failure);
             }
         }
     }
@@ -535,12 +606,24 @@ public final class FFMBackend {
                 library.find("setCollisionGridSize").orElseThrow(() -> missingSymbol("setCollisionGridSize")),
                 FunctionDescriptor.of(JAVA_INT, ADDRESS, JAVA_INT)
         );
-        putEntity = linker.downcallHandle(library.find("putCollisionEntity").orElseThrow(),
-                FunctionDescriptor.of(JAVA_INT, ADDRESS, JAVA_INT, ADDRESS, JAVA_INT, JAVA_INT, JAVA_INT));
+        FunctionDescriptor putEntityDescriptor = CollisionOptimizerConfig.STARTUP_VANILLA_ORDER
+                ? FunctionDescriptor.of(JAVA_INT, ADDRESS, JAVA_INT, ADDRESS,
+                        JAVA_INT, JAVA_INT, JAVA_INT, JAVA_LONG)
+                : FunctionDescriptor.of(JAVA_INT, ADDRESS, JAVA_INT, ADDRESS,
+                        JAVA_INT, JAVA_INT, JAVA_INT);
+        putEntity = linker.downcallHandle(
+                library.find("putCollisionEntity").orElseThrow(), putEntityDescriptor
+        );
         removeEntity = linker.downcallHandle(library.find("removeCollisionEntity").orElseThrow(),
                 FunctionDescriptor.of(JAVA_INT, ADDRESS, JAVA_INT));
-        updateLocation = linker.downcallHandle(library.find("updateCollisionLocation").orElseThrow(),
-                FunctionDescriptor.of(JAVA_INT, ADDRESS, JAVA_INT, JAVA_INT, JAVA_INT, JAVA_INT));
+        FunctionDescriptor updateLocationDescriptor = CollisionOptimizerConfig.STARTUP_VANILLA_ORDER
+                ? FunctionDescriptor.of(JAVA_INT, ADDRESS, JAVA_INT,
+                        JAVA_INT, JAVA_INT, JAVA_INT, JAVA_LONG)
+                : FunctionDescriptor.of(JAVA_INT, ADDRESS, JAVA_INT,
+                        JAVA_INT, JAVA_INT, JAVA_INT);
+        updateLocation = linker.downcallHandle(
+                library.find("updateCollisionLocation").orElseThrow(), updateLocationDescriptor
+        );
         addEntity = linker.downcallHandle(
                 library.find("addCollisionEntity").orElseThrow(() -> missingSymbol("addCollisionEntity")),
                 FunctionDescriptor.of(
@@ -563,10 +646,7 @@ public final class FFMBackend {
                         JAVA_INT,
                         ADDRESS,
                         JAVA_INT,
-                        ADDRESS,
-                        JAVA_INT,
-                        JAVA_INT,
-                        JAVA_INT
+                        ADDRESS
                 )
         );
         FunctionDescriptor metadataDescriptor = FunctionDescriptor.of(
@@ -625,6 +705,22 @@ public final class FFMBackend {
                         JAVA_DOUBLE,
                         JAVA_INT,
                         JAVA_INT,
+                        ADDRESS,
+                        JAVA_INT
+                )
+        );
+        queryEntities = linker.downcallHandle(
+                library.find("queryEntitiesInBox")
+                        .orElseThrow(() -> missingSymbol("queryEntitiesInBox")),
+                FunctionDescriptor.of(
+                        JAVA_INT,
+                        ADDRESS,
+                        JAVA_DOUBLE,
+                        JAVA_DOUBLE,
+                        JAVA_DOUBLE,
+                        JAVA_DOUBLE,
+                        JAVA_DOUBLE,
+                        JAVA_DOUBLE,
                         ADDRESS,
                         JAVA_INT
                 )
@@ -706,6 +802,7 @@ public final class FFMBackend {
         invalidateMetadata = null;
         query = null;
         queryHard = null;
+        queryEntities = null;
         queryPushable = null;
         executeRun = null;
         movement = null;

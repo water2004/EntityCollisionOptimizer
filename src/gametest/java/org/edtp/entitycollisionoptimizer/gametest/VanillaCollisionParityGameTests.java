@@ -134,6 +134,12 @@ public final class VanillaCollisionParityGameTests {
     }
 
     @GameTest(maxTicks = 200, padding = 48)
+    public void entitySectionQueryContract(GameTestHelper helper) {
+        EntityQueryParity.verify(helper);
+        helper.succeed();
+    }
+
+    @GameTest(maxTicks = 200, padding = 48)
     public void canonicalVelocityContract(GameTestHelper helper) {
         CollisionContractParity.visibility(helper);
         helper.succeed();

@@ -24,4 +24,9 @@ public abstract class EntityTrackingMixin {
     private void eco$end(Entity entity, CallbackInfo ci) {
         CollisionFrame.trackingEnded(this$0, entity);
     }
+
+    @Inject(method = "onSectionChange(Lnet/minecraft/world/entity/Entity;)V", at = @At("HEAD"))
+    private void eco$section(Entity entity, CallbackInfo ci) {
+        CollisionFrame.sectionChanged(this$0, entity);
+    }
 }

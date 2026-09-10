@@ -1,12 +1,16 @@
 package org.edtp.entitycollisionoptimizer.natives;
 
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.util.AbortableIterationConsumer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.level.entity.EntityTypeTest;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import net.minecraft.world.scores.PlayerTeam;
 import net.minecraft.world.scores.Team;
+import org.edtp.entitycollisionoptimizer.mixin.PersistentEntitySectionManagerAccessor;
+import org.edtp.entitycollisionoptimizer.mixin.ServerLevelAccessor;
 
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
@@ -19,12 +23,19 @@ import java.util.concurrent.ConcurrentMap;
 public final class CollisionFrame {
     private static final ConcurrentMap<ServerLevel, LevelCollisionFrame> LEVEL_FRAMES =
             new ConcurrentHashMap<>();
-
     private CollisionFrame() {
     }
 
     public static void begin(ServerLevel level) {
+        attach(level);
         LEVEL_FRAMES.computeIfAbsent(level, ignored -> new LevelCollisionFrame()).begin(level);
+    }
+
+    public static void attach(ServerLevel level) {
+        NativeEntityQueryStorage storage = (NativeEntityQueryStorage) (Object)
+                ((PersistentEntitySectionManagerAccessor) (Object)
+                        ((ServerLevelAccessor) level).eco$entityManager()).eco$sectionStorage();
+        storage.eco$queryLevel(level);
     }
 
     public static void end(ServerLevel level) {
@@ -47,6 +58,20 @@ public final class CollisionFrame {
         LEVEL_FRAMES.clear();
     }
 
+    /** EntitySectionStorage.getEntities through the native index. */
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    public static void getEntities(ServerLevel level, EntityTypeTest type, AABB box,
+            AbortableIterationConsumer consumer) {
+        frameFor(level).getEntities(type, box, consumer);
+    }
+
+    /** Untyped EntitySectionStorage.getEntities through the native index. */
+    @SuppressWarnings("rawtypes")
+    public static void getEntities(ServerLevel level, AABB box,
+            AbortableIterationConsumer consumer) {
+        frameFor(level).getEntities(box, consumer);
+    }
+
     public static void addEntity(Entity entity) {
         if (!(entity.level() instanceof ServerLevel level)) {
             return;
@@ -65,6 +90,11 @@ public final class CollisionFrame {
     public static void trackingEnded(ServerLevel level, Entity entity) {
         LevelCollisionFrame frame = LEVEL_FRAMES.get(level);
         if (frame != null) frame.removeEntity(entity);
+    }
+
+    public static void sectionChanged(ServerLevel level, Entity entity) {
+        LevelCollisionFrame frame = LEVEL_FRAMES.get(level);
+        if (frame != null) frame.updateSection(entity);
     }
 
     public static void updateBoundingBox(Entity entity) {

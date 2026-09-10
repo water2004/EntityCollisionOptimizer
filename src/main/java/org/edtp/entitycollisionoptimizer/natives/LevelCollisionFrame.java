@@ -9,6 +9,8 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.level.entity.EntityTypeTest;
+import net.minecraft.util.AbortableIterationConsumer;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.shapes.Shapes;
@@ -34,6 +36,7 @@ final class LevelCollisionFrame {
     private final CollisionStateTable bodies = new CollisionStateTable();
     private final IdentityHashMap<PlayerTeam, Integer> teamIds = new IdentityHashMap<>();
     private final ArrayDeque<PushBatch> batchPool = new ArrayDeque<>();
+    private final ArrayDeque<int[]> entityQuerySnapshots = new ArrayDeque<>();
     private final List<Entity> derivedTeams = new ArrayList<>();
     private long[] selectableEntityRevisions = new long[0];
     private long[] selectableBlockRevisions = new long[0];
@@ -91,10 +94,16 @@ final class LevelCollisionFrame {
         int nativeId = ids.addEntity(entity);
         if (!VanillaEntityCollision.usesScoreboardTeam(entity)) derivedTeams.add(entity);
         BlockPos position = entity.blockPosition();
-        FFMBackend.putEntity(nativeContext, nativeId, entity.getBoundingBox(),
-                SectionPos.blockToSectionCoord(position.getX()),
-                SectionPos.blockToSectionCoord(position.getY()),
-                SectionPos.blockToSectionCoord(position.getZ()));
+        int sectionX = SectionPos.blockToSectionCoord(position.getX());
+        int sectionY = SectionPos.blockToSectionCoord(position.getY());
+        int sectionZ = SectionPos.blockToSectionCoord(position.getZ());
+        if (CollisionOptimizerConfig.STARTUP_VANILLA_ORDER) {
+            FFMBackend.putOrderedEntity(nativeContext, nativeId, entity.getBoundingBox(),
+                    sectionX, sectionY, sectionZ, ((CollisionOrderState) entity).eco$sectionOrder());
+        } else {
+            FFMBackend.putEntity(nativeContext, nativeId, entity.getBoundingBox(),
+                    sectionX, sectionY, sectionZ);
+        }
         ensureSemanticCapacity(nativeId + 1);
         selectableEntityRevisions[nativeId] = UNCACHED;
         teamRevisions[nativeId] = UNCACHED;
@@ -108,15 +117,11 @@ final class LevelCollisionFrame {
             return;
         }
         int nativeId = ids.getId(entity);
-        BlockPos position = entity.blockPosition();
         int slot = bodies.slot(entity);
         FFMBackend.updateEntity(
                 nativeContext,
                 nativeId,
-                bodies.movementRow(slot),
-                SectionPos.blockToSectionCoord(position.getX()),
-                SectionPos.blockToSectionCoord(position.getY()),
-                SectionPos.blockToSectionCoord(position.getZ())
+                bodies.movementRow(slot)
         );
         refreshNativeMetadata(nativeId, entity);
     }
@@ -124,13 +129,21 @@ final class LevelCollisionFrame {
     synchronized void invalidateEntity(Entity entity) {
         if (!initialized) return;
         int id = ids.getId(entity);
-        if (id >= 0) {
-            BlockPos p = entity.blockPosition();
-            FFMBackend.updateLocation(nativeContext, id,
-                    SectionPos.blockToSectionCoord(p.getX()),
-                    SectionPos.blockToSectionCoord(p.getY()),
-                    SectionPos.blockToSectionCoord(p.getZ()));
-            if (!VanillaEntityCollision.classNeverHardCollides(entity)) refreshNativeMetadata(id, entity);
+        if (id >= 0) FFMBackend.invalidateEntityMetadata(nativeContext, id);
+    }
+
+    synchronized void updateSection(Entity entity) {
+        int id = ids.getId(entity);
+        if (id < 0) return;
+        BlockPos position = entity.blockPosition();
+        int sectionX = SectionPos.blockToSectionCoord(position.getX());
+        int sectionY = SectionPos.blockToSectionCoord(position.getY());
+        int sectionZ = SectionPos.blockToSectionCoord(position.getZ());
+        if (CollisionOptimizerConfig.STARTUP_VANILLA_ORDER) {
+            FFMBackend.updateOrderedLocation(nativeContext, id, sectionX, sectionY, sectionZ,
+                    ((CollisionOrderState) entity).eco$sectionOrder());
+        } else {
+            FFMBackend.updateLocation(nativeContext, id, sectionX, sectionY, sectionZ);
         }
     }
 
@@ -185,6 +198,54 @@ final class LevelCollisionFrame {
             }
             shapes.addCube(bodies.movementRow(bodies.slot(target)));
         }
+    }
+
+    /** EntitySectionStorage.getEntities via the native index. */
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    synchronized void getEntities(EntityTypeTest type, AABB box, AbortableIterationConsumer consumer) {
+        FFMBackend.QueryResult result = FFMBackend.queryEntities(nativeContext, box, ids.size());
+        int[] snapshot = snapshot(result);
+        try {
+            for (int index = 0; index < result.size(); index++) {
+                int nativeId = snapshot[index];
+                Entity entity = requireEntity(nativeId);
+                Object candidate = type.tryCast(entity);
+                if (candidate != null && consumer.accept(candidate).shouldAbort()) break;
+            }
+        } finally {
+            entityQuerySnapshots.addFirst(snapshot);
+        }
+    }
+
+    /** Untyped EntitySectionStorage.getEntities via the native index. */
+    @SuppressWarnings("rawtypes")
+    synchronized void getEntities(AABB box, AbortableIterationConsumer consumer) {
+        FFMBackend.QueryResult result = FFMBackend.queryEntities(nativeContext, box, ids.size());
+        int[] snapshot = snapshot(result);
+        try {
+            for (int index = 0; index < result.size(); index++) {
+                if (consumer.accept(requireEntity(snapshot[index])).shouldAbort()) break;
+            }
+        } finally {
+            entityQuerySnapshots.addFirst(snapshot);
+        }
+    }
+
+    private int[] snapshot(FFMBackend.QueryResult result) {
+        int[] snapshot = entityQuerySnapshots.pollFirst();
+        if (snapshot == null || snapshot.length < result.size()) {
+            int capacity = 16;
+            while (capacity < result.size()) capacity = Math.multiplyExact(capacity, 2);
+            snapshot = new int[capacity];
+        }
+        for (int index = 0; index < result.size(); index++) snapshot[index] = result.get(index);
+        return snapshot;
+    }
+
+    private Entity requireEntity(int nativeId) {
+        Entity entity = ids.getEntity(nativeId);
+        if (entity == null) throw new IllegalStateException("Native entity query returned unknown entity " + nativeId);
+        return entity;
     }
 
     synchronized List<VoxelShape> entityCollisions(Entity source, AABB scan) {
