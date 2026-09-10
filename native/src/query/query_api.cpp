@@ -78,6 +78,9 @@ int queryHardCollisionEntities(
         if (!eco::isIndexable(scan)) {
             return 0;
         }
+        if (hardOnly != 0 && context.hardEntityCount == 0) {
+            return 0;
+        }
 
         eco::beginQuery(context);
         const double negativeInfinity = -std::numeric_limits<double>::infinity();
@@ -89,6 +92,7 @@ int queryHardCollisionEntities(
         const std::int64_t maxCellZ = eco::cellCoordinate(std::nextafter(scan.maxZ, negativeInfinity), context.gridSize);
         int resultSize = 0;
         const auto scanMembers = [&](const eco::CellMembers& members) {
+            if (hardOnly != 0 && members.hardCount == 0) return true;
             constexpr auto width = eco::CellGeometryBlock::WIDTH;
             for (std::size_t offset = 0; offset < members.ids.size(); offset += width) {
                 const auto count = std::min<std::size_t>(width, members.ids.size() - offset);

@@ -39,9 +39,13 @@ int updateCollisionEntityMetadata(
         metadata.vanillaEntityPush = vanillaEntityPush != 0;
         metadata.vanillaVectorPush = vanillaVectorPush != 0;
         const bool hard = hardCollidable != 0;
-        if (metadata.hardCollidable != hard && static_cast<std::size_t>(entityId) < context.memberSlots.size()) {
-            for (const auto& slot : context.memberSlots[entityId]) {
-                slot.members->geometry.writeHard(slot.index, hard);
+        if (metadata.hardCollidable != hard) {
+            if (hard) ++context.hardEntityCount; else --context.hardEntityCount;
+            if (static_cast<std::size_t>(entityId) < context.memberSlots.size()) {
+                for (const auto& slot : context.memberSlots[entityId]) {
+                    slot.members->geometry.writeHard(slot.index, hard);
+                    if (hard) ++slot.members->hardCount; else --slot.members->hardCount;
+                }
             }
         }
         metadata.hardCollidable = hard;

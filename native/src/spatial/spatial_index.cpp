@@ -100,6 +100,7 @@ void appendMembership(CollisionContext& context, int entityId, const Cell& cell)
     members.geometry.resize(members.ids.size());
     members.geometry.write(index, context.boxes[entityId]);
     members.geometry.writeHard(index, context.metadata[entityId].hardCollidable);
+    if (context.metadata[entityId].hardCollidable) ++members.hardCount;
     context.memberSlots[entityId].push_back({&members, index});
 }
 
@@ -114,6 +115,7 @@ void removeMembershipSlot(
     // cell becomes empty and must actually be retired.
     if (slot.members == nullptr || slot.index >= slot.members->ids.size()) return;
     auto& members = *slot.members;
+    if (context.metadata[entityId].hardCollidable) --members.hardCount;
 #if ECO_VANILLA_ORDER
     members.orderDirty = true;
 #endif

@@ -53,6 +53,7 @@ int beginCollisionFrame(
         context.gridSize = gridSize;
         context.boxes.resize(static_cast<std::size_t>(entityCount));
         context.metadata.assign(static_cast<std::size_t>(entityCount), {});
+        context.hardEntityCount = 0;
         for (int index = 0; index < entityCount; ++index) {
             const double* box = aabbs + static_cast<std::size_t>(index) * 6;
             const int* section = sections + static_cast<std::size_t>(index) * 3;

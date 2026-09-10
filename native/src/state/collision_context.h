@@ -30,6 +30,8 @@ struct CellHash {
 
 struct CellMembers {
     std::vector<int> ids;
+    // Hard members resident in this cell; hard-only scans skip empty cells outright.
+    std::size_t hardCount = 0;
 #if ECO_VANILLA_ORDER
     bool orderDirty = true;
 #endif
@@ -71,6 +73,8 @@ struct CollisionContext {
     std::vector<std::uint32_t> queryMarks;
     std::vector<int> metadataMisses;
     std::uint32_t queryGeneration = 0;
+    // Exact live hard-collidable population; hard-only queries exit early at zero.
+    std::size_t hardEntityCount = 0;
 };
 
 } // namespace eco

@@ -12,6 +12,7 @@ int putCollisionEntity(void* pointer, int id, const double* bounds, int x, int y
             c.boxes.emplace_back(); c.metadata.emplace_back();
             c.memberships.emplace_back(); c.queryMarks.push_back(0);
         } else if (!c.memberships[id].empty()) return -1;
+        if (c.metadata[id].hardCollidable) --c.hardEntityCount;
         c.metadata[id] = {};
         c.queryMarks[id] = 0;
         c.metadata[id].sectionX = x; c.metadata[id].sectionY = y; c.metadata[id].sectionZ = z;
@@ -27,6 +28,7 @@ int removeCollisionEntity(void* pointer, int id) {
         if (static_cast<std::size_t>(id) >= c.boxes.size()) return -1;
         eco::removeMemberships(c, id, c.memberships[id]);
         c.memberships[id].clear();
+        if (c.metadata[id].hardCollidable) --c.hardEntityCount;
         c.boxes[id] = {}; c.metadata[id] = {};
         return 0;
     } catch (...) { return -2; }
