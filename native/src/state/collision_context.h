@@ -6,43 +6,18 @@
 
 #include "geometry/aabb.h"
 #include "state/entity_metadata.h"
-#include "spatial/cell_geometry.h"
+#include "spatial/cell_map.h"
 
 #include <cstddef>
 #include <cstdint>
+#include <deque>
 #include <memory_resource>
-#include <unordered_map>
 #include <vector>
 
 namespace eco {
 
-struct Cell {
-    std::int64_t x;
-    std::int64_t y;
-    std::int64_t z;
-
-    bool operator==(const Cell&) const = default;
-};
-
-struct CellHash {
-    std::size_t operator()(const Cell& cell) const noexcept;
-};
-
-struct CellMembers {
-    std::vector<int> ids;
-    // Hard members resident in this cell; hard-only scans skip empty cells outright.
-    std::size_t hardCount = 0;
-#if ECO_VANILLA_ORDER
-    bool orderDirty = true;
-#endif
-    CellGeometry geometry;
-
-    explicit CellMembers(
-            std::pmr::memory_resource* resource = std::pmr::get_default_resource()
-    ) : geometry(resource) {}
-};
-
-// unordered_map rehash preserves element addresses. Erasure retires the corresponding slots.
+// CellMembers live in a stable deque pool, so backreferences stay valid while
+// the flat map rehashes its entries.  Erasure retires the corresponding slots.
 struct CellSlot {
     CellMembers* members;
     std::size_t index;
@@ -66,7 +41,9 @@ struct CollisionContext {
     // aligned blocks per context so cell retirement does not hit the process
     // allocator on every empty-cell transition.
     std::pmr::unsynchronized_pool_resource geometryPool;
-    std::unordered_map<Cell, CellMembers, CellHash> cells;
+    CellMap cells;
+    std::deque<CellMembers> membersPool;
+    CellMembers* freeMembers = nullptr;
 #if ECO_VANILLA_ORDER
     std::vector<CandidateCursor> candidateHeap;
 #endif
@@ -75,6 +52,33 @@ struct CollisionContext {
     std::uint32_t queryGeneration = 0;
     // Exact live hard-collidable population; hard-only queries exit early at zero.
     std::size_t hardEntityCount = 0;
+
+    CellMembers& acquireMembers() {
+        if (freeMembers != nullptr) {
+            CellMembers* members = freeMembers;
+            freeMembers = members->poolNext;
+            members->poolNext = nullptr;
+            return *members;
+        }
+        membersPool.emplace_back(&geometryPool);
+        return membersPool.back();
+    }
+
+    void retireMembers(CellMembers* members) {
+        members->ids.clear();
+        members->hardCount = 0;
+#if ECO_VANILLA_ORDER
+        members->orderDirty = true;
+#endif
+        members->poolNext = freeMembers;
+        freeMembers = members;
+    }
+
+    void clearCellsAndPool() {
+        cells.clear();
+        membersPool.clear();
+        freeMembers = nullptr;
+    }
 };
 
 } // namespace eco

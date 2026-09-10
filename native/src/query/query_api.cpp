@@ -26,11 +26,11 @@ int queryCollisionEntities(void* contextPointer, int sourceId, int* output, int 
         const eco::Aabb& source = context.boxes[sourceId];
         int resultSize = 0;
         for (const eco::Cell& cell : context.memberships[sourceId]) {
-            const auto iterator = context.cells.find(cell);
-            if (iterator == context.cells.end()) {
+            const eco::CellMembers* members = context.cells.find(cell);
+            if (members == nullptr) {
                 continue;
             }
-            for (const int candidateId : iterator->second.ids) {
+            for (const int candidateId : members->ids) {
                 if (candidateId == sourceId
                         || context.queryMarks[candidateId] == context.queryGeneration) {
                     continue;
@@ -153,9 +153,9 @@ int queryHardCollisionEntities(
         for (std::int64_t cellX = minCellX; cellX <= maxCellX; ++cellX) {
             for (std::int64_t cellZ = minCellZ; cellZ <= maxCellZ; ++cellZ) {
                 for (std::int64_t cellY = minCellY; cellY <= maxCellY; ++cellY) {
-                    const auto iterator = context.cells.find({cellX, cellY, cellZ});
-                    if (iterator == context.cells.end()) continue;
-                    if (!scanMembers(iterator->second)) return -2;
+                    const eco::CellMembers* members = context.cells.find({cellX, cellY, cellZ});
+                    if (members == nullptr) continue;
+                    if (!scanMembers(*members)) return -2;
                 }
             }
         }

@@ -90,8 +90,9 @@ void sortMemberships(
 }
 
 void appendMembership(CollisionContext& context, int entityId, const Cell& cell) {
-    auto iterator = context.cells.try_emplace(cell, &context.geometryPool).first;
-    auto& members = iterator->second;
+    CellMembers*& slot = context.cells.entry(cell);
+    if (slot == nullptr) slot = &context.acquireMembers();
+    auto& members = *slot;
     members.ids.push_back(entityId);
 #if ECO_VANILLA_ORDER
     members.orderDirty = true;
@@ -134,7 +135,10 @@ void removeMembershipSlot(
     members.geometry.writeHard(members.ids.size() - 1, false);
     members.ids.pop_back();
     members.geometry.resize(members.ids.size());
-    if (members.ids.empty()) context.cells.erase(cell);
+    if (members.ids.empty()) {
+        context.cells.erase(cell);
+        context.retireMembers(&members);
+    }
 }
 
 } // namespace
@@ -239,7 +243,7 @@ void rebuildSpatialIndex(CollisionContext& context) {
 #if ECO_VANILLA_ORDER
     context.candidateHeap.clear();
 #endif
-    context.cells.clear();
+    context.clearCellsAndPool();
     context.geometryPool.release();
     context.memberSlots.clear();
     context.memberSlots.resize(context.boxes.size());
