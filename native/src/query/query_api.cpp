@@ -209,15 +209,33 @@ int queryEntitiesInBox(
 
         int resultSize = 0;
         const auto scanSection = [&](std::int64_t sectionX, std::int64_t sectionY, std::int64_t sectionZ) {
-            const std::vector<int>* members = eco::sectionEntities(
+            const eco::CellMembers* members = eco::sectionEntities(
                     context, {sectionX, sectionY, sectionZ}
             );
             if (members == nullptr) return true;
-            for (const int id : *members) {
+#if ECO_VANILLA_ORDER
+            std::size_t index = 0;
+            for (; index + 4 <= members->ids.size(); index += 4) {
+                unsigned hits = eco::intersectCellBounds4(scan, members->bounds, index);
+                while (hits != 0) {
+                    const unsigned lane = std::countr_zero(hits);
+                    if (resultSize >= outputCapacity) return false;
+                    output[resultSize++] = members->ids[index + lane];
+                    hits &= hits - 1;
+                }
+            }
+            for (; index < members->ids.size(); ++index) {
+                if (!eco::intersects(scan, context.boxes[members->ids[index]])) continue;
+                if (resultSize >= outputCapacity) return false;
+                output[resultSize++] = members->ids[index];
+            }
+#else
+            for (const int id : members->ids) {
                 if (!eco::intersects(scan, context.boxes[id])) continue;
                 if (resultSize >= outputCapacity) return false;
                 output[resultSize++] = id;
             }
+#endif
             return true;
         };
 #if ECO_VANILLA_ORDER
@@ -276,13 +294,12 @@ int queryPushableEntities(
         auto consume = [&](int candidateId) -> int {
             if (candidateId == sourceId) return 0;
             const eco::EntityMetadata& target = context.metadata[candidateId];
-            if (
 #if !ECO_VANILLA_ORDER
-                    !eco::intersects(source, context.boxes[candidateId]) ||
-#endif
-                    !lookup.contains(target)) {
+            if (!eco::intersects(source, context.boxes[candidateId])
+                    || !lookup.contains(target)) {
                 return 0;
             }
+#endif
             if (!target.selectableValid || (target.selectable && !target.teamValid)) {
                 if (context.metadataMisses.size()
                         >= static_cast<std::size_t>(outputCapacity)) {
@@ -314,15 +331,15 @@ int queryPushableEntities(
         // every overlapping fine-cell stream.
         context.orderedSectionCount = 0;
         if (!visitOrderedSections(lookup, [&](std::int64_t x, std::int64_t y, std::int64_t z) {
-            const std::vector<int>* ids = eco::sectionEntities(context, {x, y, z});
-            if (ids == nullptr) return true;
+            const eco::CellMembers* members = eco::sectionEntities(context, {x, y, z});
+            if (members == nullptr) return true;
             const std::size_t scratchIndex = context.orderedSectionCount++;
             if (scratchIndex == context.orderedSections.size()) {
                 context.orderedSections.emplace_back();
             }
             auto& scratch = context.orderedSections[scratchIndex];
-            scratch.ids = ids;
-            scratch.bits.resize((ids->size() + 63) / 64);
+            scratch.ids = &members->ids;
+            scratch.bits.resize((members->ids.size() + 63) / 64);
             std::fill(scratch.bits.begin(), scratch.bits.end(), std::uint64_t{0});
             return true;
         })) return -3;

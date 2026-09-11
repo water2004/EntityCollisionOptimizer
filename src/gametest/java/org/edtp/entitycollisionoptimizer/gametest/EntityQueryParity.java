@@ -33,7 +33,11 @@ final class EntityQueryParity {
                 spawnZombie(helper, new Vec3(2.25, 2.0, 3.25)),
                 spawnEntity(helper, EntityTypes.ARMOR_STAND, new Vec3(18.25, 2.0, 3.25)),
                 spawnZombie(helper, new Vec3(18.75, 2.0, 3.25)),
-                spawnZombie(helper, new Vec3(2.75, 2.0, 3.25))
+                spawnZombie(helper, new Vec3(2.75, 2.0, 3.25)),
+                spawnZombie(helper, new Vec3(4.25, 2.0, 3.25)),
+                spawnEntity(helper, EntityTypes.ARMOR_STAND, new Vec3(5.25, 2.0, 3.25)),
+                spawnZombie(helper, new Vec3(6.25, 2.0, 3.25)),
+                spawnZombie(helper, new Vec3(7.25, 2.0, 3.25))
         );
         AABB query = fixtures.stream().map(Entity::getBoundingBox)
                 .reduce(AABB::minmax).orElseThrow().inflate(0.25);

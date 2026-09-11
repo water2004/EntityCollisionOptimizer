@@ -98,6 +98,7 @@ struct CollisionContext {
     void retireSectionMembers(CellMembers* members) {
         members->ids.clear();
 #if ECO_VANILLA_ORDER
+        members->bounds.clear();
         members->orderDirty = true;
 #endif
         members->poolNext = freeSectionMembers;

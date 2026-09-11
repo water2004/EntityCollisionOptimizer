@@ -251,6 +251,14 @@ void updateEntityBounds(CollisionContext& context, int entityId, const Aabb& box
     const CellRange newRange = coveredCellRange(box, context.gridSize);
     std::vector<Cell>& oldMemberships = context.memberships[entityId];
     context.boxes[entityId] = box;
+#if ECO_VANILLA_ORDER
+    if (static_cast<std::size_t>(entityId) < context.sectionSlots.size()) {
+        const CellSlot sectionSlot = context.sectionSlots[entityId];
+        if (sectionSlot.members != nullptr) {
+            sectionSlot.members->bounds.set(sectionSlot.index, box);
+        }
+    }
+#endif
     context.memberSlots.resize(context.boxes.size());
     auto& slots = context.memberSlots[entityId];
 

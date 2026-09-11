@@ -7,7 +7,7 @@
 
 namespace eco {
 
-// Bounds are duplicated beside fine-grid membership slots so a candidate scan
+// Bounds are duplicated beside spatial membership slots so a candidate scan
 // reads contiguous columns instead of gathering six fields through entity IDs.
 struct CellBoundsSoa {
     std::vector<double> minX, minY, minZ;

@@ -41,6 +41,7 @@ void insertSectionEntity(CollisionContext& context, int entityId) {
 #endif
     entry->ids.push_back(entityId);
 #if ECO_VANILLA_ORDER
+    entry->bounds.push(context.boxes[entityId]);
     entry->orderDirty = !remainsOrdered;
 #endif
     context.sectionSlots[entityId] = {entry, entry->ids.size() - 1};
@@ -58,6 +59,9 @@ void removeSectionEntity(CollisionContext& context, int entityId) {
         members.ids[slot.index] = movedId;
         context.sectionSlots[movedId].index = slot.index;
     }
+#if ECO_VANILLA_ORDER
+    members.bounds.swapErase(slot.index);
+#endif
     members.ids.pop_back();
 #if ECO_VANILLA_ORDER
     if (movedMember) members.orderDirty = true;
@@ -105,7 +109,7 @@ void rebuildSectionIndex(CollisionContext& context) {
     }
 }
 
-const std::vector<int>* sectionEntities(CollisionContext& context, const Cell& section) {
+const CellMembers* sectionEntities(CollisionContext& context, const Cell& section) {
     CellMembers* members = context.sections.find(section);
     if (members == nullptr) return nullptr;
 #if ECO_VANILLA_ORDER
@@ -115,11 +119,12 @@ const std::vector<int>* sectionEntities(CollisionContext& context, const Cell& s
         });
         for (std::size_t index = 0; index < members->ids.size(); ++index) {
             context.sectionSlots[members->ids[index]].index = index;
+            members->bounds.set(index, context.boxes[members->ids[index]]);
         }
         members->orderDirty = false;
     }
 #endif
-    return &members->ids;
+    return members;
 }
 
 #if ECO_VANILLA_ORDER
