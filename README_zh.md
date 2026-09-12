@@ -22,14 +22,7 @@
 
 在这个场景中，相较原版，MSPT **降低 84.8%**；相较 Lithium，MSPT **降低 79.4%**，从而回到 Minecraft 每 tick 50 ms 的预算内。
 
-```mermaid
-xychart-beta
-    title "MSPT 与相对原版的 tick 处理速率"
-    x-axis ["原版", "Lithium", "ECO"]
-    y-axis "MSPT - 越低越好" 0 --> 300
-    bar [268.4, 198.5, 40.8]
-    line [268.4 "1.00x", 198.5 "1.35x", 40.8 "6.58x"]
-```
+![原版、Lithium 与实体碰撞优化的 MSPT 和 tick 处理速率柱状图](docs/images/comparison/performance_zh.svg)
 
 <table>
   <tr>

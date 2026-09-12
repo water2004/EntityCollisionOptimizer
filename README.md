@@ -22,14 +22,7 @@ The screenshots below use the same dense zombified-piglin enclosure and the same
 
 In this scene, Entity Collision Optimizer reduces MSPT by **84.8% versus Vanilla** and **79.4% versus Lithium**, bringing the server below Minecraft's 50 MSPT budget.
 
-```mermaid
-xychart-beta
-    title "MSPT with tick-processing rate vs Vanilla"
-    x-axis ["Vanilla", "Lithium", "ECO"]
-    y-axis "MSPT - lower is better" 0 --> 300
-    bar [268.4, 198.5, 40.8]
-    line [268.4 "1.00x", 198.5 "1.35x", 40.8 "6.58x"]
-```
+![Bar chart comparing MSPT and tick-processing rate for Vanilla, Lithium, and Entity Collision Optimizer](docs/images/comparison/performance.svg)
 
 <table>
   <tr>

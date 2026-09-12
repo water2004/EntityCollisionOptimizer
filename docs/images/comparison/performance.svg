@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="600" viewBox="0 0 1000 600" role="img" aria-labelledby="title description">
+  <title id="title">MSPT comparison</title>
+  <desc id="description">Vanilla uses 268.4 MSPT, Lithium uses 198.5 MSPT, and Entity Collision Optimizer uses 40.8 MSPT. Their tick-processing rates relative to Vanilla are 1.00, 1.35, and 6.58 times.</desc>
+  <rect width="1000" height="600" rx="20" fill="#f6f8fa"/>
+  <g font-family="system-ui, -apple-system, Segoe UI, sans-serif" fill="#1f2328">
+    <text x="500" y="42" text-anchor="middle" font-size="28" font-weight="700">MSPT comparison · lower is better</text>
+    <text x="500" y="72" text-anchor="middle" font-size="19" fill="#656d76">Labels above bars show tick-processing rate relative to Vanilla</text>
+
+    <g stroke="#d0d7de" stroke-width="2">
+      <line x1="115" y1="100" x2="945" y2="100"/>
+      <line x1="115" y1="233" x2="945" y2="233"/>
+      <line x1="115" y1="367" x2="945" y2="367"/>
+      <line x1="115" y1="500" x2="945" y2="500"/>
+    </g>
+    <g text-anchor="end" font-size="22" font-weight="600" fill="#57606a">
+      <text x="95" y="108">300</text>
+      <text x="95" y="241">200</text>
+      <text x="95" y="375">100</text>
+      <text x="95" y="508">0</text>
+    </g>
+    <text x="28" y="300" text-anchor="middle" font-size="22" font-weight="700" transform="rotate(-90 28 300)">MSPT</text>
+
+    <rect x="160" y="142" width="180" height="358" rx="10" fill="#6e7781"/>
+    <rect x="430" y="235" width="180" height="265" rx="10" fill="#2f81f7"/>
+    <rect x="700" y="446" width="180" height="54" rx="10" fill="#1f883d"/>
+
+    <g text-anchor="middle">
+      <text x="250" y="112" font-size="31" font-weight="800">1.00×</text>
+      <text x="250" y="136" font-size="18" font-weight="600" fill="#57606a">268.4 MSPT</text>
+      <text x="520" y="205" font-size="31" font-weight="800">1.35×</text>
+      <text x="520" y="229" font-size="18" font-weight="600" fill="#57606a">198.5 MSPT</text>
+      <text x="790" y="396" font-size="35" font-weight="800" fill="#1f883d">6.58×</text>
+      <text x="790" y="426" font-size="20" font-weight="700" fill="#1f883d">40.8 MSPT</text>
+
+      <text x="250" y="548" font-size="24" font-weight="700">Vanilla</text>
+      <text x="520" y="548" font-size="24" font-weight="700">Lithium</text>
+      <text x="790" y="548" font-size="24" font-weight="700">ECO</text>
+    </g>
+  </g>
+</svg>
