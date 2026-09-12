@@ -1,11 +1,15 @@
 package org.edtp.entitycollisionoptimizer.gametest;
 
+import net.minecraft.core.SectionPos;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.util.AbortableIterationConsumer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.monster.zombie.Zombie;
+import net.minecraft.world.level.entity.EntitySectionStorage;
 import net.minecraft.world.level.entity.EntityTypeTest;
+import net.minecraft.world.level.entity.Visibility;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import org.edtp.entitycollisionoptimizer.EntityCollisionOptimizer;
@@ -43,6 +47,7 @@ final class EntityQueryParity {
                 .reduce(AABB::minmax).orElseThrow().inflate(0.25);
 
         try {
+            verifyUnboundStorage(helper, fixtures.getFirst());
             CollisionFrame.end(level);
             CollisionOptimizerConfig.enableEntityCollision = false;
             QueryTrace expected = trace(level, query, fixtures.getFirst());
@@ -65,6 +70,22 @@ final class EntityQueryParity {
             for (Entity fixture : fixtures) fixture.discard();
             CollisionFrame.end(level);
         }
+    }
+
+    /** Client and other non-server stores share this class but must retain their own query path. */
+    private static void verifyUnboundStorage(GameTestHelper helper, Entity fixture) {
+        EntitySectionStorage<Entity> storage = new EntitySectionStorage<>(Entity.class, ignored -> Visibility.TRACKED);
+        storage.getOrCreateSection(SectionPos.of(fixture).asLong()).add(fixture);
+
+        List<Entity> all = new ArrayList<>();
+        storage.getEntities(fixture.getBoundingBox().inflate(0.25),
+                AbortableIterationConsumer.forConsumer(all::add));
+        helper.assertTrue(all.equals(List.of(fixture)), "unbound untyped storage must use its local query");
+
+        List<Zombie> typed = new ArrayList<>();
+        storage.getEntities(ZOMBIES, fixture.getBoundingBox().inflate(0.25),
+                AbortableIterationConsumer.forConsumer(typed::add));
+        helper.assertTrue(typed.equals(List.of(fixture)), "unbound typed storage must use its local query");
     }
 
     private static QueryTrace trace(ServerLevel level, AABB query, Entity nestedExclusion) {

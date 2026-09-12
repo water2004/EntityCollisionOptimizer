@@ -27,8 +27,9 @@ public abstract class EntitySectionStorageMixin implements NativeEntityQueryStor
             cancellable = true
     )
     private void eco$nativeGetEntities(EntityTypeTest<?, ?> type, AABB box, AbortableIterationConsumer<?> consumer, CallbackInfo ci) {
-        if (!CollisionOptimizerConfig.enableEntityCollision) return;
-        CollisionFrame.getEntities(eco$queryLevel, type, box, consumer);
+        ServerLevel level = eco$queryLevel;
+        if (!CollisionOptimizerConfig.enableEntityCollision || level == null) return;
+        CollisionFrame.getEntities(level, type, box, consumer);
         ci.cancel();
     }
 
@@ -38,8 +39,9 @@ public abstract class EntitySectionStorageMixin implements NativeEntityQueryStor
             cancellable = true
     )
     private void eco$nativeGetEntitiesAll(AABB box, AbortableIterationConsumer<?> consumer, CallbackInfo ci) {
-        if (!CollisionOptimizerConfig.enableEntityCollision) return;
-        CollisionFrame.getEntities(eco$queryLevel, box, consumer);
+        ServerLevel level = eco$queryLevel;
+        if (!CollisionOptimizerConfig.enableEntityCollision || level == null) return;
+        CollisionFrame.getEntities(level, box, consumer);
         ci.cancel();
     }
 }
