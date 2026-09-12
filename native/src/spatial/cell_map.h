@@ -43,13 +43,14 @@ struct CellMembers {
 };
 
 // Flat open-addressing cell lookup: linear probing over contiguous entries
-// instead of node-based bucket walks.  Values are pool-owned, so rehashes never
-// move the CellMembers that backreferences point at.
-class CellMap {
+// instead of node-based bucket walks. Values are separately owned, so rehashes
+// never move the objects that callers and backreferences point at.
+template<class Value>
+class BasicCellMap {
 public:
-    CellMap() : entries(MIN_CAPACITY) {}
+    BasicCellMap() : entries(MIN_CAPACITY) {}
 
-    CellMembers* find(const Cell& key) const noexcept {
+    Value* find(const Cell& key) const noexcept {
         std::size_t index = CellHash{}(key) & mask;
         while (true) {
             const Entry& probe = entries[index];
@@ -60,7 +61,7 @@ public:
     }
 
     // Single-probe find-or-insert; a null reference marks a fresh slot to fill.
-    CellMembers*& entry(const Cell& key) {
+    Value*& entry(const Cell& key) {
         if ((used + 1) * 10 >= entries.size() * 7) rehash(entries.size() * 2);
         std::size_t index = CellHash{}(key) & mask;
         while (entries[index].value != nullptr) {
@@ -106,7 +107,7 @@ public:
 private:
     struct Entry {
         Cell key{};
-        CellMembers* value = nullptr;
+        Value* value = nullptr;
     };
 
     static constexpr std::size_t MIN_CAPACITY = 64;
@@ -130,5 +131,7 @@ private:
         mask = nextMask;
     }
 };
+
+using CellMap = BasicCellMap<CellMembers>;
 
 } // namespace eco

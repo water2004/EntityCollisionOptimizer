@@ -6,7 +6,7 @@
 
 #include "geometry/aabb.h"
 #include "state/entity_metadata.h"
-#include "spatial/cell_map.h"
+#include "spatial/fine_grid.h"
 
 #include <cstddef>
 #include <cstdint>
@@ -35,7 +35,7 @@ struct CollisionContext {
     std::vector<EntityMetadata> metadata;
     std::vector<std::vector<Cell>> memberships;
     std::vector<std::vector<CellSlot>> memberSlots;
-    CellMap cells;
+    FineGrid cells;
     std::deque<CellMembers> membersPool;
     CellMembers* freeMembers = nullptr;
     CellMap sections;
