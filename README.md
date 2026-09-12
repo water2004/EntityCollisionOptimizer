@@ -2,9 +2,7 @@
 
 English | [简体中文](README_zh.md)
 
-**Preserves vanilla entity-collision behavior by default; its optional unordered mode reaches 6.58× the Vanilla tick-processing rate and 4.87× the Lithium rate in the dense-entity comparison below.**
-
-Entity Collision Optimizer is a server-side Fabric mod for Minecraft 26.2 that accelerates entity queries, pushing, and movement collision. Install it and it works; connecting clients do not need the mod.
+Entity Collision Optimizer is a server-side Fabric mod for Minecraft 26.2 that accelerates entity queries, pushing, and movement collision while **preserving vanilla entity-collision behavior by default**. Its optional unordered mode reaches **6.58× the Vanilla tick-processing rate** and **4.87× the Lithium rate** in the dense-entity comparison below. Install it and it works; connecting clients do not need the mod.
 
 ## Why use Entity Collision Optimizer?
 
@@ -26,10 +24,11 @@ In this scene, Entity Collision Optimizer reduces MSPT by **84.8% versus Vanilla
 
 ```mermaid
 xychart-beta
-    title "Tick processing rate relative to Vanilla"
+    title "MSPT with tick-processing rate vs Vanilla"
     x-axis ["Vanilla", "Lithium", "ECO"]
-    y-axis "Relative rate" 0 --> 7
-    bar [1.00, 1.35, 6.58]
+    y-axis "MSPT - lower is better" 0 --> 300
+    bar [268.4, 198.5, 40.8]
+    line [268.4 "1.00x", 198.5 "1.35x", 40.8 "6.58x"]
 ```
 
 <table>
