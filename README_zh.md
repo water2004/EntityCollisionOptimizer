@@ -2,7 +2,7 @@
 
 [English](README.md) | 简体中文
 
-实体碰撞优化是面向 Minecraft 26.2 的服务端 Fabric 模组，专门加速实体查询、相互推动和移动碰撞，同时在默认模式下**保持原版实体碰撞行为**。可选无序模式在下方高密度实体对照中达到**原版 6.58 倍**、**Lithium 4.87 倍**的 tick 处理速率。安装即生效，连接服务器的客户端无需安装。
+实体碰撞优化是面向 Minecraft 26.2 的服务端 Fabric 模组，专门加速实体查询、相互推动和移动碰撞，同时在默认模式下**保持原版实体碰撞行为**。可选无序模式在下方高密度实体对照中达到**原版 6.58 倍**、**锂 4.87 倍**的 tick 处理速率。安装即生效，连接服务器的客户端无需安装。
 
 ## 为什么使用实体碰撞优化？
 
@@ -17,22 +17,22 @@
 | 方案 | MSPT | 相对原版速度 | 相对原版 MSPT 降幅 |
 | --- | ---: | ---: | ---: |
 | 原版 | 268.4 | 1.00× | — |
-| Lithium | 198.5 | 1.35× | 26.0% |
+| 锂 | 198.5 | 1.35× | 26.0% |
 | 实体碰撞优化 | 40.8 | **6.58×** | **84.8%** |
 
-在这个场景中，相较原版，MSPT **降低 84.8%**；相较 Lithium，MSPT **降低 79.4%**，从而回到 Minecraft 每 tick 50 ms 的预算内。
+在这个场景中，相较原版，MSPT **降低 84.8%**；相较锂，MSPT **降低 79.4%**，从而回到 Minecraft 每 tick 50 ms 的预算内。
 
-![原版、Lithium 与实体碰撞优化的 MSPT 和 tick 处理速率柱状图](docs/images/comparison/performance_zh.svg)
+![原版、锂与实体碰撞优化的 MSPT 和 tick 处理速率柱状图](docs/images/comparison/performance_zh.svg)
 
 <table>
   <tr>
     <td width="33%" align="center"><strong>原版</strong><br>268.4 MSPT</td>
-    <td width="33%" align="center"><strong>Lithium</strong><br>198.5 MSPT</td>
+    <td width="33%" align="center"><strong>锂</strong><br>198.5 MSPT</td>
     <td width="33%" align="center"><strong>实体碰撞优化</strong><br>40.8 MSPT</td>
   </tr>
   <tr>
     <td width="33%" align="center"><img src="docs/images/comparison/vanilla.jpg" width="300" height="188" alt="原版在高密度实体对照场景中为 268.4 MSPT"></td>
-    <td width="33%" align="center"><img src="docs/images/comparison/lithium.jpg" width="300" height="188" alt="Lithium 在高密度实体对照场景中为 198.5 MSPT"></td>
+    <td width="33%" align="center"><img src="docs/images/comparison/lithium.jpg" width="300" height="188" alt="锂在高密度实体对照场景中为 198.5 MSPT"></td>
     <td width="33%" align="center"><img src="docs/images/comparison/eco.jpg" width="300" height="188" alt="实体碰撞优化在高密度实体对照场景中为 40.8 MSPT"></td>
   </tr>
 </table>
@@ -92,7 +92,7 @@ Minecraft 按区段存储实体。一次碰撞查询需要遍历相关区段、�
 
 ## 兼容性
 
-- 可以与 Lithium 和 Carpet 一同安装。本模组启用时会接管重叠的服务端碰撞路径，而不是同时运行两套实现。
+- 可以与锂和 Carpet 一同安装。本模组启用时会接管重叠的服务端碰撞路径，而不是同时运行两套实现。
 - 本模组有意忽略 Carpet 的 `maxEntityCollisions` 上限；限制碰撞候选数量不属于本项目的职责。原版 `maxEntityCramming` 挤压伤害规则仍然生效。
 - 不修改存档格式，也不注册需要同步到客户端的内容。
 - 当前以原版实体为兼容目标，不保证其他模组自定义实体或直接替换同一碰撞路径的实现能够正常工作。

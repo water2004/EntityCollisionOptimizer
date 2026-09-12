@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1000" height="600" viewBox="0 0 1000 600" role="img" aria-labelledby="title description">
   <title id="title">MSPT 对照</title>
-  <desc id="description">原版为 268.4 MSPT，Lithium 为 198.5 MSPT，实体碰撞优化为 40.8 MSPT；相对原版的 tick 处理速率分别为 1.00、1.35 和 6.58 倍。</desc>
+  <desc id="description">原版为 268.4 MSPT，锂为 198.5 MSPT，实体碰撞优化为 40.8 MSPT；相对原版的 tick 处理速率分别为 1.00、1.35 和 6.58 倍。</desc>
   <rect width="1000" height="600" rx="20" fill="#f6f8fa"/>
   <g font-family="system-ui, Microsoft YaHei, sans-serif" fill="#1f2328">
     <text x="500" y="42" text-anchor="middle" font-size="28" font-weight="700">MSPT 对照 · 越低越好</text>
@@ -33,7 +33,7 @@
       <text x="790" y="426" font-size="20" font-weight="700" fill="#1f883d">40.8 MSPT</text>
 
       <text x="250" y="548" font-size="24" font-weight="700">原版</text>
-      <text x="520" y="548" font-size="24" font-weight="700">Lithium</text>
+      <text x="520" y="548" font-size="24" font-weight="700">锂</text>
       <text x="790" y="548" font-size="24" font-weight="700">实体碰撞优化</text>
     </g>
   </g>
