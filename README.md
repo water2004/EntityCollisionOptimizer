@@ -6,6 +6,8 @@ Entity Collision Optimizer is a free and open-source Fabric mod for Minecraft 26
 
 The mod is enabled as soon as it is installed. It works on dedicated and integrated servers, and connecting clients do not need to install it.
 
+**In the dense entity comparison below, Entity Collision Optimizer processes ticks at 6.58× the Vanilla rate and 4.87× the Lithium rate.**
+
 > Entity Collision Optimizer is currently in alpha. Back up your world and test your exact mod set before deploying it to a production server.
 
 ## Why use Entity Collision Optimizer?
@@ -24,7 +26,7 @@ The screenshots below use the same dense zombified-piglin enclosure and the same
 | Lithium | 198.5 | 1.35× | 26.0% |
 | Entity Collision Optimizer | 40.8 | **6.58×** | **84.8%** |
 
-**In this scene, Entity Collision Optimizer processes ticks at 6.58× the Vanilla rate and 4.87× the Lithium rate.** It reduces MSPT by **84.8% versus Vanilla** and **79.4% versus Lithium**, bringing the server below Minecraft's 50 MSPT budget.
+In this scene, Entity Collision Optimizer reduces MSPT by **84.8% versus Vanilla** and **79.4% versus Lithium**, bringing the server below Minecraft's 50 MSPT budget.
 
 ```mermaid
 xychart-beta
