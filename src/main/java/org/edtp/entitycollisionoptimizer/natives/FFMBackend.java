@@ -39,7 +39,6 @@ public final class FFMBackend {
     private static MethodHandle addEntity;
     private static MethodHandle putEntity, removeEntity, updateLocation;
     private static MethodHandle updateEntity;
-    private static MethodHandle updateEntityMetadata;
     private static MethodHandle invalidateEntityMetadata;
     private static MethodHandle invalidateMetadata;
     private static MethodHandle query;
@@ -206,7 +205,18 @@ public final class FFMBackend {
     public static void updateEntity(
             Context nativeContext,
             int nativeId,
-            MemorySegment bounds
+            MemorySegment bounds,
+            boolean selectable,
+            boolean passenger,
+            boolean vehicle,
+            boolean noPhysics,
+            boolean vanillaEntityPush,
+            boolean vanillaVectorPush,
+            int teamId,
+            int collisionRule,
+            int bodySlot,
+            boolean hardCollidable,
+            long sectionOrder
     ) {
         synchronized (nativeContext) {
             nativeContext.ensureOpen();
@@ -214,9 +224,20 @@ public final class FFMBackend {
                 int status = (int) updateEntity.invokeExact(
                         nativeContext.address,
                         nativeId,
-                        bounds
+                        bounds,
+                        selectable ? 1 : 0,
+                        passenger ? 1 : 0,
+                        vehicle ? 1 : 0,
+                        noPhysics ? 1 : 0,
+                        vanillaEntityPush ? 1 : 0,
+                        vanillaVectorPush ? 1 : 0,
+                        teamId,
+                        collisionRule,
+                        bodySlot,
+                        hardCollidable ? 1 : 0,
+                        sectionOrder
                 );
-                checkStatus("update native entity bounds", status);
+                checkStatus("update native entity", status);
             } catch (Throwable failure) {
                 throw new IllegalStateException("FFM updateEntity call failed", failure);
             }
@@ -307,29 +328,9 @@ public final class FFMBackend {
             boolean hardCollidable,
             long sectionOrder
     ) {
-        synchronized (nativeContext) {
-            nativeContext.ensureOpen();
-            try {
-                int status = (int) updateEntityMetadata.invokeExact(
-                        nativeContext.address,
-                        nativeId,
-                        selectable ? 1 : 0,
-                        passenger ? 1 : 0,
-                        vehicle ? 1 : 0,
-                        noPhysics ? 1 : 0,
-                        vanillaEntityPush ? 1 : 0,
-                        vanillaVectorPush ? 1 : 0,
-                        teamId,
-                        collisionRule,
-                        bodySlot,
-                        hardCollidable ? 1 : 0,
-                        sectionOrder
-                );
-                checkStatus("update native entity collision metadata", status);
-            } catch (Throwable failure) {
-                throw new IllegalStateException("FFM updateEntityMetadata call failed", failure);
-            }
-        }
+        updateEntity(nativeContext, nativeId, MemorySegment.NULL, selectable, passenger, vehicle,
+                noPhysics, vanillaEntityPush, vanillaVectorPush, teamId, collisionRule, bodySlot,
+                hardCollidable, sectionOrder);
     }
 
     public static void invalidateEntityMetadata(Context nativeContext, int nativeId) {
@@ -640,19 +641,11 @@ public final class FFMBackend {
                         JAVA_INT
                 )
         );
-        updateEntity = linker.downcallHandle(
-                library.find("updateCollisionEntity").orElseThrow(() -> missingSymbol("updateCollisionEntity")),
-                FunctionDescriptor.of(
+        FunctionDescriptor updateEntityDescriptor = FunctionDescriptor.of(
                         JAVA_INT,
                         ADDRESS,
                         JAVA_INT,
-                        ADDRESS
-                )
-        );
-        FunctionDescriptor metadataDescriptor = FunctionDescriptor.of(
-                        JAVA_INT,
                         ADDRESS,
-                        JAVA_INT,
                         JAVA_INT,
                         JAVA_INT,
                         JAVA_INT,
@@ -666,16 +659,16 @@ public final class FFMBackend {
                         JAVA_LONG
                 );
         if (!CollisionOptimizerConfig.STARTUP_VANILLA_ORDER) {
-            var layouts = metadataDescriptor.argumentLayouts();
-            metadataDescriptor = FunctionDescriptor.of(JAVA_INT,
+            var layouts = updateEntityDescriptor.argumentLayouts();
+            updateEntityDescriptor = FunctionDescriptor.of(JAVA_INT,
                     layouts.subList(0, layouts.size() - 1).toArray(java.lang.foreign.MemoryLayout[]::new));
         }
-        updateEntityMetadata = linker.downcallHandle(
-                library.find("updateCollisionEntityMetadata")
-                        .orElseThrow(() -> missingSymbol("updateCollisionEntityMetadata")), metadataDescriptor);
+        updateEntity = linker.downcallHandle(
+                library.find("updateCollisionEntity")
+                        .orElseThrow(() -> missingSymbol("updateCollisionEntity")), updateEntityDescriptor);
         if (!CollisionOptimizerConfig.STARTUP_VANILLA_ORDER) {
             // Discard the constant placeholder before crossing FFM; unordered native has no order argument.
-            updateEntityMetadata = java.lang.invoke.MethodHandles.dropArguments(updateEntityMetadata, 12, long.class);
+            updateEntity = java.lang.invoke.MethodHandles.dropArguments(updateEntity, 13, long.class);
         }
         invalidateEntityMetadata = linker.downcallHandle(
                 library.find("invalidateCollisionEntityMetadata")
@@ -797,7 +790,6 @@ public final class FFMBackend {
         addEntity = null;
         putEntity = removeEntity = updateLocation = null;
         updateEntity = null;
-        updateEntityMetadata = null;
         invalidateEntityMetadata = null;
         invalidateMetadata = null;
         query = null;

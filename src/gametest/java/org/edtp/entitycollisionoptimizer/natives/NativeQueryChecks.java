@@ -21,8 +21,9 @@ public final class NativeQueryChecks {
                     Body[] bodies = bodies(count, phase);
                     for (int id = 0; id < count; id++) {
                         Body b = bodies[id];
-                        IndexUpdateFixture.update(context, id, b.box, b.x, b.y, b.z);
-                        metadata(context, id, b);
+                        IndexUpdateFixture.update(context, id, b.box, b.x, b.y, b.z,
+                                b.selectable, b.passenger, b.entityPush, b.vectorPush,
+                                b.team, b.rule, 900 - id, false, b.order);
                     }
                     // Grow reusable output storage without changing the low/medium entity count.
                     int capacityHint = phase >= 30 ? 513 : count;
@@ -34,7 +35,10 @@ public final class NativeQueryChecks {
                     }
                 }
                 // Empty geometry after a populated query must not expose stale counts or slots.
-                IndexUpdateFixture.update(context, 0, new AABB(0, 0, 0, 0, 0, 0), 0, 0, 0);
+                Body source = bodies(count, 89)[0];
+                IndexUpdateFixture.update(context, 0, new AABB(0, 0, 0, 0, 0, 0), 0, 0, 0,
+                        source.selectable, source.passenger, source.entityPush, source.vectorPush,
+                        source.team, source.rule, 900, false, source.order);
                 var empty = FFMBackend.queryPushable(context, 0, -1, 0, true, count);
                 helper.assertTrue(empty.size() == 0 && empty.pushableCount() == 0
                         && empty.nonPassengerCount() == 0 && !empty.metadataRequired(), "empty source result");

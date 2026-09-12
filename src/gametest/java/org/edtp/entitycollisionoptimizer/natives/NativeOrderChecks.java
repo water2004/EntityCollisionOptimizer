@@ -36,8 +36,9 @@ public final class NativeOrderChecks {
                     case 6 -> begin(context, bodies, 2);
                     case 7 -> begin(context, bodies, 1);
                 }
-                IndexUpdateFixture.update(context, id, body.box, body.x, body.y, body.z);
-                metadata(context, id, body);
+                IndexUpdateFixture.update(context, id, body.box, body.x, body.y, body.z,
+                        body.selectable, body.passenger, true, true,
+                        -1, 0, 100 + id, false, body.order);
                 // Repeated queries with different sources share the same ordered cell state.
                 for (int repeat = 0; repeat < 3; repeat++) for (int source = 0; source < count; source++) {
                     compare(helper, context, bodies, source, "step=" + step + " repeat=" + repeat);

@@ -2,12 +2,14 @@
 
 #include "state/collision_context.h"
 #include "spatial/section_index.h"
+#include "spatial/spatial_index.h"
 
 #include <cstddef>
 
-int updateCollisionEntityMetadata(
+int updateCollisionEntity(
         void* contextPointer,
         int entityId,
+        const double* bounds,
         int selectable,
         int passenger,
         int vehicle,
@@ -28,8 +30,16 @@ int updateCollisionEntityMetadata(
     }
     try {
         auto& context = *static_cast<eco::CollisionContext*>(contextPointer);
-        if (static_cast<std::size_t>(entityId) >= context.metadata.size()) {
+        if (static_cast<std::size_t>(entityId) >= context.metadata.size()
+                || static_cast<std::size_t>(entityId) >= context.boxes.size()) {
             return -1;
+        }
+        if (bounds != nullptr) {
+            eco::updateEntityBounds(
+                    context,
+                    entityId,
+                    eco::makeAabb(bounds[0], bounds[1], bounds[2], bounds[3], bounds[4], bounds[5])
+            );
         }
         eco::EntityMetadata& metadata = context.metadata[entityId];
         metadata.selectable = selectable != 0;

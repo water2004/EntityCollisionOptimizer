@@ -49,11 +49,7 @@ ECO_EXPORT int addCollisionEntity(
 ECO_EXPORT int updateCollisionEntity(
         void* context,
         int entityId,
-        const double* bounds
-);
-ECO_EXPORT int updateCollisionEntityMetadata(
-        void* context,
-        int entityId,
+        const double* bounds,
         int selectable,
         int passenger,
         int vehicle,

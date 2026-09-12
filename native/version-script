@@ -10,7 +10,6 @@
         beginCollisionFrame;
         addCollisionEntity;
         updateCollisionEntity;
-        updateCollisionEntityMetadata;
         invalidateCollisionEntityMetadata;
         invalidateCollisionMetadata;
         queryCollisionEntities;

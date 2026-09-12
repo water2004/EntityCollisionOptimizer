@@ -5,13 +5,18 @@ import net.minecraft.world.phys.AABB;
 /** Test-only geometry source for query fixtures without live Minecraft entities. */
 final class IndexUpdateFixture {
     static void update(FFMBackend.Context context, int id, AABB box,
-                       int sectionX, int sectionY, int sectionZ) {
+                       int sectionX, int sectionY, int sectionZ,
+                       boolean selectable, boolean passenger,
+                       boolean entityPush, boolean vectorPush,
+                       int team, int rule, int bodySlot,
+                       boolean hardCollidable, long order) {
         var bounds = new CollisionBounds();
         bounds.capacity(1);
         bounds.set(0, box);
-        FFMBackend.updateEntity(context, id, bounds.row(0));
+        FFMBackend.updateEntity(context, id, bounds.row(0), selectable, passenger, false, false,
+                entityPush, vectorPush, team, rule, bodySlot, hardCollidable, order);
         if (org.edtp.entitycollisionoptimizer.config.CollisionOptimizerConfig.STARTUP_VANILLA_ORDER) {
-            FFMBackend.updateOrderedLocation(context, id, sectionX, sectionY, sectionZ, 0L);
+            FFMBackend.updateOrderedLocation(context, id, sectionX, sectionY, sectionZ, order);
         } else {
             FFMBackend.updateLocation(context, id, sectionX, sectionY, sectionZ);
         }

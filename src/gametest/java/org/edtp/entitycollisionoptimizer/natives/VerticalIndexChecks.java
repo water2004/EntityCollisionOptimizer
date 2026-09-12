@@ -33,9 +33,9 @@ public final class VerticalIndexChecks {
                                 double x = -0.3 + (id % 3) * 0.2;
                                 double z = -0.3 + (id / 3 % 3) * 0.2;
                                 boxes[id] = new AABB(x, y, z, x + 0.6, y + height, z + 0.6);
-                                IndexUpdateFixture.update(context, id, boxes[id], 0, section(y), 0);
-                                FFMBackend.updateEntityMetadata(context, id, true, false, false, false,
-                                        true, true, -1, 0, id, id % 2 == 0, count - id);
+                                IndexUpdateFixture.update(context, id, boxes[id], 0, section(y), 0,
+                                        true, false, true, true, -1, 0,
+                                        id, id % 2 == 0, count - id);
                             }
                             for (int source = 0; source < count; source++) {
                                 AABB box = boxes[source];

@@ -107,28 +107,3 @@ int addCollisionEntity(
         return -2;
     }
 }
-
-int updateCollisionEntity(
-        void* contextPointer,
-        int entityId,
-        const double* bounds
-) {
-    if (contextPointer == nullptr || entityId < 0 || !bounds) {
-        return -1;
-    }
-    try {
-        auto& context = *static_cast<eco::CollisionContext*>(contextPointer);
-        if (static_cast<std::size_t>(entityId) >= context.boxes.size()) {
-            return -1;
-        }
-        eco::updateEntityBounds(
-                context,
-                entityId,
-                eco::makeAabb(bounds[0], bounds[1], bounds[2], bounds[3], bounds[4], bounds[5])
-        );
-        context.metadata[entityId].selectableValid = false;
-        return 0;
-    } catch (...) {
-        return -2;
-    }
-}

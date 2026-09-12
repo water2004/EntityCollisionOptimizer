@@ -18,6 +18,7 @@ import net.minecraft.world.phys.shapes.VoxelShape;
 import net.minecraft.world.scores.PlayerTeam;
 import net.minecraft.world.scores.Team;
 
+import java.lang.foreign.MemorySegment;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -118,12 +119,7 @@ final class LevelCollisionFrame {
         }
         int nativeId = ids.getId(entity);
         int slot = bodies.slot(entity);
-        FFMBackend.updateEntity(
-                nativeContext,
-                nativeId,
-                bodies.movementRow(slot)
-        );
-        refreshNativeMetadata(nativeId, entity);
+        refreshNativeMetadata(nativeId, entity, bodies.movementRow(slot));
     }
 
     synchronized void invalidateEntity(Entity entity) {
@@ -403,10 +399,15 @@ final class LevelCollisionFrame {
     }
 
     private void refreshNativeMetadata(int nativeId, Entity entity) {
+        refreshNativeMetadata(nativeId, entity, MemorySegment.NULL);
+    }
+
+    private void refreshNativeMetadata(int nativeId, Entity entity, MemorySegment bounds) {
         PlayerTeam targetTeam = team(nativeId, entity);
-        FFMBackend.updateEntityMetadata(
+        FFMBackend.updateEntity(
                 nativeContext,
                 nativeId,
+                bounds,
                 isSelectable(nativeId, entity),
                 entity.isPassenger(),
                 entity.isVehicle(),

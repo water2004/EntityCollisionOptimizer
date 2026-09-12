@@ -33,9 +33,8 @@ public final class NativeHardQueryChecks {
                     Body[] bodies = bodies(count, phase);
                     for (int id = 0; id < count; id++) {
                         Body b = bodies[id];
-                        IndexUpdateFixture.update(context, id, b.box, b.x, b.y, b.z);
-                        FFMBackend.updateEntityMetadata(context, id, true, false, false, false,
-                                true, true, -1, 0, id, b.hard, id);
+                        IndexUpdateFixture.update(context, id, b.box, b.x, b.y, b.z,
+                                true, false, true, true, -1, 0, id, b.hard, id);
                     }
                     AABB scan = scan(bodies[0].box, phase);
                     compare(helper, context, bodies, scan, true, count, phase);
