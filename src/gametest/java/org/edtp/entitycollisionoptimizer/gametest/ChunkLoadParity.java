@@ -27,6 +27,7 @@ import org.edtp.entitycollisionoptimizer.natives.CollisionFrame;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * Vanilla vs ECO under 26.2 ticket spreading from a radius-2 FORCED ticket:
@@ -129,9 +130,10 @@ final class ChunkLoadParity {
 
         private void force(ServerLevel level, ChunkPos chunk) {
             ServerChunkCache chunks = level.getChunkSource();
-            chunks.addTicketAndLoadWithRadius(TicketType.FORCED, chunk, RADIUS);
-            level.getChunk(chunk.x(), chunk.z());
+            CompletableFuture<?> loaded = chunks.addTicketAndLoadWithRadius(TicketType.FORCED, chunk, RADIUS);
             cleanup.add(() -> chunks.removeTicketWithRadius(TicketType.FORCED, chunk, RADIUS));
+            level.getServer().managedBlock(loaded::isDone);
+            loaded.join();
         }
 
         private ServerLevel nether() {
