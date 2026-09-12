@@ -117,3 +117,5 @@ Minecraft 按区段存储实体。一次碰撞查询需要遍历相关区段、�
 ## 许可证
 
 实体碰撞优化使用 [MIT License](LICENSE)。
+
+致谢：本项目的灵感来自 [Accelerated Recoiling](https://github.com/water2004/AcceleratedRecoiling)，但在目标和实现上均与其有很大区别。
