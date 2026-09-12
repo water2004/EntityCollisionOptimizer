@@ -43,11 +43,14 @@ Release JARs contain native libraries for x86-64 Windows, Linux, and macOS. ARM6
 
 1. Install Fabric Loader and Fabric API.
 2. Download the JAR for Minecraft 26.2 from [GitHub Releases](https://github.com/water2004/EntityCollisionOptimizer/releases) and place it in the instance's `mods` directory.
-3. Add the following JVM argument to explicitly allow FFM native access:
 
-   ```text
-   --enable-native-access=ALL-UNNAMED
-   ```
+No additional JVM arguments are required on the supported Java 25 runtime. The official Minecraft 26.2 launcher already enables native access. A dedicated server started manually without that option may print Java's native-access warning once, but Java 25 still allows the operation and the mod continues to work.
+
+Server administrators who want to suppress that warning may optionally add:
+
+```text
+--enable-native-access=ALL-UNNAMED
+```
 
 An unsupported native platform or an FFM initialization failure is reported as an error. The mod will not silently fall back to another implementation.
 

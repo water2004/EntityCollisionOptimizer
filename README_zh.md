@@ -43,11 +43,14 @@ Minecraft 按区段存储实体。一次碰撞查询需要遍历相关区段、�
 
 1. 安装 Fabric Loader 和 Fabric API。
 2. 从 [GitHub Releases](https://github.com/water2004/EntityCollisionOptimizer/releases) 下载 Minecraft 26.2 对应的 JAR，放入实例的 `mods` 目录。
-3. 添加以下 JVM 参数，显式允许 FFM 原生访问：
 
-   ```text
-   --enable-native-access=ALL-UNNAMED
-   ```
+在本项目支持的 Java 25 上不需要添加任何 JVM 参数。Minecraft 26.2 官方启动器已经启用了 native access；手动启动的独立服务器如果没有该选项，Java 可能只在日志中输出一次 native access 警告，但 Java 25 仍会允许调用，模组可以正常工作。
+
+希望消除这条警告的服务器管理员可以选择添加：
+
+```text
+--enable-native-access=ALL-UNNAMED
+```
 
 如果当前平台不受支持或 FFM 初始化失败，模组会明确报错，不会静默回退到其他实现。
 
