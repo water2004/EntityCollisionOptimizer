@@ -18,24 +18,32 @@
 
 下面三张截图使用同一个高密度僵尸猪灵围栏和相同的测试条件。实体碰撞优化使用 `vanillaOrder=false`，从而移除所有仅用于复现原版实体候选顺序的工作。游戏内实时 tick 信息显示：
 
-| 方案 | MSPT | TPS | 相对 tick 处理速率 |
+| 方案 | MSPT | 相对原版速度 | 相对原版 MSPT 降幅 |
 | --- | ---: | ---: | ---: |
-| 原版 | 268.4 | 3.7 | 1.00× |
-| Lithium | 198.5 | 5.0 | 1.35× |
-| 实体碰撞优化（`vanillaOrder=false`） | 40.8 | 20.0 | 6.58× |
+| 原版 | 268.4 | 1.00× | — |
+| Lithium | 198.5 | 1.35× | 26.0% |
+| 实体碰撞优化 | 40.8 | **6.58×** | **84.8%** |
 
-在这个场景中，实体碰撞优化相较原版降低了 84.8% 的 MSPT，相较 Lithium 降低了 79.4%，使服务器回到 Minecraft 每 tick 50 ms 的预算内并恢复至 20 TPS。
+**在这个场景中，实体碰撞优化的 tick 处理速率是原版的 6.58 倍、Lithium 的 4.87 倍。** 相较原版，MSPT **降低 84.8%**；相较 Lithium，MSPT **降低 79.4%**，从而回到 Minecraft 每 tick 50 ms 的预算内。
+
+```mermaid
+xychart-beta
+    title "相对原版的 tick 处理速率"
+    x-axis ["原版", "Lithium", "ECO"]
+    y-axis "相对速率" 0 --> 7
+    bar [1.00, 1.35, 6.58]
+```
 
 <table>
   <tr>
-    <th>原版 — 268.4 MSPT</th>
-    <th>Lithium — 198.5 MSPT</th>
-    <th>实体碰撞优化，vanillaOrder=false — 40.8 MSPT</th>
+    <td width="33%" align="center"><strong>原版</strong><br>268.4 MSPT</td>
+    <td width="33%" align="center"><strong>Lithium</strong><br>198.5 MSPT</td>
+    <td width="33%" align="center"><strong>实体碰撞优化</strong><br>40.8 MSPT</td>
   </tr>
   <tr>
-    <td><img src="docs/images/comparison/vanilla.jpg" alt="原版在高密度实体对照场景中为 268.4 MSPT"></td>
-    <td><img src="docs/images/comparison/lithium.jpg" alt="Lithium 在高密度实体对照场景中为 198.5 MSPT"></td>
-    <td><img src="docs/images/comparison/eco.jpg" alt="关闭 vanillaOrder 的实体碰撞优化在高密度实体对照场景中为 40.8 MSPT"></td>
+    <td width="33%" align="center"><img src="docs/images/comparison/vanilla.jpg" width="300" height="188" alt="原版在高密度实体对照场景中为 268.4 MSPT"></td>
+    <td width="33%" align="center"><img src="docs/images/comparison/lithium.jpg" width="300" height="188" alt="Lithium 在高密度实体对照场景中为 198.5 MSPT"></td>
+    <td width="33%" align="center"><img src="docs/images/comparison/eco.jpg" width="300" height="188" alt="实体碰撞优化在高密度实体对照场景中为 40.8 MSPT"></td>
   </tr>
 </table>
 
@@ -85,23 +93,12 @@ Minecraft 按区段存储实体。一次碰撞查询需要遍历相关区段、�
 
 ## 配置
 
-首次启动会生成 `config/entity_collision_optimizer.json`。面向用户的配置项只有：
-
-```json
-{
-  "vanillaOrder": true
-}
-```
+使用 `/eco` 查看当前后端、FFM 状态和实体顺序模式。使用 `/eco vanillaOrder true|false` 选择下次启动使用的模式：
 
 - `true`（默认）：保留 Minecraft 的实体候选顺序和更新语义。
 - `false`：使用无序原生后端，并移除所有仅为复现原版顺序而产生的工作。它仍会完整查询并去重候选，但推动顺序和最终状态可能与原版不同。红石更新顺序和方块逻辑保持不变，因此大部分红石机器不受影响；依赖精确实体推动顺序或运动轨迹的机器需要单独测试。
 
-后端在启动时选择，因此修改后需要重启实例。服务器管理员可以使用：
-
-- `/eco`：查看当前后端、FFM 状态和顺序模式；
-- `/eco vanillaOrder true|false`：保存下次启动使用的模式。
-
-配置文件中的其他字段属于内部实现细节，不是稳定的用户配置。
+后端在启动时选择，因此切换模式不会改变当前正在运行的服务器，重启后生效。
 
 ## 兼容性
 

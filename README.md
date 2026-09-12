@@ -18,24 +18,32 @@ This is not a collision limiter or an approximate simulation. With the default o
 
 The screenshots below use the same dense zombified-piglin enclosure and the same test conditions. Entity Collision Optimizer was run with `vanillaOrder=false`, which removes the work performed solely to reproduce vanilla's entity candidate order. The live tick overlay reports the following results:
 
-| Setup | MSPT | TPS | Relative tick processing rate |
+| Setup | MSPT | Speed vs Vanilla | MSPT reduction vs Vanilla |
 | --- | ---: | ---: | ---: |
-| Vanilla | 268.4 | 3.7 | 1.00× |
-| Lithium | 198.5 | 5.0 | 1.35× |
-| Entity Collision Optimizer (`vanillaOrder=false`) | 40.8 | 20.0 | 6.58× |
+| Vanilla | 268.4 | 1.00× | — |
+| Lithium | 198.5 | 1.35× | 26.0% |
+| Entity Collision Optimizer | 40.8 | **6.58×** | **84.8%** |
 
-In this scene, Entity Collision Optimizer reduces MSPT by 84.8% compared with vanilla and by 79.4% compared with Lithium. It brings the server below Minecraft's 50 MSPT budget and restores 20 TPS.
+**In this scene, Entity Collision Optimizer processes ticks at 6.58× the Vanilla rate and 4.87× the Lithium rate.** It reduces MSPT by **84.8% versus Vanilla** and **79.4% versus Lithium**, bringing the server below Minecraft's 50 MSPT budget.
+
+```mermaid
+xychart-beta
+    title "Tick processing rate relative to Vanilla"
+    x-axis ["Vanilla", "Lithium", "ECO"]
+    y-axis "Relative rate" 0 --> 7
+    bar [1.00, 1.35, 6.58]
+```
 
 <table>
   <tr>
-    <th>Vanilla — 268.4 MSPT</th>
-    <th>Lithium — 198.5 MSPT</th>
-    <th>ECO, vanillaOrder=false — 40.8 MSPT</th>
+    <td width="33%" align="center"><strong>Vanilla</strong><br>268.4 MSPT</td>
+    <td width="33%" align="center"><strong>Lithium</strong><br>198.5 MSPT</td>
+    <td width="33%" align="center"><strong>ECO</strong><br>40.8 MSPT</td>
   </tr>
   <tr>
-    <td><img src="docs/images/comparison/vanilla.jpg" alt="Vanilla running the dense entity comparison at 268.4 MSPT"></td>
-    <td><img src="docs/images/comparison/lithium.jpg" alt="Lithium running the dense entity comparison at 198.5 MSPT"></td>
-    <td><img src="docs/images/comparison/eco.jpg" alt="Entity Collision Optimizer with vanillaOrder disabled running the dense entity comparison at 40.8 MSPT"></td>
+    <td width="33%" align="center"><img src="docs/images/comparison/vanilla.jpg" width="300" height="188" alt="Vanilla running the dense entity comparison at 268.4 MSPT"></td>
+    <td width="33%" align="center"><img src="docs/images/comparison/lithium.jpg" width="300" height="188" alt="Lithium running the dense entity comparison at 198.5 MSPT"></td>
+    <td width="33%" align="center"><img src="docs/images/comparison/eco.jpg" width="300" height="188" alt="Entity Collision Optimizer running the dense entity comparison at 40.8 MSPT"></td>
   </tr>
 </table>
 
@@ -85,23 +93,12 @@ An unsupported native platform or an FFM initialization failure is reported as a
 
 ## Configuration
 
-The mod creates `config/entity_collision_optimizer.json` on first launch. Its only supported user-facing option is:
-
-```json
-{
-  "vanillaOrder": true
-}
-```
+Use `/eco` to show the active backend, FFM state, and entity-order mode. Use `/eco vanillaOrder true|false` to select the mode for the next restart:
 
 - `true` (default) preserves Minecraft's entity candidate order and update semantics.
 - `false` selects the unordered native backend and removes all work needed solely to reproduce vanilla order. It still finds and deduplicates the complete candidate set, but push order and the resulting state may differ from vanilla. Redstone update order and block logic are unchanged, so most redstone machines are unaffected; machines that rely on exact entity push order or trajectories should be tested separately.
 
-The backend is selected at startup, so this setting takes effect after a restart. Server operators can use:
-
-- `/eco` to show the active backend, FFM state, and order mode;
-- `/eco vanillaOrder true|false` to save the mode for the next restart.
-
-Other fields found in the configuration file are implementation details and are not stable user-facing options.
+The backend is selected at startup, so changing the mode does not affect the running server and takes effect after a restart.
 
 ## Compatibility
 
