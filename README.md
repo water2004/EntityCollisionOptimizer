@@ -14,6 +14,35 @@ Crowded mob farms, transport systems, and other entity-heavy builds can spend a 
 
 This is not a collision limiter or an approximate simulation. With the default ordered backend, vanilla entities produce the same candidates in the same order, run the same collision rules, and publish each velocity or movement update at the same point as Mojang's implementation. The algorithm does not change with entity density and never drops candidates.
 
+## In-game comparison
+
+The screenshots below use the same dense zombified-piglin enclosure and the same test conditions. Entity Collision Optimizer was run with `vanillaOrder=false`, which removes the work performed solely to reproduce vanilla's entity candidate order. The live tick overlay reports the following results:
+
+| Setup | MSPT | TPS | Relative tick processing rate |
+| --- | ---: | ---: | ---: |
+| Vanilla | 268.4 | 3.7 | 1.00× |
+| Lithium | 198.5 | 5.0 | 1.35× |
+| Entity Collision Optimizer (`vanillaOrder=false`) | 40.8 | 20.0 | 6.58× |
+
+In this scene, Entity Collision Optimizer reduces MSPT by 84.8% compared with vanilla and by 79.4% compared with Lithium. It brings the server below Minecraft's 50 MSPT budget and restores 20 TPS.
+
+<table>
+  <tr>
+    <th>Vanilla — 268.4 MSPT</th>
+    <th>Lithium — 198.5 MSPT</th>
+    <th>ECO, vanillaOrder=false — 40.8 MSPT</th>
+  </tr>
+  <tr>
+    <td><img src="docs/images/comparison/vanilla.jpg" alt="Vanilla running the dense entity comparison at 268.4 MSPT"></td>
+    <td><img src="docs/images/comparison/lithium.jpg" alt="Lithium running the dense entity comparison at 198.5 MSPT"></td>
+    <td><img src="docs/images/comparison/eco.jpg" alt="Entity Collision Optimizer with vanillaOrder disabled running the dense entity comparison at 40.8 MSPT"></td>
+  </tr>
+</table>
+
+Disabling `vanillaOrder` does not change redstone update order or block logic, so it does not affect most redstone machines. It can change the outcome of machines that depend on the exact order of entity pushes, collision timing, or entity trajectories; test those designs with the option disabled before deployment.
+
+These values are live snapshots from this particular scene, not a multi-run statistical benchmark. Absolute performance depends on hardware, JVM, mod set, and workload; the screenshots are included to make this specific comparison directly inspectable.
+
 ## How it works
 
 Minecraft stores entities in sections. A collision query walks the relevant sections, visits Java objects, checks their bounding boxes and builds the data needed by the pushing or movement code. This is simple and flexible, but the object access, temporary allocations and repeated preparation become expensive when many entities occupy a small area.
@@ -65,7 +94,7 @@ The mod creates `config/entity_collision_optimizer.json` on first launch. Its on
 ```
 
 - `true` (default) preserves Minecraft's entity candidate order and update semantics.
-- `false` selects the unordered native backend and removes all work needed solely to reproduce vanilla order. It still finds and deduplicates the complete candidate set, but push order and the resulting state may differ from vanilla.
+- `false` selects the unordered native backend and removes all work needed solely to reproduce vanilla order. It still finds and deduplicates the complete candidate set, but push order and the resulting state may differ from vanilla. Redstone update order and block logic are unchanged, so most redstone machines are unaffected; machines that rely on exact entity push order or trajectories should be tested separately.
 
 The backend is selected at startup, so this setting takes effect after a restart. Server operators can use:
 
