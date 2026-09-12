@@ -2,13 +2,9 @@
 
 English | [简体中文](README_zh.md)
 
-Entity Collision Optimizer is a free and open-source Fabric mod for Minecraft 26.2. It speeds up server-side entity pushing and movement collision while its default backend preserves vanilla collision behavior.
+**Preserves vanilla entity-collision behavior by default; its optional unordered mode reaches 6.58× the Vanilla tick-processing rate and 4.87× the Lithium rate in the dense-entity comparison below.**
 
-The mod is enabled as soon as it is installed. It works on dedicated and integrated servers, and connecting clients do not need to install it.
-
-**In the dense entity comparison below, Entity Collision Optimizer processes ticks at 6.58× the Vanilla rate and 4.87× the Lithium rate.**
-
-> Entity Collision Optimizer is currently in alpha. Back up your world and test your exact mod set before deploying it to a production server.
+Entity Collision Optimizer is a server-side Fabric mod for Minecraft 26.2 that accelerates entity queries, pushing, and movement collision. Install it and it works; connecting clients do not need the mod.
 
 ## Why use Entity Collision Optimizer?
 
