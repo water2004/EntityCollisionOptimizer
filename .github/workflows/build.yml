@@ -1,12 +1,11 @@
-name: Build and Publish Fabric 26.2
+name: Build Fabric 26.2
 
 on:
   push:
     branches: [ "**" ]
-    tags: [ "v*" ]
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   build-and-package:
@@ -40,29 +39,3 @@ jobs:
           name: EntityCollisionOptimizer-${{ github.ref_name }}-build-${{ github.run_number }}
           path: build/libs/*.jar
           retention-days: 14
-
-      - name: Publish to GitHub Releases
-        if: startsWith(github.ref, 'refs/tags/v')
-        uses: softprops/action-gh-release@v2
-        with:
-          files: build/libs/*.jar
-          generate_release_notes: true
-
-      - name: Publish to CurseForge & Modrinth
-        if: startsWith(github.ref, 'refs/tags/v')
-        uses: kir-antipov/mc-publish@v3.3
-        with:
-          files: build/libs/!(*-dev|-sources|-javadoc).jar
-
-          name: ${{ github.ref_name }}
-          version: ${{ github.ref_name }}
-
-          loaders: fabric
-
-          game-versions: |
-            26.2
-          version-type: release
-          curseforge-id: ${{ secrets.CF_PROJECT_ID }}
-          curseforge-token: ${{ secrets.CF_TOKEN }}
-          modrinth-id: ${{ secrets.MODRINTH_PROJECT_ID }}
-          modrinth-token: ${{ secrets.MODRINTH_TOKEN }}

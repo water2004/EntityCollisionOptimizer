@@ -151,7 +151,7 @@ jobs:
             'release', 'create', $tag
           ) + $assets + @(
             '--verify-tag',
-            '--generate-notes',
+            '--notes', 'See the README for details.',
             '--title', "Entity Collision Optimizer $version"
           )
           if ('${{ steps.release.outputs.prerelease }}' -eq 'true') {
