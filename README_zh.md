@@ -22,7 +22,7 @@
 
 在这个场景中，相较原版，MSPT **降低 84.8%**；相较锂，MSPT **降低 79.4%**，从而回到 Minecraft 每 tick 50 ms 的预算内。
 
-![原版、锂与实体碰撞优化的 MSPT 和 tick 处理速率柱状图](docs/images/comparison/performance_zh.svg)
+![原版、锂与实体碰撞优化的 MSPT 和 tick 处理速率柱状图](docs/images/comparison/performance.png)
 
 <table>
   <tr>
@@ -117,5 +117,3 @@ Minecraft 按区段存储实体。一次碰撞查询需要遍历相关区段、�
 ## 许可证
 
 实体碰撞优化使用 [MIT License](LICENSE)。
-
-本项目源自 [Accelerated Recoiling](https://github.com/water2004/AcceleratedRecoiling)，原项目由 wiyuka 以 MIT License 发布。Entity Collision Optimizer 此后的重构与维护由 water2004 完成。

@@ -22,7 +22,7 @@ The screenshots below use the same dense zombified-piglin enclosure and the same
 
 In this scene, Entity Collision Optimizer reduces MSPT by **84.8% versus Vanilla** and **79.4% versus Lithium**, bringing the server below Minecraft's 50 MSPT budget.
 
-![Bar chart comparing MSPT and tick-processing rate for Vanilla, Lithium, and Entity Collision Optimizer](docs/images/comparison/performance.svg)
+![Bar chart comparing MSPT and tick-processing rate for Vanilla, Lithium, and Entity Collision Optimizer](docs/images/comparison/performance.png)
 
 <table>
   <tr>
@@ -117,5 +117,3 @@ Building a complete release JAR with all native targets currently requires Windo
 ## License
 
 Entity Collision Optimizer is available under the [MIT License](LICENSE).
-
-This project originated from [Accelerated Recoiling](https://github.com/water2004/AcceleratedRecoiling), originally released under the MIT License by wiyuka. Entity Collision Optimizer is subsequently refactored and maintained by water2004.
