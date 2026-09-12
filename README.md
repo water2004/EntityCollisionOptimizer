@@ -1,73 +1,59 @@
 # Entity Collision Optimizer
 
-面向 Minecraft 26.2 Fabric 服务端的实体碰撞优化模组。它通过 Java FFM 调用原生实现，维护持久的实体空间索引，并接管实体查询、实体推动和移动碰撞的热点路径。
+English | [简体中文](README_zh.md)
 
-本项目适合实体密集、实体推动或移动碰撞已经成为 MSPT 瓶颈的场景。它不优化生物 AI、寻路、区块生成、网络或客户端渲染，因此普通场景中的收益取决于碰撞在服务器负载中的占比。
+Entity Collision Optimizer is a free and open-source Fabric mod for Minecraft 26.2. It speeds up server-side entity pushing and movement collision while its default backend preserves vanilla collision behavior.
 
-> 当前版本处于 alpha 阶段。请先备份世界，并在正式服务器使用前验证自己的模组组合。
+The mod is enabled as soon as it is installed. It works on dedicated and integrated servers, and connecting clients do not need to install it.
 
-## 设计目标
+> Entity Collision Optimizer is currently in alpha. Back up your world and test your exact mod set before deploying it to a production server.
 
-- 安装后默认启用，不需要修改游戏规则或限制参与碰撞的实体数量。
-- 默认有序路径保留 Mojang 的候选集合、遍历顺序、碰撞判断和立即写回语义，对原版实体保持原版行为。
-- 一致性不按实体密度分级：所有密度始终使用同一条计算路径，不切换近似算法，也不截断候选。
-- 当前只以原版实体为兼容目标；其他模组自定义实体或直接改写实体内部状态的行为不在保证范围内。
+## Why use Entity Collision Optimizer?
 
-## 优化原理
+Crowded mob farms, transport systems, and other entity-heavy builds can spend a large share of their tick time finding nearby entities, checking bounding boxes, applying pushes, and resolving movement against blocks. Entity Collision Optimizer focuses on that work alone. It does not attempt to optimize AI, pathfinding, chunk generation, networking, or client rendering, so the improvement you see depends on how much collision work your server performs.
 
-这不是通过减少碰撞次数或近似模拟换取性能。模组保留 Mojang 的碰撞规则，主要通过持续维护数据、改变内存布局和扩大单次 FFM 调用的工作量来消除重复开销。
+This is not a collision limiter or an approximate simulation. With the default ordered backend, vanilla entities produce the same candidates in the same order, run the same collision rules, and publish each velocity or movement update at the same point as Mojang's implementation. The algorithm does not change with entity density and never drops candidates.
 
-| 阶段 | Mojang 实现 | 本模组实现 |
-| --- | --- | --- |
-| 实体索引 | 查询 `EntitySectionStorage` 中与 AABB 相交的区段和实体列表 | 每个维度维护持久的细粒度 XYZ 网格；实体加入、离开、移动或跨区段时增量更新，不在 tick 开始重建 |
-| 原版顺序 | 区段遍历顺序与区段内插入顺序自然决定结果顺序 | 同时维护原版区段顺序索引；细网格负责筛选候选，再按原版顺序输出，不需要为每次查询临时排序 |
-| 碰撞状态 | 位置、AABB、速度等保存在 Java 对象中，热路径频繁读取对象并创建临时对象 | 位置、AABB、速度和同步标志保存在按槽位排列的共享堆外表中；Java 与 native 访问同一份状态，`Vec3` 仅在 Java 真正读取时按需物化 |
-| 实体推动 | 每个生物查询候选，并按顺序逐对判断、立即更新双方速度 | native 一次完成候选筛选，并批量执行连续的原版推动计算；目标顺序和每一对碰撞后的立即速度更新保持不变 |
-| 移动碰撞 | 收集实体及方块碰撞箱，再完成各轴裁剪、台阶尝试和位置发布 | 方块占用掩码先跳过不可能碰撞的位置，Java 仍计算依赖世界上下文的碰撞形状，native 批量完成几何裁剪与移动求解 |
+## How it works
 
-数据按用途放入紧凑的连续表；候选 AABB 另外使用 SoA 布局，使批量比较能够利用 AVX2 和 CPU 缓存。FFM 边界按“查询、一次推动序列或一次移动”组织，而不是为每个候选实体来回调用 Java。每个维度拥有独立状态，因此跨维度实体会从旧索引移除并在新索引重新绑定。
+Minecraft stores entities in sections. A collision query walks the relevant sections, visits Java objects, checks their bounding boxes and builds the data needed by the pushing or movement code. This is simple and flexible, but the object access, temporary allocations and repeated preparation become expensive when many entities occupy a small area.
 
-最终的区别是数据在哪里、何时准备以及一次处理多少工作，而不是碰撞规则本身。重力、摩擦、伤害、爆炸、方块效果和世界回调仍按原版时机在 Java 中执行。
+Entity Collision Optimizer keeps a native collision context for each dimension and updates it as entities are tracked, moved, transferred between dimensions, or removed. A persistent fine-grained XYZ grid narrows each query to nearby entities. In the default backend, a second section index restores Minecraft's section traversal and insertion order after that spatial filtering, so preserving vanilla order does not require sorting every result.
 
-## 优化范围
+Position, velocity, bounding-box and synchronization state used by collision code live in compact shared off-heap tables. Java and native code operate on the same state, while Java objects such as `Vec3` are materialized only when Java code actually reads them. Candidate bounds use a SoA layout so hot AABB loops make effective use of CPU caches and AVX2.
 
-模组在服务端为每个维度维护独立的原生碰撞状态，主要覆盖：
+For entity pushing, one native query performs spatial and rule filtering. Consecutive pairs that use Minecraft's standard push formula are then evaluated as a batch, in order, with each pair's velocity changes visible to the next pair. Entity-specific vanilla callbacks still run at their original point. For movement, a maintained block mask skips positions that cannot collide; Java still resolves context-sensitive `VoxelShape` values, while native code performs the bulk geometry clipping, step calculation, and movement integration.
 
-- 实体空间索引的增量维护与碰撞候选查询；
-- 生物实体之间的推动计算及速度状态同步；
-- `Entity.move` 使用的实体与方块碰撞求解；
-- 方块碰撞箱扫描与体素几何裁剪。
+The FFM boundary therefore carries a complete query, push run, or movement operation instead of bouncing between Java and native code for every candidate. Gravity, friction, fall handling, fluids, damage, explosions, block effects, and world callbacks remain in Minecraft's normal Java logic. See [native/README.md](native/README.md) for the native module boundaries.
 
-重力、摩擦、摔落、流体、方块效果、伤害、爆炸以及其他世界回调仍由 Minecraft 的正常逻辑驱动。原生模块的内部边界见 [native/README.md](native/README.md)。
+## Requirements
 
-## 环境要求
-
-| 组件 | 要求 |
+| Component | Requirement |
 | --- | --- |
 | Minecraft | 26.2 |
-| 模组加载器 | Fabric Loader 0.17.0 或更高版本 |
-| 依赖 | Fabric API 0.145.4 或更高的 26.2 兼容版本 |
+| Mod loader | Fabric Loader 0.17.0 or newer |
+| Dependency | A Minecraft 26.2-compatible Fabric API 0.145.4 or newer |
 | Java | 25 |
-| 操作系统 | Windows、Linux 或 macOS |
-| 处理器 | x86-64，支持 AVX2 |
+| Operating system | Windows, Linux, or macOS |
+| Processor | x86-64 with AVX2 |
 
-发布 JAR 内置 Windows、Linux 和 macOS 的 x86-64 原生库；目前不支持 ARM64。模组只参与服务端模拟：独立服务器只需服务端安装，单人游戏则安装在运行内置服务器的客户端实例中，加入服务器的客户端不需要同步安装。
+Release JARs contain native libraries for x86-64 Windows, Linux, and macOS. ARM64 is not currently supported.
 
-## 安装
+## Installation
 
-1. 安装 Fabric Loader 和 Fabric API。
-2. 从 [GitHub Releases](https://github.com/water2004/EntityCollisionOptimizer/releases) 下载与 Minecraft 26.2 对应的 JAR，放入实例的 `mods` 目录。
-3. 建议为 Java 添加以下 JVM 参数，显式允许 FFM 原生访问：
+1. Install Fabric Loader and Fabric API.
+2. Download the JAR for Minecraft 26.2 from [GitHub Releases](https://github.com/water2004/EntityCollisionOptimizer/releases) and place it in the instance's `mods` directory.
+3. Add the following JVM argument to explicitly allow FFM native access:
 
    ```text
    --enable-native-access=ALL-UNNAMED
    ```
 
-原生库不受支持或 FFM 初始化失败时，模组会明确报错；不会静默回退到另一套实现。
+An unsupported native platform or an FFM initialization failure is reported as an error. The mod will not silently fall back to another implementation.
 
-## 配置与命令
+## Configuration
 
-首次启动会生成 `config/entity_collision_optimizer.json`。面向用户的配置项只有：
+The mod creates `config/entity_collision_optimizer.json` on first launch. Its only supported user-facing option is:
 
 ```json
 {
@@ -75,40 +61,42 @@
 }
 ```
 
-- `true`（默认）：保留原版实体推动候选顺序和更新语义，与 Mojang 路径保持一致。
-- `false`：启动无序原生路径，同时移除维护原版顺序所需的成本。候选仍会完整查询和去重，但推动顺序以及由此产生的最终状态可能与原版不同。
+- `true` (default) preserves Minecraft's entity candidate order and update semantics.
+- `false` selects the unordered native backend and removes all work needed solely to reproduce vanilla order. It still finds and deduplicates the complete candidate set, but push order and the resulting state may differ from vanilla.
 
-该路径在启动时确定，修改后必须重启实例。管理员可使用：
+The backend is selected at startup, so this setting takes effect after a restart. Server operators can use:
 
-- `/eco`：查看当前后端、FFM 初始化状态和顺序模式；
-- `/eco vanillaOrder true|false`：保存下次启动使用的顺序模式。
+- `/eco` to show the active backend, FFM state, and order mode;
+- `/eco vanillaOrder true|false` to save the mode for the next restart.
 
-配置文件中的其他字段属于内部实现细节，不是稳定的用户接口。
+Other fields found in the configuration file are implementation details and are not stable user-facing options.
 
-## 行为与兼容性
+## Compatibility
 
-- 可与 Lithium 和 Carpet 一同安装。本模组启用时会完整接管重叠的服务端碰撞路径，而不是叠加执行两套实现。
-- 实体推动不会读取 Carpet 的 `maxEntityCollisions` 上限；是否限制碰撞候选不属于本模组职责。原版 `maxEntityCramming` 挤压伤害规则仍然生效。
-- 不修改存档格式，也不注册必须同步到客户端的内容。
-- 与其他性能模组能否共存，取决于对方是否改写同一实体碰撞路径；请用实际模组组合运行一致性测试。
+- Lithium and Carpet can be installed alongside Entity Collision Optimizer. When enabled, this mod owns the overlapping server collision paths instead of running both implementations.
+- Carpet's `maxEntityCollisions` limit is intentionally ignored. Limiting the number of collision candidates is outside this mod's scope. Vanilla's `maxEntityCramming` damage rule still applies.
+- The mod does not change the save format or register content that must be synchronized to clients.
+- Vanilla entities are the compatibility target. Custom entities or mods that directly replace the same collision paths are not currently guaranteed to work.
 
-## 测试
+Please report reproducible problems through the [issue tracker](https://github.com/water2004/EntityCollisionOptimizer/issues).
 
-仓库包含原版与优化路径的差分 GameTest，覆盖实体推动、玩家交互、载具与投射物、TNT 与爆炸、活塞、粘液块与蜂蜜块、流体与气泡柱、冰面、异形方块碰撞箱、区块加载边界以及跨维度动量等场景。测试目标是比较两条路径的结果，而不只是确认交互曾经发生。
+## Building and testing
 
-使用 Java 25 和仓库内的 Gradle Wrapper：
+Use Java 25 and the included Gradle Wrapper:
 
 ```powershell
 ./gradlew.bat build
 ./gradlew.bat runGameTest -Pparity
 ```
 
-压测必须显式使用 `-Pbenchmark`，普通构建不会启动压测服务器。可通过 `-PcompatModsDir=<目录>` 为测试运行加入额外模组。
+The differential GameTest suite compares vanilla and optimized results across entity pushing, players, vehicles, projectiles, explosions, pistons, slime and honey blocks, fluids, bubble columns, ice, irregular block shapes, chunk-loading boundaries, and dimension transfers.
 
-完整发布 JAR 的原生交叉编译目前需要 Windows；Linux 和 macOS 可使用 `./gradlew compileJava` 检查 Java 代码。构建产物位于 `build/libs`，版本与 tag 规则见 [RELEASE.md](RELEASE.md)。
+Benchmarks are opt-in through `-Pbenchmark`; a normal build does not start a benchmark server. Use `-PcompatModsDir=<directory>` to add extra mods to a test run.
 
-## 许可证
+Building a complete release JAR with all native targets currently requires Windows. On Linux or macOS, use `./gradlew compileJava` to check the Java sources. Build artifacts are written to `build/libs`; version and tag conventions are documented in [RELEASE.md](RELEASE.md).
 
-本项目使用 [MIT License](LICENSE)。
+## License
 
-项目源自 [Accelerated Recoiling](https://github.com/water2004/AcceleratedRecoiling)。原项目代码由 wiyuka 以 MIT License 发布；Entity Collision Optimizer 的后续重构与维护由 water2004 完成。
+Entity Collision Optimizer is available under the [MIT License](LICENSE).
+
+This project originated from [Accelerated Recoiling](https://github.com/water2004/AcceleratedRecoiling), originally released under the MIT License by wiyuka. Entity Collision Optimizer is subsequently refactored and maintained by water2004.
