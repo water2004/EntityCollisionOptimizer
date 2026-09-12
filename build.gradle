@@ -3,7 +3,37 @@ plugins {
     id 'maven-publish'
 }
 
-version = project.mod_version
+def releaseVersion = providers.gradleProperty("releaseVersion")
+        .orElse(providers.gradleProperty("mod_version"))
+        .get()
+def numericIdentifier = /(?:0|[1-9][0-9]*)/
+def minecraftIdentifier = /[0-9]+(?:\.[0-9]+)+/
+def semanticVersion = /${numericIdentifier}\.${numericIdentifier}\.${numericIdentifier}/
+def stableVersionPattern = ~/^${semanticVersion}\+mc(${minecraftIdentifier})$/
+def prereleaseVersionPattern = ~/^${semanticVersion}-mc(${minecraftIdentifier})-alpha\.${numericIdentifier}$/
+def stableVersionMatch = releaseVersion =~ stableVersionPattern
+def prereleaseVersionMatch = releaseVersion =~ prereleaseVersionPattern
+def isStableVersion = stableVersionMatch.matches()
+def isPrereleaseVersion = prereleaseVersionMatch.matches()
+
+if (!isStableVersion && !isPrereleaseVersion) {
+    throw new GradleException(
+            "Invalid mod version '${releaseVersion}'. Expected X.Y.Z+mc${minecraft_version} "
+                    + "or X.Y.Z-mc${minecraft_version}-alpha.N"
+    )
+}
+
+def targetMinecraftVersion = isStableVersion
+        ? stableVersionMatch.group(1)
+        : prereleaseVersionMatch.group(1)
+if (targetMinecraftVersion != minecraft_version.toString()) {
+    throw new GradleException(
+            "Mod version '${releaseVersion}' targets Minecraft ${targetMinecraftVersion}, "
+                    + "but minecraft_version is ${minecraft_version}"
+    )
+}
+
+version = releaseVersion
 group = project.maven_group
 
 base {

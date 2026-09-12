@@ -65,6 +65,8 @@ FFM 初始化或执行失败时会明确报错，不会自动切换后端。
 
 可通过 `-PcompatModsDir=<目录>` 加载额外模组进行兼容性测试；`-Pbenchmark` 显式启用压测，普通构建不会运行压测。测试工具源码保留在仓库中，采样文件、测试报告和实验记录不纳入版本控制。
 
+发布版本、tag 格式及自动发布流程见 [RELEASE.md](RELEASE.md)。
+
 原生模块职责见 [native/README.md](native/README.md)。
 
 ## 许可证
