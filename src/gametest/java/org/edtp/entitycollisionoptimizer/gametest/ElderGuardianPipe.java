@@ -23,6 +23,7 @@ import java.util.Random;
 
 /** Real one-block bore: original elder-guardian dimensions may overlap the walls. */
 final class ElderGuardianPipe extends BenchmarkScenario {
+    private static final int DURATION_TICKS = 1000;
     private static final int SPAWN_Y = -50, BOTTOM_Y = -64, SPAWN_PER_TICK = 50;
     private static final int DRAIN_TICKS = 100;
     private final GameTestHelper helper;
@@ -44,9 +45,11 @@ final class ElderGuardianPipe extends BenchmarkScenario {
     }
 
     ElderGuardianPipe(GameTestHelper helper) { this.helper = helper; }
+    @Override int durationTicks() { return DURATION_TICKS; }
     @Override String name() { return "elder_guardian_void_pipe"; }
     @Override String description() {
-        return "world=benchmark_void generator=empty pipe_inner=1x1 spawn_y=-50 bottom_y=-64 spawn_per_tick=50 total_spawned=10000 "
+        return "world=benchmark_void generator=empty pipe_inner=1x1 spawn_y=-50 bottom_y=-64 spawn_per_tick=50 total_spawned="
+                + (DURATION_TICKS * SPAWN_PER_TICK) + " "
                 + "walls=stone floor=none water=none health=default ai=default gravity=default players=0 warmup_ticks=0";
     }
 
@@ -128,7 +131,7 @@ final class ElderGuardianPipe extends BenchmarkScenario {
     @Override int drainTicks() { return DRAIN_TICKS; }
     @Override void drain(int tick) {
         observe();
-        if (tick % 20 == 0) population(200 + tick);
+        if (tick % 20 == 0) population(DURATION_TICKS + tick);
     }
     @Override void verifyDrain(int ticks) {
         observe();

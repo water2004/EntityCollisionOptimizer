@@ -2,6 +2,7 @@ package org.edtp.entitycollisionoptimizer.gametest;
 
 /** Workload hooks; timing, exclusivity and cleanup belong to the shared runner. */
 abstract class BenchmarkScenario {
+    int durationTicks() { return CollisionBenchmarkRunner.DURATION_TICKS; }
     abstract String name();
     abstract String description();
     abstract void start();

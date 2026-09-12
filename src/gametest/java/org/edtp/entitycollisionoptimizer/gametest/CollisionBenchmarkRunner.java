@@ -51,7 +51,7 @@ public final class CollisionBenchmarkRunner {
             if (run.tick == 0) run.logWindow("start");
             MovementScanDiagnostics.beginTick(run.optimized, true);
             run.tickStartedAt = System.nanoTime();
-            if (run.tick < DURATION_TICKS) run.chamber.tick(run.tick);
+            if (run.tick < run.durationTicks) run.chamber.tick(run.tick);
             else run.chamber.drain(run.drainTick);
         } catch (RuntimeException | Error failure) {
             run.fail(failure);
@@ -66,8 +66,8 @@ public final class CollisionBenchmarkRunner {
             run.tickStartedAt = 0L;
             MovementScanDiagnostics.endTick();
             run.tick++;
-            if (run.tick <= DURATION_TICKS && run.tick % 20 == 0) run.chamber.population(run.tick);
-            if (run.tick == DURATION_TICKS) {
+            if (run.tick <= run.durationTicks && run.tick % 20 == 0) run.chamber.population(run.tick);
+            if (run.tick == run.durationTicks) {
                 run.logWindow("end");
                 run.chamber.verify(run.tick);
                 run.report();
@@ -76,7 +76,7 @@ public final class CollisionBenchmarkRunner {
                     activeRun = null;
                     run.done = true;
                 }
-            } else if (run.tick > DURATION_TICKS) {
+            } else if (run.tick > run.durationTicks) {
                 run.drainTick++;
                 if (run.drainTick >= run.chamber.drainTicks()) {
                     run.chamber.verifyDrain(run.tick);
@@ -95,7 +95,8 @@ public final class CollisionBenchmarkRunner {
         private final BenchmarkScenario chamber;
         private final boolean originalCollisionSetting = CollisionOptimizerConfig.enableEntityCollision;
         private final boolean optimized;
-        private final List<Double> samples = new ArrayList<>(DURATION_TICKS);
+        private final int durationTicks;
+        private final List<Double> samples;
         private int tick;
         private int drainTick;
         private long tickStartedAt;
@@ -105,6 +106,8 @@ public final class CollisionBenchmarkRunner {
         private BenchmarkRun(GameTestHelper helper, BenchmarkScenario scenario) {
             this.helper = helper;
             chamber = scenario;
+            durationTicks = chamber.durationTicks();
+            samples = new ArrayList<>(durationTicks);
             String mode = System.getenv().getOrDefault("ECO_BENCHMARK_PROFILE", "optimized");
             if (!mode.equalsIgnoreCase("optimized") && !mode.equalsIgnoreCase("baseline")) {
                 throw new IllegalArgumentException("ECO_BENCHMARK_PROFILE must be optimized or baseline");
@@ -117,7 +120,7 @@ public final class CollisionBenchmarkRunner {
             MovementScanDiagnostics.start();
             chamber.start();
             EntityCollisionOptimizer.LOGGER.info("ECO_BENCHMARK_START scenario={} ticks={} profile_mode={} {}",
-                    chamber.name(), DURATION_TICKS, optimized ? "optimized" : "baseline", chamber.description());
+                    chamber.name(), durationTicks, optimized ? "optimized" : "baseline", chamber.description());
         }
 
         private void logWindow(String phase) {
@@ -127,7 +130,7 @@ public final class CollisionBenchmarkRunner {
         }
 
         private void report() {
-            if (samples.size() != DURATION_TICKS) throw new IllegalStateException("Incomplete benchmark ticks");
+            if (samples.size() != durationTicks) throw new IllegalStateException("Incomplete benchmark ticks");
             List<Double> sorted = new ArrayList<>(samples);
             Collections.sort(sorted);
             double mean = samples.stream().mapToDouble(Double::doubleValue).average().orElseThrow();
