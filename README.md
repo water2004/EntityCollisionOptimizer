@@ -126,4 +126,4 @@ Building a complete release JAR with all native targets currently requires Windo
 
 Entity Collision Optimizer is available under the [MIT License](LICENSE).
 
-Acknowledgements: This project was inspired by [Accelerated Recoiling](https://github.com/water2004/AcceleratedRecoiling), but differs substantially in both its goals and implementation.
+Acknowledgements: This project was inspired by [Accelerated Recoiling](https://github.com/wiyuka-owo/AcceleratedRecoiling), but differs substantially in both its goals and implementation.
