@@ -42,6 +42,7 @@ int updateCollisionEntity(
             );
         }
         eco::EntityMetadata& metadata = context.metadata[entityId];
+        const bool wasQueryable = !metadata.selectableValid || metadata.selectable;
         metadata.selectable = selectable != 0;
         metadata.passenger = passenger != 0;
         metadata.vehicle = vehicle != 0;
@@ -69,6 +70,9 @@ int updateCollisionEntity(
 #endif
         metadata.selectableValid = true;
         metadata.teamValid = true;
+        if (wasQueryable != metadata.selectable) {
+            eco::updateEntityQueryability(context, entityId, metadata.selectable);
+        }
         return 0;
     } catch (...) {
         return -2;
@@ -84,7 +88,11 @@ int invalidateCollisionEntityMetadata(void* contextPointer, int entityId) {
         if (static_cast<std::size_t>(entityId) >= context.metadata.size()) {
             return -1;
         }
-        context.metadata[entityId].selectableValid = false;
+        eco::EntityMetadata& metadata = context.metadata[entityId];
+        if (metadata.selectableValid && !metadata.selectable) {
+            eco::updateEntityQueryability(context, entityId, true);
+        }
+        metadata.selectableValid = false;
         return 0;
     } catch (...) {
         return -2;
@@ -98,8 +106,12 @@ int invalidateCollisionMetadata(void* contextPointer, int mask) {
     }
     try {
         auto& context = *static_cast<eco::CollisionContext*>(contextPointer);
-        for (eco::EntityMetadata& metadata : context.metadata) {
+        for (std::size_t entityId = 0; entityId < context.metadata.size(); ++entityId) {
+            eco::EntityMetadata& metadata = context.metadata[entityId];
             if ((mask & eco::METADATA_SELECTABLE) != 0) {
+                if (metadata.selectableValid && !metadata.selectable) {
+                    eco::updateEntityQueryability(context, static_cast<int>(entityId), true);
+                }
                 metadata.selectableValid = false;
             }
             if ((mask & eco::METADATA_TEAM) != 0) {

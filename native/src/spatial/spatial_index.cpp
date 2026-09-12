@@ -89,6 +89,41 @@ void sortMemberships(
     }
 }
 
+void updateBackreference(
+        CollisionContext& context,
+        int entityId,
+        CellMembers* members,
+        std::size_t index
+) noexcept {
+    for (CellSlot& slot : context.memberSlots[entityId]) {
+        if (slot.members == members) {
+            slot.index = index;
+            return;
+        }
+    }
+}
+
+void swapMembers(
+        CollisionContext& context,
+        CellMembers& members,
+        std::size_t first,
+        std::size_t second
+) noexcept {
+    if (first == second) return;
+    const int firstId = members.ids[first];
+    const int secondId = members.ids[second];
+    std::swap(members.ids[first], members.ids[second]);
+#if ECO_VANILLA_ORDER
+    members.bounds.swap(first, second);
+#endif
+    updateBackreference(context, firstId, &members, second);
+    updateBackreference(context, secondId, &members, first);
+}
+
+bool metadataIsQueryable(const EntityMetadata& metadata) noexcept {
+    return !metadata.selectableValid || metadata.selectable;
+}
+
 void appendMembership(CollisionContext& context, int entityId, const Cell& cell) {
     CellMembers*& slot = context.cells.entry(cell);
     if (slot == nullptr) slot = &context.acquireMembers();
@@ -100,6 +135,10 @@ void appendMembership(CollisionContext& context, int entityId, const Cell& cell)
     const std::size_t index = members.ids.size() - 1;
     if (context.metadata[entityId].hardCollidable) ++members.hardCount;
     context.memberSlots[entityId].push_back({&members, index});
+    if (metadataIsQueryable(context.metadata[entityId])) {
+        swapMembers(context, members, index, members.queryableCount);
+        ++members.queryableCount;
+    }
 }
 
 void removeMembershipSlot(
@@ -114,19 +153,17 @@ void removeMembershipSlot(
     if (slot.members == nullptr || slot.index >= slot.members->ids.size()) return;
     auto& members = *slot.members;
     if (context.metadata[entityId].hardCollidable) --members.hardCount;
-    const int movedId = members.ids.back();
-#if ECO_VANILLA_ORDER
-    members.bounds.swapErase(slot.index);
-#endif
-    if (slot.index != members.ids.size() - 1) {
-        members.ids[slot.index] = movedId;
-        for (auto& movedSlot : context.memberSlots[movedId]) {
-            if (movedSlot.members == slot.members) {
-                movedSlot.index = slot.index;
-                break;
-            }
-        }
+    std::size_t removeIndex = slot.index;
+    if (removeIndex < members.queryableCount) {
+        --members.queryableCount;
+        swapMembers(context, members, removeIndex, members.queryableCount);
+        removeIndex = members.queryableCount;
     }
+    const std::size_t last = members.ids.size() - 1;
+    swapMembers(context, members, removeIndex, last);
+#if ECO_VANILLA_ORDER
+    members.bounds.popBack();
+#endif
     members.ids.pop_back();
     if (members.ids.empty()) {
         context.cells.erase(cell);
@@ -309,6 +346,25 @@ void updateEntityBounds(CollisionContext& context, int entityId, const Aabb& box
     }
 
     sortMemberships(oldMemberships, slots);
+}
+
+void updateEntityQueryability(CollisionContext& context, int entityId, bool queryable) {
+    if (static_cast<std::size_t>(entityId) >= context.memberSlots.size()) return;
+    auto& slots = context.memberSlots[entityId];
+    for (std::size_t slotIndex = 0; slotIndex < slots.size(); ++slotIndex) {
+        const CellSlot slot = slots[slotIndex];
+        if (slot.members == nullptr || slot.index >= slot.members->ids.size()) continue;
+        CellMembers& members = *slot.members;
+        const bool currentlyQueryable = slot.index < members.queryableCount;
+        if (currentlyQueryable == queryable) continue;
+        if (queryable) {
+            const std::size_t target = members.queryableCount++;
+            swapMembers(context, members, slot.index, target);
+        } else {
+            const std::size_t target = --members.queryableCount;
+            swapMembers(context, members, slot.index, target);
+        }
+    }
 }
 
 bool intersects(const Aabb& first, const Aabb& second) noexcept {

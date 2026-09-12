@@ -11,7 +11,9 @@ int visitIntersectingCandidates(CollisionContext& context, int sourceId, Consume
     beginQuery(context);
     const Aabb source = context.boxes[sourceId];
     for (const CellSlot& slot : context.memberSlots[sourceId]) {
-        for (const int id : slot.members->ids) {
+        const CellMembers& members = *slot.members;
+        for (std::size_t index = 0; index < members.queryableCount; ++index) {
+            const int id = members.ids[index];
             if (context.queryMarks[id] == context.queryGeneration) continue;
             context.queryMarks[id] = context.queryGeneration;
             if (!eco::intersects(source, context.boxes[id])) continue;

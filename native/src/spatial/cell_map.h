@@ -31,6 +31,9 @@ struct CellMembers {
 #if ECO_VANILLA_ORDER
     CellBoundsSoa bounds;
 #endif
+    // Fine-grid members are partitioned in place: query candidates occupy
+    // [0, queryableCount), known-unpushable entities occupy the tail.
+    std::size_t queryableCount = 0;
     // Hard members resident in this cell; hard-only scans skip empty cells outright.
     std::size_t hardCount = 0;
 #if ECO_VANILLA_ORDER

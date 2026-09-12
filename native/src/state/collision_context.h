@@ -70,6 +70,7 @@ struct CollisionContext {
 #if ECO_VANILLA_ORDER
         members->bounds.clear();
 #endif
+        members->queryableCount = 0;
         members->hardCount = 0;
 #if ECO_VANILLA_ORDER
         members->orderDirty = true;
@@ -101,6 +102,7 @@ struct CollisionContext {
         members->bounds.clear();
         members->orderDirty = true;
 #endif
+        members->queryableCount = 0;
         members->poolNext = freeSectionMembers;
         freeSectionMembers = members;
     }

@@ -61,6 +61,9 @@ int updateCollisionLocation(
                 , sectionOrder
 #endif
         );
+        if (m.selectableValid && !m.selectable) {
+            eco::updateEntityQueryability(c, id, true);
+        }
         m.selectableValid = false;
         return 0;
     } catch (...) { return -2; }

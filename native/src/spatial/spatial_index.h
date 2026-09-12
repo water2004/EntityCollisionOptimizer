@@ -30,6 +30,7 @@ void removeMemberships(
 );
 void rebuildSpatialIndex(CollisionContext& context);
 void updateEntityBounds(CollisionContext& context, int entityId, const Aabb& box);
+void updateEntityQueryability(CollisionContext& context, int entityId, bool queryable);
 bool intersects(const Aabb& first, const Aabb& second) noexcept;
 void beginQuery(CollisionContext& context);
 

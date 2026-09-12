@@ -359,7 +359,7 @@ int queryPushableEntities(
             };
 
             std::size_t index = 0;
-            for (; index + 4 <= members.ids.size(); index += 4) {
+            for (; index + 4 <= members.queryableCount; index += 4) {
                 unsigned active = 0;
                 for (unsigned lane = 0; lane < 4; ++lane) {
                     const int id = members.ids[index + lane];
@@ -374,7 +374,7 @@ int queryPushableEntities(
                     hits &= hits - 1;
                 }
             }
-            for (; index < members.ids.size(); ++index) {
+            for (; index < members.queryableCount; ++index) {
                 const int id = members.ids[index];
                 if (id == sourceId || context.queryMarks[id] == context.queryGeneration) continue;
                 context.queryMarks[id] = context.queryGeneration;
