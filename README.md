@@ -1,8 +1,16 @@
-# Entity Collision Optimizer
+<p align="center">
+  <img src="src/main/resources/assets/entity_collision_optimizer/icon.png" width="180" alt="Entity Collision Optimizer logo">
+</p>
 
-English | [简体中文](README_zh.md)
+<h1 align="center">Entity Collision Optimizer</h1>
 
-Entity Collision Optimizer is a server-side Fabric mod for Minecraft 26.2 that accelerates entity queries, pushing, and movement collision while **preserving vanilla entity-collision behavior by default**. Its optional unordered mode reaches **6.58× the Vanilla tick-processing rate** and **4.87× the Lithium rate** in the dense-entity comparison below. Install it and it works; connecting clients do not need the mod.
+<p align="center">Vanilla-accurate entity collision acceleration for Minecraft 26.2 Fabric servers.</p>
+
+<p align="center"><strong>English</strong> | <a href="README_zh.md">简体中文</a></p>
+
+---
+
+Entity Collision Optimizer is a server-side Fabric mod for Minecraft 26.2 that uses a C++ native backend to accelerate entity queries, pushing, and movement collision while **preserving vanilla entity-collision behavior by default**. Its optional unordered mode reaches **6.58× the Vanilla tick-processing rate** and **4.87× the Lithium rate** in the dense-entity comparison below. Install it and it works; connecting clients do not need the mod.
 
 ## Why use Entity Collision Optimizer?
 
@@ -45,9 +53,9 @@ These values are live snapshots from this particular scene, not a multi-run stat
 
 Minecraft stores entities in sections. A collision query walks the relevant sections, visits Java objects, checks their bounding boxes and builds the data needed by the pushing or movement code. This is simple and flexible, but the object access, temporary allocations and repeated preparation become expensive when many entities occupy a small area.
 
-Entity Collision Optimizer keeps a native collision context for each dimension and updates it as entities are tracked, moved, transferred between dimensions, or removed. A persistent fine-grained XYZ grid narrows each query to nearby entities. In the default backend, a second section index restores Minecraft's section traversal and insertion order after that spatial filtering, so preserving vanilla order does not require sorting every result.
+Entity Collision Optimizer keeps a C++ native collision context for each dimension and updates it as entities are tracked, moved, transferred between dimensions, or removed. A persistent fine-grained XYZ grid narrows each query to nearby entities. In the default backend, a second section index restores Minecraft's section traversal and insertion order after that spatial filtering, so preserving vanilla order does not require sorting every result.
 
-Position, velocity, bounding-box and synchronization state used by collision code live in compact shared off-heap tables. Java and native code operate on the same state, while Java objects such as `Vec3` are materialized only when Java code actually reads them. Candidate bounds use a SoA layout so hot AABB loops make effective use of CPU caches and AVX2.
+Position, velocity, bounding-box and synchronization state used by collision code live in compact shared off-heap tables. Java and C++ native code operate on the same state, while Java objects such as `Vec3` are materialized only when Java code actually reads them. Candidate bounds use a SoA layout so hot AABB loops make effective use of CPU caches and AVX2.
 
 For entity pushing, one native query performs spatial and rule filtering. Consecutive pairs that use Minecraft's standard push formula are then evaluated as a batch, in order, with each pair's velocity changes visible to the next pair. Entity-specific vanilla callbacks still run at their original point. For movement, a maintained block mask skips positions that cannot collide; Java still resolves context-sensitive `VoxelShape` values, while native code performs the bulk geometry clipping, step calculation, and movement integration.
 

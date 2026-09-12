@@ -4,6 +4,7 @@
   "version": "${version}",
   "name": "Entity Collision Optimizer",
   "description": "Accelerates server-side entity collisions while preserving vanilla behavior.",
+  "icon": "assets/entity_collision_optimizer/icon.png",
   "authors": ["water2004"],
   "contributors": ["wiyuka"],
   "contact": {
