@@ -45,6 +45,12 @@ In this scene, Entity Collision Optimizer reduces MSPT by **84.8% versus Vanilla
   </tr>
 </table>
 
+### Scaling with entity count
+
+A separate zombie stress test increased the entity count over time while sampling the in-game HUD five times per second. The solid curves below show the median MSPT for each 25-entity bin; faint points are the raw readings and the shaded regions show the interquartile range. With ECO disabled, the server crosses the 50 MSPT tick budget at roughly 924 entities. Both ECO runs remain below that limit through approximately 1,500 entities, and enabling `vanillaOrder` has only a small effect in this workload.
+
+![MSPT plotted against entity count with ECO disabled, ECO enabled, and ECO enabled with vanillaOrder](docs/images/comparison/mspt-vs-entity.png)
+
 Disabling `vanillaOrder` does not change redstone update order or block logic, so it does not affect most redstone machines. It can change the outcome of machines that depend on the exact order of entity pushes, collision timing, or entity trajectories; test those designs with the option disabled before deployment.
 
 These values are live snapshots from this particular scene, not a multi-run statistical benchmark. Absolute performance depends on hardware, JVM, mod set, and workload; the screenshots are included to make this specific comparison directly inspectable.
