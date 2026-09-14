@@ -13,7 +13,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 
 public final class CollisionOptimizerConfig {
-    public static volatile boolean enableEntityCollision = true;
     public static volatile int gridSize = 1;
     public static volatile boolean vanillaOrder = true;
 
@@ -71,15 +70,10 @@ public final class CollisionOptimizerConfig {
             applyJson(defaults);
         }
 
-        EntityCollisionOptimizer.LOGGER.info(
-                "Collision mode: {}",
-                enableEntityCollision ? "FFM (enabled)" : "Vanilla (disabled)"
-        );
     }
 
     private static JsonObject defaultConfig() {
         JsonObject defaults = new JsonObject();
-        defaults.addProperty("enableEntityCollision", true);
         defaults.addProperty("gridSize", 1);
         defaults.addProperty("vanillaOrder", true);
         return defaults;
@@ -87,9 +81,6 @@ public final class CollisionOptimizerConfig {
 
     private static void applyJson(JsonObject config) {
         vanillaOrder = !config.has("vanillaOrder") || config.get("vanillaOrder").getAsBoolean();
-        if (config.has("enableEntityCollision")) {
-            enableEntityCollision = config.get("enableEntityCollision").getAsBoolean();
-        }
         if (config.has("gridSize")) {
             gridSize = config.get("gridSize").getAsInt();
             if (gridSize <= 0) {

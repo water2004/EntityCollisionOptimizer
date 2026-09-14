@@ -4,7 +4,6 @@ import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.monster.zombie.Zombie;
 import net.minecraft.world.phys.Vec3;
-import org.edtp.entitycollisionoptimizer.config.CollisionOptimizerConfig;
 import org.edtp.entitycollisionoptimizer.gametest.mixin.LivingEntityTestInvoker;
 import org.edtp.entitycollisionoptimizer.natives.CollisionFrame;
 
@@ -49,14 +48,12 @@ final class CollisionRepeatedFrameParity {
                 zeroVelocities(accelerated);
 
                 CollisionFrame.end(level);
-                CollisionOptimizerConfig.enableEntityCollision = false;
                 for (Zombie source : vanilla) {
                     if (source.isAlive()) {
-                        ((LivingEntityTestInvoker) source).entityCollisionOptimizer$invokePushEntities();
+                        VanillaReference.pushEntities(source);
                     }
                 }
 
-                CollisionOptimizerConfig.enableEntityCollision = true;
                 CollisionFrame.begin(level);
                 for (Zombie source : accelerated) {
                     CollisionPredicateParity.assertSpatialQueryMatches(

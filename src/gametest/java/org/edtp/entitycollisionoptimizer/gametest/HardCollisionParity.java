@@ -9,7 +9,6 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import org.edtp.entitycollisionoptimizer.EntityCollisionOptimizer;
-import org.edtp.entitycollisionoptimizer.config.CollisionOptimizerConfig;
 import org.edtp.entitycollisionoptimizer.natives.CollisionFrame;
 
 import java.util.ArrayList;
@@ -33,7 +32,6 @@ final class HardCollisionParity {
         Entity boatSource = CollisionTestSupport.spawnEntity(helper, EntityTypes.OAK_BOAT, anchor.add(0.0, 0.0, 0.4));
         extras.add(boatSource);
         int comparisons = 0;
-        boolean original = CollisionOptimizerConfig.enableEntityCollision;
         try {
             CollisionFrame.begin(level);
             AABB sourceBox = source.getBoundingBox();
@@ -49,7 +47,6 @@ final class HardCollisionParity {
                 comparisons += 2;
             }
         } finally {
-            CollisionOptimizerConfig.enableEntityCollision = original;
             source.discard();
             extras.forEach(Entity::discard);
             CollisionFrame.end(level);
@@ -60,9 +57,7 @@ final class HardCollisionParity {
     }
 
     private static void compare(GameTestHelper helper, ServerLevel level, Entity source, AABB scan, String label) {
-        CollisionOptimizerConfig.enableEntityCollision = false;
         List<VoxelShape> expected = level.getEntityCollisions(source, scan);
-        CollisionOptimizerConfig.enableEntityCollision = true;
         List<VoxelShape> actual = level.getEntityCollisions(source, scan);
         helper.assertTrue(bounds(actual).equals(bounds(expected)),
                 "hard collision parity " + label

@@ -4,7 +4,6 @@ import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.server.MinecraftServer;
 import org.edtp.entitycollisionoptimizer.EntityCollisionOptimizer;
-import org.edtp.entitycollisionoptimizer.config.CollisionOptimizerConfig;
 import org.edtp.entitycollisionoptimizer.natives.CollisionFrame;
 
 import java.util.ArrayList;
@@ -93,7 +92,6 @@ public final class CollisionBenchmarkRunner {
     private static final class BenchmarkRun {
         private final GameTestHelper helper;
         private final BenchmarkScenario chamber;
-        private final boolean originalCollisionSetting = CollisionOptimizerConfig.enableEntityCollision;
         private final boolean optimized;
         private final int durationTicks;
         private final List<Double> samples;
@@ -116,7 +114,6 @@ public final class CollisionBenchmarkRunner {
         }
 
         private void start() {
-            CollisionOptimizerConfig.enableEntityCollision = optimized;
             MovementScanDiagnostics.start();
             chamber.start();
             EntityCollisionOptimizer.LOGGER.info("ECO_BENCHMARK_START scenario={} ticks={} profile_mode={} {}",
@@ -152,7 +149,6 @@ public final class CollisionBenchmarkRunner {
             MovementScanDiagnostics.finish();
             chamber.cleanup();
             CollisionFrame.end(helper.getLevel());
-            CollisionOptimizerConfig.enableEntityCollision = originalCollisionSetting;
         }
     }
 }

@@ -9,7 +9,6 @@ import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.scores.PlayerTeam;
 import net.minecraft.world.scores.Scoreboard;
 import net.minecraft.world.scores.Team;
-import org.edtp.entitycollisionoptimizer.config.CollisionOptimizerConfig;
 import org.edtp.entitycollisionoptimizer.gametest.mixin.LivingEntityTestInvoker;
 import org.edtp.entitycollisionoptimizer.natives.CollisionFrame;
 
@@ -99,13 +98,11 @@ final class CollisionTransitionParity {
             initialState.apply(level, acceleratedTarget);
 
             CollisionFrame.end(level);
-            CollisionOptimizerConfig.enableEntityCollision = false;
-            ((LivingEntityTestInvoker) vanillaSource).entityCollisionOptimizer$invokePushEntities();
+            VanillaReference.pushEntities(vanillaSource);
             transition.apply(level, vanillaTarget);
             zeroVelocities(List.of(vanillaSource, vanillaTarget));
-            ((LivingEntityTestInvoker) vanillaSource).entityCollisionOptimizer$invokePushEntities();
+            VanillaReference.pushEntities(vanillaSource);
 
-            CollisionOptimizerConfig.enableEntityCollision = true;
             CollisionFrame.begin(level);
             ((LivingEntityTestInvoker) acceleratedSource).entityCollisionOptimizer$invokePushEntities();
             transition.apply(level, acceleratedTarget);
@@ -158,16 +155,14 @@ final class CollisionTransitionParity {
             );
 
             CollisionFrame.end(level);
-            CollisionOptimizerConfig.enableEntityCollision = false;
-            ((LivingEntityTestInvoker) vanillaSource).entityCollisionOptimizer$invokePushEntities();
+            VanillaReference.pushEntities(vanillaSource);
             scoreboard.addPlayerToTeam(
                     vanillaTarget.getScoreboardName(),
                     initiallyBlocked ? vanillaAllowed : vanillaBlocked
             );
             zeroVelocities(List.of(vanillaSource, vanillaTarget));
-            ((LivingEntityTestInvoker) vanillaSource).entityCollisionOptimizer$invokePushEntities();
+            VanillaReference.pushEntities(vanillaSource);
 
-            CollisionOptimizerConfig.enableEntityCollision = true;
             CollisionFrame.begin(level);
             ((LivingEntityTestInvoker) acceleratedSource).entityCollisionOptimizer$invokePushEntities();
             scoreboard.addPlayerToTeam(

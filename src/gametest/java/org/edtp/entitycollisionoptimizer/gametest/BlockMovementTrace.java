@@ -5,7 +5,6 @@ import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.entity.MoverType;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
-import org.edtp.entitycollisionoptimizer.config.CollisionOptimizerConfig;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -25,7 +24,6 @@ final class BlockMovementTrace {
     }
 
     private static List<State> run(GameTestHelper helper, boolean enabled) {
-        CollisionOptimizerConfig.enableEntityCollision = enabled;
         var entity = CollisionTestSupport.spawnZombie(helper, new Vec3(3.5, 1, 3.5));
         List<State> result = new ArrayList<>();
         try {

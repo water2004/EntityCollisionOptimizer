@@ -7,7 +7,6 @@ import net.minecraft.world.entity.monster.zombie.Zombie;
 import net.minecraft.world.level.entity.EntityInLevelCallback;
 import net.minecraft.world.phys.Vec3;
 import org.edtp.entitycollisionoptimizer.EntityCollisionOptimizer;
-import org.edtp.entitycollisionoptimizer.config.CollisionOptimizerConfig;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.List;
@@ -15,17 +14,13 @@ import java.util.List;
 /** Nested movement must not reuse its parent's packet; every exceptional exit releases its lease. */
 public final class MovementLeaseChecks {
     public static void verify(GameTestHelper helper) {
-        boolean enabled = CollisionOptimizerConfig.enableEntityCollision;
-        try {
-            List<Vec3> vanilla = run(helper, false);
-            List<Vec3> nativeResult = run(helper, true);
-            helper.assertTrue(nativeResult.equals(vanilla), "nested movement and exception publication match vanilla");
-        } finally { CollisionOptimizerConfig.enableEntityCollision = enabled; }
+        List<Vec3> vanilla = run(helper, false);
+        List<Vec3> nativeResult = run(helper, true);
+        helper.assertTrue(nativeResult.equals(vanilla), "nested movement and exception publication match vanilla");
         EntityCollisionOptimizer.LOGGER.info("ECO_MOVEMENT_LEASE nested_callback=true exception_release=true result=passed");
     }
 
     private static List<Vec3> run(GameTestHelper helper, boolean enabled) {
-        CollisionOptimizerConfig.enableEntityCollision = enabled;
         Entity entity = new Zombie(helper.getLevel());
         entity.setPos(helper.absoluteVec(new Vec3(2, 6, 2)));
         List<Vec3> observed = new ArrayList<>();

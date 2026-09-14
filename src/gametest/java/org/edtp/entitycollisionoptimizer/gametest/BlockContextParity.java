@@ -11,7 +11,6 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.MinecartCollisionContext;
-import org.edtp.entitycollisionoptimizer.config.CollisionOptimizerConfig;
 
 import java.util.List;
 
@@ -27,17 +26,13 @@ final class BlockContextParity {
                 for (Vec3 requested : List.of(new Vec3(1, -0.3, 0.1), new Vec3(0, -1, 0), new Vec3(-1, 0.2, 1))) {
                     AABB box = entity.getBoundingBox();
                     for (CollisionContext context : contexts) {
-                        CollisionOptimizerConfig.enableEntityCollision = false;
                         Vec3 expected = Entity.collideBoundingBox(context, requested, box, helper.getLevel(), List.of());
-                        CollisionOptimizerConfig.enableEntityCollision = true;
                         Vec3 actual = Entity.collideBoundingBox(context, requested, box, helper.getLevel(), List.of());
                         CollisionTestSupport.assertVectorEqual(helper, actual, expected, "explicit context " + block);
                         count++;
                     }
                     for (Entity source : new Entity[] {null, entity}) {
-                        CollisionOptimizerConfig.enableEntityCollision = false;
                         Vec3 expected = Entity.collideBoundingBox(source, requested, box, helper.getLevel(), List.of());
-                        CollisionOptimizerConfig.enableEntityCollision = true;
                         Vec3 actual = Entity.collideBoundingBox(source, requested, box, helper.getLevel(), List.of());
                         CollisionTestSupport.assertVectorEqual(helper, actual, expected, "direct entity box " + block);
                         count++;

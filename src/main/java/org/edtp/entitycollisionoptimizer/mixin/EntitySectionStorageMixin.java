@@ -7,7 +7,6 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.server.level.ServerLevel;
 import org.edtp.entitycollisionoptimizer.collision.EntitySectionStorageLevelBinding;
 import org.edtp.entitycollisionoptimizer.natives.CollisionFrame;
-import org.edtp.entitycollisionoptimizer.config.CollisionOptimizerConfig;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
@@ -28,7 +27,7 @@ public abstract class EntitySectionStorageMixin implements EntitySectionStorageL
     )
     private void eco$nativeGetEntities(EntityTypeTest<?, ?> type, AABB box, AbortableIterationConsumer<?> consumer, CallbackInfo ci) {
         ServerLevel level = eco$queryLevel;
-        if (!CollisionOptimizerConfig.enableEntityCollision || level == null) return;
+        if (level == null) return;
         CollisionFrame.getEntities(level, type, box, consumer);
         ci.cancel();
     }
@@ -40,7 +39,7 @@ public abstract class EntitySectionStorageMixin implements EntitySectionStorageL
     )
     private void eco$nativeGetEntitiesAll(AABB box, AbortableIterationConsumer<?> consumer, CallbackInfo ci) {
         ServerLevel level = eco$queryLevel;
-        if (!CollisionOptimizerConfig.enableEntityCollision || level == null) return;
+        if (level == null) return;
         CollisionFrame.getEntities(level, box, consumer);
         ci.cancel();
     }

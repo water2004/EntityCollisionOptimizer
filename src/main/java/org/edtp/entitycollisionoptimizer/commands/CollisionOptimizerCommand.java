@@ -32,7 +32,6 @@ public final class CollisionOptimizerCommand {
     private static int status(CommandContext<CommandSourceStack> context) {
         context.getSource().sendSuccess(() -> Component.literal(
                 "Entity Collision Optimizer: "
-                        + (CollisionOptimizerConfig.enableEntityCollision ? "FFM" : "Vanilla")
                         + "; FFM initialized=" + FFMBackend.isInitialized()
                         + "; vanillaOrder active=" + CollisionOptimizerConfig.STARTUP_VANILLA_ORDER
                         + ", next restart=" + CollisionOptimizerConfig.vanillaOrder), false);
@@ -42,7 +41,6 @@ public final class CollisionOptimizerCommand {
     private static int setOrder(CommandContext<CommandSourceStack> context) {
         boolean order = BoolArgumentType.getBool(context, "value");
         JsonObject config = new JsonObject();
-        config.addProperty("enableEntityCollision", CollisionOptimizerConfig.enableEntityCollision);
         config.addProperty("gridSize", CollisionOptimizerConfig.gridSize);
         config.addProperty("vanillaOrder", order);
         try {

@@ -22,6 +22,7 @@ import java.util.concurrent.ConcurrentMap;
  * required because Worldthreader may tick dimensions in parallel.
  */
 public final class CollisionFrame {
+    // Use a concurrent map to allow for parallel ticking of multiple levels, as in Worldthreader.
     private static final ConcurrentMap<ServerLevel, LevelCollisionFrame> LEVEL_FRAMES =
             new ConcurrentHashMap<>();
     private CollisionFrame() {

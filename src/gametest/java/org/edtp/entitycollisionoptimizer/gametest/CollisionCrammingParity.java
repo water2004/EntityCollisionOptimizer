@@ -5,7 +5,6 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.monster.zombie.Zombie;
 import net.minecraft.world.level.gamerules.GameRules;
 import net.minecraft.world.phys.Vec3;
-import org.edtp.entitycollisionoptimizer.config.CollisionOptimizerConfig;
 import org.edtp.entitycollisionoptimizer.gametest.mixin.LivingEntityTestInvoker;
 import org.edtp.entitycollisionoptimizer.natives.CollisionFrame;
 
@@ -39,11 +38,9 @@ final class CollisionCrammingParity {
             level.getGameRules().set(GameRules.MAX_ENTITY_CRAMMING, 1, level.getServer());
             long seed = seedWhoseNextIntSucceeds(vanillaSource, 4);
 
-            CollisionOptimizerConfig.enableEntityCollision = false;
             vanillaSource.getRandom().setSeed(seed);
-            ((LivingEntityTestInvoker) vanillaSource).entityCollisionOptimizer$invokePushEntities();
+            VanillaReference.pushEntities(vanillaSource);
 
-            CollisionOptimizerConfig.enableEntityCollision = true;
             acceleratedSource.getRandom().setSeed(seed);
             CollisionFrame.begin(level);
             ((LivingEntityTestInvoker) acceleratedSource).entityCollisionOptimizer$invokePushEntities();
@@ -96,11 +93,9 @@ final class CollisionCrammingParity {
             level.getGameRules().set(GameRules.MAX_ENTITY_CRAMMING, 1, level.getServer());
             long seed = seedWhoseNextIntSucceeds(vanillaSource, 4);
 
-            CollisionOptimizerConfig.enableEntityCollision = false;
             vanillaSource.getRandom().setSeed(seed);
-            ((LivingEntityTestInvoker) vanillaSource).entityCollisionOptimizer$invokePushEntities();
+            VanillaReference.pushEntities(vanillaSource);
 
-            CollisionOptimizerConfig.enableEntityCollision = true;
             acceleratedSource.getRandom().setSeed(seed);
             CollisionFrame.begin(level);
             ((LivingEntityTestInvoker) acceleratedSource).entityCollisionOptimizer$invokePushEntities();
@@ -150,12 +145,10 @@ final class CollisionCrammingParity {
             level.getGameRules().set(GameRules.MAX_ENTITY_CRAMMING, 1, level.getServer());
             long seed = seedWhoseNextIntSucceeds(vanillaSource, 4);
 
-            CollisionOptimizerConfig.enableEntityCollision = false;
             zeroVelocities(entities);
             vanillaSource.getRandom().setSeed(seed);
-            ((LivingEntityTestInvoker) vanillaSource).entityCollisionOptimizer$invokePushEntities();
+            VanillaReference.pushEntities(vanillaSource);
 
-            CollisionOptimizerConfig.enableEntityCollision = true;
             zeroVelocities(entities);
             acceleratedSource.getRandom().setSeed(seed);
             CollisionFrame.begin(level);

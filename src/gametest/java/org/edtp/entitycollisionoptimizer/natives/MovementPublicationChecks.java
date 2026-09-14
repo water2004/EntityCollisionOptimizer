@@ -10,7 +10,6 @@ import net.minecraft.world.level.entity.EntityInLevelCallback;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import org.edtp.entitycollisionoptimizer.EntityCollisionOptimizer;
-import org.edtp.entitycollisionoptimizer.config.CollisionOptimizerConfig;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -18,29 +17,26 @@ import java.util.List;
 /** Observe the position inside vanilla's world notification, not merely at the end of a movement. */
 public final class MovementPublicationChecks {
     public static void verify(GameTestHelper helper) {
-        boolean enabled = CollisionOptimizerConfig.enableEntityCollision;
         for (int x = 1; x < 7; x++) for (int z = 1; z < 7; z++) helper.setBlock(new BlockPos(x, 0, z), Blocks.STONE);
         helper.setBlock(new BlockPos(4, 1, 3), Blocks.STONE_SLAB);
-        try {
-            List<State> expected = run(helper, false);
-            List<State> actual = run(helper, true);
-            helper.assertValueEqual(actual.size(), expected.size(), "movement world observation count");
-            for (int i = 0; i < expected.size(); i++) {
-                helper.assertTrue(actual.get(i).equals(expected.get(i)),
-                        "movement publication " + i + " expected=" + expected.get(i) + " actual=" + actual.get(i));
-            }
-            EntityCollisionOptimizer.LOGGER.info("ECO_MOVEMENT_PUBLICATION observations={} raw_position=true callbacks=true lifecycle=true result=passed", actual.size());
-        } finally { CollisionOptimizerConfig.enableEntityCollision = enabled; }
+
+        List<State> expected = run(helper, false);
+        List<State> actual = run(helper, true);
+        helper.assertValueEqual(actual.size(), expected.size(), "movement world observation count");
+        for (int i = 0; i < expected.size(); i++) {
+            helper.assertTrue(actual.get(i).equals(expected.get(i)),
+                    "movement publication " + i + " expected=" + expected.get(i) + " actual=" + actual.get(i));
+        }
+        EntityCollisionOptimizer.LOGGER.info("ECO_MOVEMENT_PUBLICATION observations={} raw_position=true callbacks=true lifecycle=true result=passed", actual.size());
     }
 
-    private static List<State> run(GameTestHelper helper, boolean enabled) {
-        CollisionOptimizerConfig.enableEntityCollision = enabled;
-        Entity entity = new Zombie(helper.getLevel());
-        Vec3 start = helper.absoluteVec(new Vec3(3.5, 1, 3.5));
-        entity.setPos(start);
-        entity.setOnGround(true);
-        List<State> result = new ArrayList<>();
-        try (CollisionStateTable table = new CollisionStateTable()) {
+private static List<State> run(GameTestHelper helper, boolean enabled) {
+    Entity entity = new Zombie(helper.getLevel());
+    Vec3 start = helper.absoluteVec(new Vec3(3.5, 1, 3.5));
+    entity.setPos(start);
+    entity.setOnGround(true);
+    List<State> result = new ArrayList<>();
+    try (CollisionStateTable table = new CollisionStateTable()) {
             if (enabled) table.slot(entity);
             entity.setLevelCallback(new EntityInLevelCallback() {
                 @Override public void onMove() { result.add(state(entity, true)); }

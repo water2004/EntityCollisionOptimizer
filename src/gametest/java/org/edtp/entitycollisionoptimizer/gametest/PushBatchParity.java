@@ -3,7 +3,6 @@ package org.edtp.entitycollisionoptimizer.gametest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.entity.monster.zombie.Zombie;
 import net.minecraft.world.phys.Vec3;
-import org.edtp.entitycollisionoptimizer.config.CollisionOptimizerConfig;
 import org.edtp.entitycollisionoptimizer.natives.CollisionFrame;
 import org.edtp.entitycollisionoptimizer.natives.PushBatch;
 import net.minecraft.world.scores.Team;
@@ -13,9 +12,7 @@ import static org.edtp.entitycollisionoptimizer.gametest.CollisionTestSupport.sp
 final class PushBatchParity {
     static void verify(GameTestHelper helper) {
         var level = helper.getLevel();
-        boolean enabled = CollisionOptimizerConfig.enableEntityCollision;
         CollisionFrame.end(level);
-        CollisionOptimizerConfig.enableEntityCollision = true;
         Zombie source = spawnZombie(helper, new Vec3(1.5, 1, 18.5));
         Zombie target = spawnZombie(helper, new Vec3(1.5, 1, 18.5));
         Zombie nestedSource = spawnZombie(helper, new Vec3(9.5, 1, 18.5));
@@ -70,7 +67,6 @@ final class PushBatchParity {
             target.discard();
             nestedSource.discard();
             nestedTarget.discard();
-            CollisionOptimizerConfig.enableEntityCollision = enabled;
         }
     }
 

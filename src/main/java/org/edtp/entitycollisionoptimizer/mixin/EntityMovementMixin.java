@@ -15,7 +15,6 @@ import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import org.edtp.entitycollisionoptimizer.collision.blocks.EntityMovementCollision;
 import org.edtp.entitycollisionoptimizer.natives.NativeMovement;
-import org.edtp.entitycollisionoptimizer.config.CollisionOptimizerConfig;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -40,7 +39,7 @@ public abstract class EntityMovementMixin {
             "Lnet/minecraft/world/entity/Entity;collide(Lnet/minecraft/world/phys/Vec3;)Lnet/minecraft/world/phys/Vec3;"))
     private Vec3 eco$solveMovement(Entity entity, Vec3 requested, Operation<Vec3> original,
                                    @Share("eco$movement") LocalRef<NativeMovement> transaction) {
-        if (!CollisionOptimizerConfig.enableEntityCollision || !(entity.level() instanceof ServerLevel)) {
+        if (!(entity.level() instanceof ServerLevel)) {
             return original.call(entity, requested);
         }
         var result = EntityMovementCollision.solve(entity, requested);
@@ -59,7 +58,7 @@ public abstract class EntityMovementMixin {
     @Inject(method = "collide", at = @At("HEAD"), cancellable = true)
     private void eco$ownMovement(Vec3 requested, CallbackInfoReturnable<Vec3> cir) {
         Entity entity = (Entity) (Object) this;
-        if (CollisionOptimizerConfig.enableEntityCollision && entity.level() instanceof ServerLevel) {
+        if (entity.level() instanceof ServerLevel) {
             cir.setReturnValue(EntityMovementCollision.collide(entity, requested));
         }
     }
@@ -68,7 +67,7 @@ public abstract class EntityMovementMixin {
             at = @At("HEAD"), cancellable = true)
     private static void eco$ownEntityBox(Entity entity, Vec3 requested, AABB box, Level level,
                                          List<VoxelShape> entities, CallbackInfoReturnable<Vec3> cir) {
-        if (CollisionOptimizerConfig.enableEntityCollision && level instanceof ServerLevel) {
+        if (level instanceof ServerLevel) {
             CollisionContext context = entity == null ? CollisionContext.empty() : CollisionContext.of(entity);
             cir.setReturnValue(EntityMovementCollision.collideBox(level, context, entity, requested, box, entities));
         }
@@ -78,7 +77,7 @@ public abstract class EntityMovementMixin {
             at = @At("HEAD"), cancellable = true)
     private static void eco$ownContextBox(CollisionContext context, Vec3 requested, AABB box, Level level,
                                           List<VoxelShape> entities, CallbackInfoReturnable<Vec3> cir) {
-        if (CollisionOptimizerConfig.enableEntityCollision && level instanceof ServerLevel) {
+        if (level instanceof ServerLevel) {
             cir.setReturnValue(EntityMovementCollision.collideBox(level, context, null, requested, box, entities));
         }
     }

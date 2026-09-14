@@ -9,7 +9,6 @@ import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.scores.PlayerTeam;
 import net.minecraft.world.scores.Scoreboard;
 import net.minecraft.world.scores.Team;
-import org.edtp.entitycollisionoptimizer.config.CollisionOptimizerConfig;
 import org.edtp.entitycollisionoptimizer.gametest.mixin.LivingEntityTestInvoker;
 import org.edtp.entitycollisionoptimizer.natives.CollisionFrame;
 
@@ -102,14 +101,12 @@ final class CollisionMediumDensityParity {
             zeroVelocities(accelerated);
 
             CollisionFrame.end(level);
-            CollisionOptimizerConfig.enableEntityCollision = false;
             for (Zombie source : vanilla) {
                 if (source.isAlive()) {
-                    ((LivingEntityTestInvoker) source).entityCollisionOptimizer$invokePushEntities();
+                    VanillaReference.pushEntities(source);
                 }
             }
 
-            CollisionOptimizerConfig.enableEntityCollision = true;
             CollisionFrame.begin(level);
             for (Zombie source : accelerated) {
                 if (source.isAlive()) {

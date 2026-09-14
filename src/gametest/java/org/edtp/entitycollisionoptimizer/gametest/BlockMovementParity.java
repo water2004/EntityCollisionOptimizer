@@ -16,7 +16,6 @@ import net.minecraft.world.level.block.state.properties.SlabType;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import org.edtp.entitycollisionoptimizer.EntityCollisionOptimizer;
-import org.edtp.entitycollisionoptimizer.config.CollisionOptimizerConfig;
 import org.edtp.entitycollisionoptimizer.gametest.mixin.EntityMovementTestInvoker;
 
 import java.util.ArrayList;
@@ -33,7 +32,6 @@ final class BlockMovementParity {
     };
 
     static void verify(GameTestHelper helper) {
-        boolean original = CollisionOptimizerConfig.enableEntityCollision;
         Entity entity = CollisionTestSupport.spawnZombie(helper, new Vec3(3.5, 1, 3.5));
         int comparisons = 0;
         int pistonCases = 0;
@@ -72,7 +70,6 @@ final class BlockMovementParity {
             // A scan spanning negative coordinates and section boundaries, with a one-block halo.
             BlockShapeParity.compare(helper, entity, entity.getBoundingBox().inflate(17.1), "section boundaries");
         } finally {
-            CollisionOptimizerConfig.enableEntityCollision = original;
             entity.discard();
         }
         EntityCollisionOptimizer.LOGGER.info("ECO_BLOCK_MOVEMENT_PARITY movement_comparisons={} moving_piston_shape_queries={} "
@@ -80,9 +77,7 @@ final class BlockMovementParity {
     }
 
     private static int compare(GameTestHelper helper, Entity entity, Vec3 requested, String label) {
-        CollisionOptimizerConfig.enableEntityCollision = false;
         Vec3 expected = ((EntityMovementTestInvoker) entity).eco$collide(requested);
-        CollisionOptimizerConfig.enableEntityCollision = true;
         MovementTakeoverCoverage.begin();
         Vec3 actual;
         try {

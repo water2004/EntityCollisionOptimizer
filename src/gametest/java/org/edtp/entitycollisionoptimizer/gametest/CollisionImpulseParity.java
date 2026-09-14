@@ -5,7 +5,6 @@ import net.minecraft.world.entity.monster.zombie.Zombie;
 import net.minecraft.world.level.gamerules.GameRules;
 import net.minecraft.world.scores.Team;
 import net.minecraft.world.phys.Vec3;
-import org.edtp.entitycollisionoptimizer.config.CollisionOptimizerConfig;
 import org.edtp.entitycollisionoptimizer.gametest.mixin.LivingEntityTestInvoker;
 import org.edtp.entitycollisionoptimizer.natives.CollisionFrame;
 
@@ -15,7 +14,6 @@ import static org.edtp.entitycollisionoptimizer.gametest.CollisionTestSupport.*;
 final class CollisionImpulseParity {
     static void verify(GameTestHelper helper) {
         var level = helper.getLevel();
-        boolean enabled = CollisionOptimizerConfig.enableEntityCollision;
         int cramming = level.getGameRules().get(GameRules.MAX_ENTITY_CRAMMING);
         try {
             level.getGameRules().set(GameRules.MAX_ENTITY_CRAMMING, 0, level.getServer());
@@ -29,7 +27,6 @@ final class CollisionImpulseParity {
             }
         } finally {
             CollisionFrame.end(level);
-            CollisionOptimizerConfig.enableEntityCollision = enabled;
             level.getGameRules().set(GameRules.MAX_ENTITY_CRAMMING, cramming, level.getServer());
         }
     }
@@ -37,7 +34,6 @@ final class CollisionImpulseParity {
     private static Outcome run(GameTestHelper helper, boolean enabled, int scenario) {
         var level = helper.getLevel();
         CollisionFrame.end(level);
-        CollisionOptimizerConfig.enableEntityCollision = enabled;
         Zombie source = spawnZombie(helper, new Vec3(1.5, 1, 18.5));
         Zombie target = spawnZombie(helper, new Vec3(1.7, 1, 18.6));
         try {

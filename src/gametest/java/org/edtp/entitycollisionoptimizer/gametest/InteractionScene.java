@@ -14,7 +14,6 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.gamerules.GameRule;
 import net.minecraft.world.level.gamerules.GameRules;
 import net.minecraft.world.phys.Vec3;
-import org.edtp.entitycollisionoptimizer.config.CollisionOptimizerConfig;
 import org.edtp.entitycollisionoptimizer.natives.CollisionFrame;
 
 import java.util.ArrayList;
@@ -25,7 +24,6 @@ import java.util.Map;
 /** Each oracle/optimized run starts with new entities at identical coordinates and restores its blocks. */
 final class InteractionScene implements AutoCloseable {
     final GameTestHelper helper;
-    private final boolean previous;
     private final int maxX, maxY, maxZ;
     private final Map<BlockPos, BlockState> blocks = new LinkedHashMap<>();
     private final List<Entity> entities = new ArrayList<>();
@@ -40,9 +38,7 @@ final class InteractionScene implements AutoCloseable {
         this.maxX = maxX;
         this.maxY = maxY;
         this.maxZ = maxZ;
-        previous = CollisionOptimizerConfig.enableEntityCollision;
         CollisionFrame.end(helper.getLevel());
-        CollisionOptimizerConfig.enableEntityCollision = optimized;
         // GameTest environments disable some damage rules; compare normal survival interactions.
         for (var rule : List.of(GameRules.PVP, GameRules.FALL_DAMAGE, GameRules.FIRE_DAMAGE,
                 GameRules.DROWNING_DAMAGE, GameRules.FREEZE_DAMAGE)) {
@@ -120,7 +116,6 @@ final class InteractionScene implements AutoCloseable {
             helper.getLevel().removeBlockEntity(entry.getKey());
             helper.getLevel().setBlock(entry.getKey(), entry.getValue(), Block.UPDATE_SKIP_ALL_SIDEEFFECTS);
         }
-        CollisionOptimizerConfig.enableEntityCollision = previous;
         rules.forEach((rule, value) -> helper.getLevel().getGameRules().set(rule, value, helper.getLevel().getServer()));
     }
 

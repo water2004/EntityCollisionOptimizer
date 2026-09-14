@@ -21,7 +21,6 @@ import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.portal.TeleportTransition;
 import net.minecraft.world.phys.Vec3;
 import org.edtp.entitycollisionoptimizer.EntityCollisionOptimizer;
-import org.edtp.entitycollisionoptimizer.config.CollisionOptimizerConfig;
 import org.edtp.entitycollisionoptimizer.natives.CollisionFrame;
 
 import java.util.ArrayList;
@@ -59,7 +58,6 @@ final class ChunkLoadParity {
         helper.onEachTick(() -> {
             if (!trial.failed && helper.getTick() >= 790) {
                 trial.reset();
-                CollisionOptimizerConfig.enableEntityCollision = trial.previous;
                 helper.assertTrue(false, "chunk fixture readiness timed out");
             }
         });
@@ -68,7 +66,6 @@ final class ChunkLoadParity {
     private static final class Trial {
         private final GameTestHelper helper;
         private final ServerLevel overworld;
-        private final boolean previous;
         private boolean failed;
         private final List<Runnable> cleanup = new ArrayList<>();
         private ChunkLoadObservation expected;
@@ -99,12 +96,10 @@ final class ChunkLoadParity {
         private Trial(GameTestHelper helper) {
             this.helper = helper;
             this.overworld = helper.getLevel();
-            this.previous = CollisionOptimizerConfig.enableEntityCollision;
         }
 
         private void begin(boolean optimized, int chunkX, int chunkZ) {
             reset();
-            CollisionOptimizerConfig.enableEntityCollision = optimized;
             CollisionFrame.end(overworld);
             strong = new ChunkPos(chunkX, chunkZ);
             weak = new ChunkPos(chunkX + 1, chunkZ);
@@ -123,7 +118,6 @@ final class ChunkLoadParity {
                 failed = true;
                 EntityCollisionOptimizer.LOGGER.error("ECO_CHUNK_STAGE action failed chunk={} tick={}", strong, helper.getTick(), failure);
                 reset();
-                CollisionOptimizerConfig.enableEntityCollision = previous;
                 throw failure;
             }
         }
@@ -233,7 +227,6 @@ final class ChunkLoadParity {
                 snapshot().compare(helper, expected, WAIT, PORTAL_VELOCITY);
             } finally {
                 reset();
-                CollisionOptimizerConfig.enableEntityCollision = previous;
             }
             EntityCollisionOptimizer.LOGGER.info(
                     "ECO_CHUNK_LOAD_PARITY wait={} trace_entities=10 dimension_observations=96 weak_block_collision=true weak_boat_collision=true weak_to_strong=true weak_to_loaded=true weak_lamp=true idle_lamp=false portal_velocity={} result=passed",

@@ -49,10 +49,8 @@ final class EntityQueryParity {
         try {
             verifyUnboundStorage(helper, fixtures.getFirst());
             CollisionFrame.end(level);
-            CollisionOptimizerConfig.enableEntityCollision = false;
             QueryTrace expected = trace(level, query, fixtures.getFirst());
 
-            CollisionOptimizerConfig.enableEntityCollision = true;
             CollisionFrame.begin(level);
             QueryTrace actual = trace(level, query, fixtures.getFirst());
 
@@ -66,7 +64,6 @@ final class EntityQueryParity {
                     actual.all.size(), actual.typed.size(), actual.limited.size()
             );
         } finally {
-            CollisionOptimizerConfig.enableEntityCollision = true;
             for (Entity fixture : fixtures) fixture.discard();
             CollisionFrame.end(level);
         }

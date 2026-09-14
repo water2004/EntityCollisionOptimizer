@@ -13,7 +13,6 @@ import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.scores.PlayerTeam;
 import net.minecraft.world.scores.Scoreboard;
 import net.minecraft.world.scores.Team;
-import org.edtp.entitycollisionoptimizer.config.CollisionOptimizerConfig;
 import org.edtp.entitycollisionoptimizer.gametest.mixin.LivingEntityTestInvoker;
 import org.edtp.entitycollisionoptimizer.natives.CollisionFrame;
 
@@ -50,12 +49,10 @@ final class CollisionPushParity {
         scoreboard.addPlayerToTeam(teamBlocked.getScoreboardName(), blockedTeam);
 
         try {
-            CollisionOptimizerConfig.enableEntityCollision = false;
             zeroVelocities(entities);
-            ((LivingEntityTestInvoker) source).entityCollisionOptimizer$invokePushEntities();
+            VanillaReference.pushEntities(source);
             List<Vec3> vanilla = velocities(entities);
 
-            CollisionOptimizerConfig.enableEntityCollision = true;
             zeroVelocities(entities);
             CollisionFrame.begin(helper.getLevel());
             ((LivingEntityTestInvoker) source).entityCollisionOptimizer$invokePushEntities();
@@ -94,8 +91,7 @@ final class CollisionPushParity {
         Parrot acceleratedSource = null;
         try {
             zeroVelocities(List.of(player, vanillaSource));
-            CollisionOptimizerConfig.enableEntityCollision = false;
-            ((LivingEntityTestInvoker) vanillaSource).entityCollisionOptimizer$invokePushEntities();
+            VanillaReference.pushEntities(vanillaSource);
             Vec3 vanillaPlayerVelocity = player.getDeltaMovement();
             Vec3 vanillaSourceVelocity = vanillaSource.getDeltaMovement();
 
@@ -103,7 +99,6 @@ final class CollisionPushParity {
             player.setDeltaMovement(Vec3.ZERO);
             acceleratedSource = (Parrot) spawnEntity(helper, EntityTypes.PARROT, anchor);
             acceleratedSource.setDeltaMovement(Vec3.ZERO);
-            CollisionOptimizerConfig.enableEntityCollision = true;
             CollisionFrame.begin(level);
             ((LivingEntityTestInvoker) acceleratedSource).entityCollisionOptimizer$invokePushEntities();
 
@@ -144,8 +139,7 @@ final class CollisionPushParity {
             helper.assertValueEqual(player.gameMode(), gameType, "player mode setup: " + gameType);
             zeroVelocities(List.of(player, vanillaSource));
             CollisionFrame.end(level);
-            CollisionOptimizerConfig.enableEntityCollision = false;
-            ((LivingEntityTestInvoker) vanillaSource).entityCollisionOptimizer$invokePushEntities();
+            VanillaReference.pushEntities(vanillaSource);
             Vec3 vanillaPlayerVelocity = player.getDeltaMovement();
             Vec3 vanillaSourceVelocity = vanillaSource.getDeltaMovement();
 
@@ -154,7 +148,6 @@ final class CollisionPushParity {
             player.setDeltaMovement(Vec3.ZERO);
             acceleratedSource = spawnZombie(helper, anchor);
             acceleratedSource.setDeltaMovement(Vec3.ZERO);
-            CollisionOptimizerConfig.enableEntityCollision = true;
             CollisionFrame.begin(level);
             ((LivingEntityTestInvoker) acceleratedSource).entityCollisionOptimizer$invokePushEntities();
 
