@@ -9,6 +9,7 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import net.minecraft.world.scores.PlayerTeam;
 import net.minecraft.world.scores.Team;
+import org.edtp.entitycollisionoptimizer.collision.EntitySectionStorageLevelBinding;
 import org.edtp.entitycollisionoptimizer.mixin.PersistentEntitySectionManagerAccessor;
 import org.edtp.entitycollisionoptimizer.mixin.ServerLevelAccessor;
 
@@ -32,10 +33,10 @@ public final class CollisionFrame {
     }
 
     public static void attach(ServerLevel level) {
-        NativeEntityQueryStorage storage = (NativeEntityQueryStorage) (Object)
+        EntitySectionStorageLevelBinding storage = (EntitySectionStorageLevelBinding) (Object)
                 ((PersistentEntitySectionManagerAccessor) (Object)
                         ((ServerLevelAccessor) level).eco$entityManager()).eco$sectionStorage();
-        storage.eco$queryLevel(level);
+        storage.eco$setQueryLevel(level);
     }
 
     public static void end(ServerLevel level) {
