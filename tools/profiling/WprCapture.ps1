@@ -8,7 +8,7 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 if (Test-Path -LiteralPath $Trace) { throw 'Trace already exists' }
-$ecoWpr = (Get-Command wpr.exe -CommandType Application -ErrorAction Stop).Path
+$ecoWpr = @(Get-Command wpr.exe -CommandType Application -ErrorAction Stop)[0].Path
 $ecoStarted = $false
 $ecoExit = 0
 try {
