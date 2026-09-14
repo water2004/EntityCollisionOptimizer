@@ -7,6 +7,7 @@ import net.minecraft.world.entity.monster.zombie.Zombie;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.scores.PlayerTeam;
+import net.minecraft.world.scores.Team;
 import org.edtp.entitycollisionoptimizer.collision.VanillaEntityCollision;
 import org.edtp.entitycollisionoptimizer.natives.CollisionFrame;
 import org.edtp.entitycollisionoptimizer.natives.FFMBackend;
@@ -113,7 +114,8 @@ final class CollisionIsolationParity {
                 FFMBackend.QueryResult pushable = CollisionFrame.queryPushable(
                         source,
                         sourceTeam,
-                        VanillaEntityCollision.collisionRule(sourceTeam),
+                        sourceTeam == null
+                                ? Team.CollisionRule.ALWAYS : sourceTeam.getCollisionRule(),
                         VanillaEntityCollision.usesVanillaDoPush(source)
                 );
                 int expectedPushable = entities.size() - 1;
@@ -140,7 +142,8 @@ final class CollisionIsolationParity {
             entities.get(i).setDeltaMovement(Vec3.ZERO);
         }
         try (var batch = CollisionFrame.collectPushable(source, source.getTeam(),
-                VanillaEntityCollision.collisionRule(source.getTeam()), true)) {
+                source.getTeam() == null
+                        ? Team.CollisionRule.ALWAYS : source.getTeam().getCollisionRule(), true)) {
             for (int i = 0; i < batch.size(); i++) {
                 if (!batch.usesNativePush(i) || !entities.contains(batch.target(i))) {
                     throw new AssertionError("Concurrent batch contains a foreign or non-native target");

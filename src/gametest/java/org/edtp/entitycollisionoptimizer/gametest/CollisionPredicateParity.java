@@ -171,7 +171,8 @@ final class CollisionPredicateParity {
         try (PushBatch batch = CollisionFrame.collectPushable(
                 livingSource,
                 sourceTeam,
-                VanillaEntityCollision.collisionRule(sourceTeam),
+                sourceTeam == null
+                        ? Team.CollisionRule.ALWAYS : sourceTeam.getCollisionRule(),
                 VanillaEntityCollision.usesVanillaDoPush(livingSource)
         )) {
             for (int index = 0; index < batch.size(); index++) {

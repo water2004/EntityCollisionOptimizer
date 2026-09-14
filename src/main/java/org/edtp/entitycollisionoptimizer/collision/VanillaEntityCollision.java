@@ -32,11 +32,6 @@ public final class VanillaEntityCollision {
             Entity.class
     );
 
-    /** Only Entity's scoreboard lookup is revision-cached; derived vanilla teams are read live. */
-    public static boolean usesVanillaGetTeam(Entity entity) {
-        return USE_VANILLA_GET_TEAM.get(entity.getClass());
-    }
-
     private static final ClassValue<Boolean> USE_VANILLA_DO_PUSH = new ClassValue<>() {
         @Override
         protected Boolean computeValue(Class<?> type) {
@@ -76,9 +71,9 @@ public final class VanillaEntityCollision {
     private static final ClassValue<Boolean> USE_VANILLA_VELOCITY_GETTER = declaringClass("getDeltaMovement", Entity.class);
     private static final ClassValue<Boolean> USE_VANILLA_VELOCITY_SETTER = declaringClass("setDeltaMovement", Entity.class, Vec3.class);
 
-    /** Protected comsumer from null */
-    public static Team.CollisionRule collisionRule(PlayerTeam team) {
-        return team == null ? Team.CollisionRule.ALWAYS : team.getCollisionRule();
+    /** Only Entity's scoreboard lookup is revision-cached; derived vanilla teams are read live. */
+    public static boolean usesVanillaGetTeam(Entity entity) {
+        return USE_VANILLA_GET_TEAM.get(entity.getClass());
     }
 
     /** Entity's default canBeCollidedWith is always false; boats/shulkers/etc. override it. */

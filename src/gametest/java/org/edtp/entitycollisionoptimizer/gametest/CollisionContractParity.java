@@ -103,7 +103,8 @@ final class CollisionContractParity {
         List<Entity> expected = source.level().getEntities(source, source.getBoundingBox(), EntitySelector.pushableBy(source));
         List<Entity> actual = new ArrayList<>();
         var team = source.getTeam();
-        try (var batch = CollisionFrame.collectPushable(source, team, VanillaEntityCollision.collisionRule(team), true)) {
+        try (var batch = CollisionFrame.collectPushable(source, team,
+                team == null ? Team.CollisionRule.ALWAYS : team.getCollisionRule(), true)) {
             for (int i = 0; i < batch.size(); i++) actual.add(batch.target(i));
         }
         helper.assertTrue(actual.equals(expected), label + ": ordered candidates expected "

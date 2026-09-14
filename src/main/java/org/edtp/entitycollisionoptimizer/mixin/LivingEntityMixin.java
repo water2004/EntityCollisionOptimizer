@@ -31,7 +31,8 @@ public abstract class LivingEntityMixin {
         }
 
         PlayerTeam sourceTeam = self.getTeam();
-        Team.CollisionRule sourceRule = VanillaEntityCollision.collisionRule(sourceTeam);
+        Team.CollisionRule sourceRule = sourceTeam == null
+                ? Team.CollisionRule.ALWAYS : sourceTeam.getCollisionRule();
         if (sourceRule == Team.CollisionRule.NEVER) {
             return;
         }

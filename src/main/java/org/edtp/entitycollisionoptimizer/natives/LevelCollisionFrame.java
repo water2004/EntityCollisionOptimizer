@@ -416,7 +416,8 @@ final class LevelCollisionFrame {
                 VanillaEntityCollision.usesVanillaEntityPush(entity),
                 VanillaEntityCollision.usesVanillaVectorPush(entity),
                 teamId(targetTeam),
-                collisionRuleId(VanillaEntityCollision.collisionRule(targetTeam)),
+                collisionRuleId(targetTeam == null
+                        ? Team.CollisionRule.ALWAYS : targetTeam.getCollisionRule()),
                 bodies.slot(entity),
                 !entity.isRemoved() && !entity.isSpectator()
                         && !VanillaEntityCollision.usesVanillaCanBeCollidedWith(entity),

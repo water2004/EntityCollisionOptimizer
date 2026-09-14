@@ -3,6 +3,7 @@ package org.edtp.entitycollisionoptimizer.gametest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.entity.monster.zombie.Zombie;
 import net.minecraft.world.level.gamerules.GameRules;
+import net.minecraft.world.scores.Team;
 import net.minecraft.world.phys.Vec3;
 import org.edtp.entitycollisionoptimizer.config.CollisionOptimizerConfig;
 import org.edtp.entitycollisionoptimizer.gametest.mixin.LivingEntityTestInvoker;
@@ -52,7 +53,8 @@ final class CollisionImpulseParity {
             if (enabled) {
                 CollisionFrame.begin(level);
                 var result = CollisionFrame.queryPushable(source, source.getTeam(),
-                        org.edtp.entitycollisionoptimizer.collision.VanillaEntityCollision.collisionRule(source.getTeam()), true);
+                        source.getTeam() == null
+                                ? Team.CollisionRule.ALWAYS : source.getTeam().getCollisionRule(), true);
                 boolean covered = false;
                 for (int i = 0; i < result.size(); i++) {
                     if (CollisionFrame.entity(source, result.get(i)) == target) covered = result.usesNativePush(i);
