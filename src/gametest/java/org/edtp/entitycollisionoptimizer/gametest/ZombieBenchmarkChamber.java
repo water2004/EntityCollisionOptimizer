@@ -40,14 +40,17 @@ final class ZombieBenchmarkChamber extends BenchmarkScenario {
     static final int DROP_HEIGHT = 5;
     static final int ATTACK_INTERVAL_TICKS = 13;
     private static final Vec3 BOTTOM = new Vec3(3.5, 1.0, 3.5);
+    private static final BlockPos PISTON = new BlockPos(20, 1, 3);
+    private static final BlockPos PISTON_POWER = new BlockPos(19, 1, 3);
     private final GameTestHelper helper;
     private final List<Zombie> zombies = new ArrayList<>();
     private final Random spawnRandom = new Random(0xEC020026L);
     private ServerPlayer player;
     private EmbeddedChannel playerChannel;
     private Connection connection;
+    private Boolean pistonMoving;
     private int removed;
-    int spawned, attacks, acceptedAttacks, observedKnockbacks, sweepAttacks, sweepVictims;
+    int spawned, attacks, acceptedAttacks, observedKnockbacks, sweepAttacks, sweepVictims, pistonTransitions;
 
     ZombieBenchmarkChamber(GameTestHelper helper) {
         this.helper = helper;
@@ -57,14 +60,15 @@ final class ZombieBenchmarkChamber extends BenchmarkScenario {
     @Override String description() {
         return "spawn_per_tick=100 total_spawned=20000 drop_height=5 chamber=3x3 spawn_pedestal=1x1 "
                 + "health=default players=1 player=invulnerable_survival weapon=diamond_sword "
-                + "knockback_level=2 attack_interval_ticks=13 warmup_ticks=0";
+                + "knockback_level=2 attack_interval_ticks=13 remote_piston_clock=1 "
+                + "piston_power_phase_ticks=4 warmup_ticks=0";
     }
     @Override void start() { build(); spawnPlayer(); }
-    @Override void tick(int tick) { tickConnection(); spawnWave(); attackIfReady(tick); }
+    @Override void tick(int tick) { tickPistonClock(tick); tickConnection(); spawnWave(); attackIfReady(tick); }
     @Override String summary() {
         return "spawned=" + spawned + " attacks=" + attacks + " accepted_attacks=" + acceptedAttacks
                 + " observed_knockbacks=" + observedKnockbacks + " sweep_attacks=" + sweepAttacks
-                + " sweep_victims=" + sweepVictims;
+                + " sweep_victims=" + sweepVictims + " piston_transitions=" + pistonTransitions;
     }
 
     void build() {
@@ -78,6 +82,16 @@ final class ZombieBenchmarkChamber extends BenchmarkScenario {
             }
         }
         helper.setBlock(new BlockPos(3, DROP_HEIGHT, 3), Blocks.STONE);
+        helper.setBlock(PISTON, Blocks.PISTON);
+        helper.setBlock(PISTON_POWER, Blocks.AIR);
+    }
+
+    void tickPistonClock(int tick) {
+        boolean moving = helper.getLevel().getBlockState(helper.absolutePos(PISTON)).is(Blocks.MOVING_PISTON);
+        if (pistonMoving != null && !pistonMoving && moving) pistonTransitions++;
+        pistonMoving = moving;
+        if (tick % 4 != 0) return;
+        helper.setBlock(PISTON_POWER, ((tick / 4) & 1) == 0 ? Blocks.REDSTONE_BLOCK : Blocks.AIR);
     }
 
     void spawnPlayer() {
@@ -199,11 +213,16 @@ final class ZombieBenchmarkChamber extends BenchmarkScenario {
         if (attacks == 0 || acceptedAttacks == 0 || observedKnockbacks == 0 || sweepAttacks == 0) {
             throw new IllegalStateException("No successful bottom Knockback II and sweeping attacks");
         }
+        if (pistonTransitions < ticks / 8) {
+            throw new IllegalStateException("Remote piston clock did not complete enough transitions");
+        }
     }
 
     void cleanup() {
         zombies.forEach(Entity::discard);
         zombies.clear();
+        helper.setBlock(PISTON_POWER, Blocks.AIR);
+        helper.setBlock(PISTON, Blocks.AIR);
         // Death drops remain real entities throughout measurement; remove them only afterwards.
         Vec3 origin = helper.absoluteVec(Vec3.ZERO);
         AABB chamber = new AABB(origin.add(1, 0, 1), origin.add(6, DROP_HEIGHT + 4, 6));
