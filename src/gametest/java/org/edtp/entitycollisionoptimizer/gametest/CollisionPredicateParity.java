@@ -7,6 +7,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntitySelector;
 import net.minecraft.world.entity.EntityTypes;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.monster.zombie.Zombie;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.phys.AABB;
@@ -17,6 +18,7 @@ import net.minecraft.world.scores.Team;
 import org.edtp.entitycollisionoptimizer.collision.VanillaEntityCollision;
 import org.edtp.entitycollisionoptimizer.natives.CollisionFrame;
 import org.edtp.entitycollisionoptimizer.natives.FFMBackend;
+import org.edtp.entitycollisionoptimizer.natives.PushBatch;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -48,6 +50,7 @@ final class CollisionPredicateParity {
         scoreboard.addPlayerToTeam(other.getScoreboardName(), otherTeam);
 
         try {
+            CollisionFrame.begin(level);
             assertPredicateMatches(helper, source, allied, "allied/always");
             assertPredicateMatches(helper, source, other, "other/always");
             assertPredicateMatches(helper, source, unpushable, "unpushable");
@@ -70,6 +73,7 @@ final class CollisionPredicateParity {
             otherTeam.setCollisionRule(Team.CollisionRule.PUSH_OTHER_TEAMS);
             assertPredicateMatches(helper, source, other, "target/push-other/other");
         } finally {
+            CollisionFrame.end(level);
             scoreboard.removePlayerTeam(sourceTeam);
             scoreboard.removePlayerTeam(otherTeam);
             source.discard();
@@ -162,12 +166,21 @@ final class CollisionPredicateParity {
     ) {
         boolean vanilla = EntitySelector.pushableBy(source).test(target);
         PlayerTeam sourceTeam = source.getTeam();
-        boolean accelerated = VanillaEntityCollision.isPushableBy(
-                source,
+        boolean accelerated = false;
+        LivingEntity livingSource = (LivingEntity) source;
+        try (PushBatch batch = CollisionFrame.collectPushable(
+                livingSource,
                 sourceTeam,
                 VanillaEntityCollision.collisionRule(sourceTeam),
-                target
-        );
+                VanillaEntityCollision.usesVanillaDoPush(livingSource)
+        )) {
+            for (int index = 0; index < batch.size(); index++) {
+                if (batch.target(index) == target) {
+                    accelerated = true;
+                    break;
+                }
+            }
+        }
         helper.assertValueEqual(accelerated, vanilla, "pushableBy parity: " + scenario);
     }
 

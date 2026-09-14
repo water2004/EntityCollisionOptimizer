@@ -2,7 +2,6 @@ package org.edtp.entitycollisionoptimizer.collision;
 
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.scores.PlayerTeam;
 import net.minecraft.world.scores.Team;
 import net.minecraft.world.phys.Vec3;
@@ -13,6 +12,14 @@ import net.minecraft.world.phys.Vec3;
  * or predicate replacement.
  */
 public final class VanillaEntityCollision {
+
+    /* This class is a utility class, with no instances. */
+    private VanillaEntityCollision() {
+    }
+
+    /** Checks if the entity using the vanilla methods.
+     * Will be used to determine wether to use the vanilla collision methods or the FFM ones.
+    */
     private static final ClassValue<Boolean> USE_VANILLA_GET_TEAM = declaringClass("getTeam", Entity.class);
     private static final ClassValue<Boolean> USE_VANILLA_CAN_BE_COLLIDED_WITH = declaringClass(
             "canBeCollidedWith",
@@ -69,48 +76,9 @@ public final class VanillaEntityCollision {
     private static final ClassValue<Boolean> USE_VANILLA_VELOCITY_GETTER = declaringClass("getDeltaMovement", Entity.class);
     private static final ClassValue<Boolean> USE_VANILLA_VELOCITY_SETTER = declaringClass("setDeltaMovement", Entity.class, Vec3.class);
 
-    private VanillaEntityCollision() {
-    }
-
+    /** Protected comsumer from null */
     public static Team.CollisionRule collisionRule(PlayerTeam team) {
         return team == null ? Team.CollisionRule.ALWAYS : team.getCollisionRule();
-    }
-
-    public static boolean isPushableBy(
-            Entity source,
-            PlayerTeam sourceTeam,
-            Team.CollisionRule sourceRule,
-            Entity target
-    ) {
-        if (sourceRule == Team.CollisionRule.NEVER
-                || target.isSpectator()
-                || !target.isPushable()) {
-            return false;
-        }
-        if (source.level().isClientSide()
-                && (!(target instanceof Player player) || !player.isLocalPlayer())) {
-            return false;
-        }
-        return passesTeamRules(sourceTeam, sourceRule, target.getTeam());
-    }
-
-    private static boolean passesTeamRules(
-            PlayerTeam sourceTeam,
-            Team.CollisionRule sourceRule,
-            PlayerTeam targetTeam
-    ) {
-        Team.CollisionRule targetRule = collisionRule(targetTeam);
-        if (targetRule == Team.CollisionRule.NEVER) {
-            return false;
-        }
-
-        boolean allied = sourceTeam != null && sourceTeam.isAlliedTo(targetTeam);
-        if ((sourceRule == Team.CollisionRule.PUSH_OWN_TEAM
-                || targetRule == Team.CollisionRule.PUSH_OWN_TEAM) && allied) {
-            return false;
-        }
-        return (sourceRule != Team.CollisionRule.PUSH_OTHER_TEAMS
-                && targetRule != Team.CollisionRule.PUSH_OTHER_TEAMS) || allied;
     }
 
     /** Entity's default canBeCollidedWith is always false; boats/shulkers/etc. override it. */
