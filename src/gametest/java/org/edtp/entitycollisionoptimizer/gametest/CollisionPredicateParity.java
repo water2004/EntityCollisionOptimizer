@@ -15,7 +15,7 @@ import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.scores.PlayerTeam;
 import net.minecraft.world.scores.Scoreboard;
 import net.minecraft.world.scores.Team;
-import org.edtp.entitycollisionoptimizer.collision.VanillaEntityCollision;
+import org.edtp.entitycollisionoptimizer.collision.VanillaMethodDetector;
 import org.edtp.entitycollisionoptimizer.natives.CollisionFrame;
 import org.edtp.entitycollisionoptimizer.natives.FFMBackend;
 import org.edtp.entitycollisionoptimizer.natives.PushBatch;
@@ -173,7 +173,7 @@ final class CollisionPredicateParity {
                 sourceTeam,
                 sourceTeam == null
                         ? Team.CollisionRule.ALWAYS : sourceTeam.getCollisionRule(),
-                VanillaEntityCollision.usesVanillaDoPush(livingSource)
+                VanillaMethodDetector.usesVanillaDoPush(livingSource)
         )) {
             for (int index = 0; index < batch.size(); index++) {
                 if (batch.target(index) == target) {

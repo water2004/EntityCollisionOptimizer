@@ -2,7 +2,7 @@ package org.edtp.entitycollisionoptimizer.mixin;
 
 import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
-import org.edtp.entitycollisionoptimizer.collision.VanillaEntityCollision;
+import org.edtp.entitycollisionoptimizer.collision.VanillaMethodDetector;
 import org.edtp.entitycollisionoptimizer.config.CollisionOptimizerConfig;
 import org.edtp.entitycollisionoptimizer.natives.CollisionFrame;
 import org.edtp.entitycollisionoptimizer.natives.PushBatch;
@@ -37,7 +37,7 @@ public abstract class LivingEntityMixin {
             return;
         }
 
-        boolean sourceUsesVanillaDoPush = VanillaEntityCollision.usesVanillaDoPush(self);
+        boolean sourceUsesVanillaDoPush = VanillaMethodDetector.usesVanillaDoPush(self);
         try (PushBatch candidates = CollisionFrame.collectPushable(
                 self,
                 sourceTeam,

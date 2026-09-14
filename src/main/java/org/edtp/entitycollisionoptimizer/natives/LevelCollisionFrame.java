@@ -3,7 +3,7 @@ package org.edtp.entitycollisionoptimizer.natives;
 import org.edtp.entitycollisionoptimizer.collision.CollisionCacheEpochs;
 import org.edtp.entitycollisionoptimizer.collision.CollisionCacheState;
 import org.edtp.entitycollisionoptimizer.collision.CollisionOrderState;
-import org.edtp.entitycollisionoptimizer.collision.VanillaEntityCollision;
+import org.edtp.entitycollisionoptimizer.collision.VanillaMethodDetector;
 import org.edtp.entitycollisionoptimizer.config.CollisionOptimizerConfig;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
@@ -93,7 +93,7 @@ final class LevelCollisionFrame {
         }
 
         int nativeId = ids.addEntity(entity);
-        if (!VanillaEntityCollision.usesVanillaGetTeam(entity)) derivedTeams.add(entity);
+        if (!VanillaMethodDetector.usesVanillaGetTeam(entity)) derivedTeams.add(entity);
         BlockPos position = entity.blockPosition();
         int sectionX = SectionPos.blockToSectionCoord(position.getX());
         int sectionY = SectionPos.blockToSectionCoord(position.getY());
@@ -108,7 +108,7 @@ final class LevelCollisionFrame {
         ensureSemanticCapacity(nativeId + 1);
         selectableEntityRevisions[nativeId] = UNCACHED;
         teamRevisions[nativeId] = UNCACHED;
-        if (!VanillaEntityCollision.usesVanillaCanBeCollidedWith(entity)) {
+        if (!VanillaMethodDetector.usesVanillaCanBeCollidedWith(entity)) {
             refreshNativeMetadata(nativeId, entity);
         }
     }
@@ -167,7 +167,7 @@ final class LevelCollisionFrame {
                 nativeContext,
                 scan.inflate(1.0E-7),
                 ids.getId(source),
-                VanillaEntityCollision.usesVanillaCanCollideWith(source),
+                VanillaMethodDetector.usesVanillaCanCollideWith(source),
                 ids.size()
         );
         int[] matches = new int[result.size()];
@@ -256,7 +256,7 @@ final class LevelCollisionFrame {
                 nativeContext,
                 scan.inflate(1.0E-7),
                 excludeId,
-                source == null || VanillaEntityCollision.usesVanillaCanCollideWith(source),
+                source == null || VanillaMethodDetector.usesVanillaCanCollideWith(source),
                 ids.size()
         );
         if (result.size() == 0) {
@@ -371,7 +371,7 @@ final class LevelCollisionFrame {
     }
 
     private PlayerTeam team(int nativeId, Entity entity) {
-        if (!VanillaEntityCollision.usesVanillaGetTeam(entity)) return entity.getTeam();
+        if (!VanillaMethodDetector.usesVanillaGetTeam(entity)) return entity.getTeam();
         ensureSemanticCapacity(nativeId + 1);
         long teamRevision = CollisionCacheEpochs.teamRevision();
         if (teamRevisions[nativeId] != teamRevision) {
@@ -413,14 +413,14 @@ final class LevelCollisionFrame {
                 entity.isPassenger(),
                 entity.isVehicle(),
                 entity.noPhysics,
-                VanillaEntityCollision.usesVanillaEntityPush(entity),
-                VanillaEntityCollision.usesVanillaVectorPush(entity),
+                VanillaMethodDetector.usesVanillaEntityPush(entity),
+                VanillaMethodDetector.usesVanillaVectorPush(entity),
                 teamId(targetTeam),
                 collisionRuleId(targetTeam == null
                         ? Team.CollisionRule.ALWAYS : targetTeam.getCollisionRule()),
                 bodies.slot(entity),
                 !entity.isRemoved() && !entity.isSpectator()
-                        && !VanillaEntityCollision.usesVanillaCanBeCollidedWith(entity),
+                        && !VanillaMethodDetector.usesVanillaCanBeCollidedWith(entity),
                 CollisionOptimizerConfig.STARTUP_VANILLA_ORDER
                         ? ((CollisionOrderState) entity).eco$sectionOrder() : 0L
         );

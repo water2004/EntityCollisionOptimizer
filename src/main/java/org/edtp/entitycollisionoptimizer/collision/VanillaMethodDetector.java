@@ -11,10 +11,10 @@ import net.minecraft.world.phys.Vec3;
  * the FFM path owns collision selection without invoking another mod's query
  * or predicate replacement.
  */
-public final class VanillaEntityCollision {
+public final class VanillaMethodDetector {
 
     /* This class is a utility class, with no instances. */
-    private VanillaEntityCollision() {
+    private VanillaMethodDetector() {
     }
 
     /** Checks if the entity using the vanilla methods.

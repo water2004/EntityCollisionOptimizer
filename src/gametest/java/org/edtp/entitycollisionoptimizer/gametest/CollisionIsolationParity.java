@@ -8,7 +8,7 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.scores.PlayerTeam;
 import net.minecraft.world.scores.Team;
-import org.edtp.entitycollisionoptimizer.collision.VanillaEntityCollision;
+import org.edtp.entitycollisionoptimizer.collision.VanillaMethodDetector;
 import org.edtp.entitycollisionoptimizer.natives.CollisionFrame;
 import org.edtp.entitycollisionoptimizer.natives.FFMBackend;
 
@@ -116,7 +116,7 @@ final class CollisionIsolationParity {
                         sourceTeam,
                         sourceTeam == null
                                 ? Team.CollisionRule.ALWAYS : sourceTeam.getCollisionRule(),
-                        VanillaEntityCollision.usesVanillaDoPush(source)
+                        VanillaMethodDetector.usesVanillaDoPush(source)
                 );
                 int expectedPushable = entities.size() - 1;
                 if (pushable.pushableCount() != expectedPushable
