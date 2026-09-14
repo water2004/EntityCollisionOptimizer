@@ -39,8 +39,8 @@ public final class FFMBackend {
     private static MethodHandle addEntity;
     private static MethodHandle putEntity, removeEntity, updateLocation;
     private static MethodHandle updateEntity;
-    private static MethodHandle invalidateEntityMetadata;
-    private static MethodHandle invalidateMetadata;
+    private static MethodHandle invalidateEntityPushabilityCache;
+    private static MethodHandle invalidatePushEligibilityFields;
     private static MethodHandle query;
     private static MethodHandle queryHard;
     private static MethodHandle queryEntities;
@@ -333,26 +333,27 @@ public final class FFMBackend {
                 hardCollidable, sectionOrder);
     }
 
-    public static void invalidateEntityMetadata(Context nativeContext, int nativeId) {
+    public static void invalidateEntityPushabilityCache(Context nativeContext, int nativeId) {
         synchronized (nativeContext) {
             nativeContext.ensureOpen();
             try {
-                int status = (int) invalidateEntityMetadata.invokeExact(nativeContext.address, nativeId);
-                checkStatus("invalidate native entity collision metadata", status);
+                int status = (int) invalidateEntityPushabilityCache.invokeExact(nativeContext.address, nativeId);
+                checkStatus("invalidate native entity pushability cache", status);
             } catch (Throwable failure) {
-                throw new IllegalStateException("FFM invalidateEntityMetadata call failed", failure);
+                throw new IllegalStateException("FFM invalidateEntityPushabilityCache call failed", failure);
             }
         }
     }
 
-    public static void invalidateMetadata(Context nativeContext, int mask) {
+    public static void invalidatePushEligibilityFields(Context nativeContext, int fieldsToInvalidate) {
         synchronized (nativeContext) {
             nativeContext.ensureOpen();
             try {
-                int status = (int) invalidateMetadata.invokeExact(nativeContext.address, mask);
-                checkStatus("invalidate native collision metadata", status);
+                int status = (int) invalidatePushEligibilityFields.invokeExact(
+                        nativeContext.address, fieldsToInvalidate);
+                checkStatus("invalidate native push eligibility fields", status);
             } catch (Throwable failure) {
-                throw new IllegalStateException("FFM invalidateMetadata call failed", failure);
+                throw new IllegalStateException("FFM invalidatePushEligibilityFields call failed", failure);
             }
         }
     }
@@ -670,14 +671,14 @@ public final class FFMBackend {
             // Discard the constant placeholder before crossing FFM; unordered native has no order argument.
             updateEntity = java.lang.invoke.MethodHandles.dropArguments(updateEntity, 13, long.class);
         }
-        invalidateEntityMetadata = linker.downcallHandle(
-                library.find("invalidateCollisionEntityMetadata")
-                        .orElseThrow(() -> missingSymbol("invalidateCollisionEntityMetadata")),
+        invalidateEntityPushabilityCache = linker.downcallHandle(
+                library.find("invalidateEntityPushabilityCache")
+                        .orElseThrow(() -> missingSymbol("invalidateEntityPushabilityCache")),
                 FunctionDescriptor.of(JAVA_INT, ADDRESS, JAVA_INT)
         );
-        invalidateMetadata = linker.downcallHandle(
-                library.find("invalidateCollisionMetadata")
-                        .orElseThrow(() -> missingSymbol("invalidateCollisionMetadata")),
+        invalidatePushEligibilityFields = linker.downcallHandle(
+                library.find("invalidatePushEligibilityFields")
+                        .orElseThrow(() -> missingSymbol("invalidatePushEligibilityFields")),
                 FunctionDescriptor.of(JAVA_INT, ADDRESS, JAVA_INT)
         );
         query = linker.downcallHandle(
@@ -790,8 +791,8 @@ public final class FFMBackend {
         addEntity = null;
         putEntity = removeEntity = updateLocation = null;
         updateEntity = null;
-        invalidateEntityMetadata = null;
-        invalidateMetadata = null;
+        invalidateEntityPushabilityCache = null;
+        invalidatePushEligibilityFields = null;
         query = null;
         queryHard = null;
         queryEntities = null;

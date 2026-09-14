@@ -64,8 +64,8 @@ ECO_EXPORT int updateCollisionEntity(
         , std::int64_t sectionOrder
 #endif
 );
-ECO_EXPORT int invalidateCollisionEntityMetadata(void* context, int entityId);
-ECO_EXPORT int invalidateCollisionMetadata(void* context, int mask);
+ECO_EXPORT int invalidateEntityPushabilityCache(void* context, int entityId);
+ECO_EXPORT int invalidatePushEligibilityFields(void* context, int fieldsToInvalidate);
 ECO_EXPORT int queryCollisionEntities(void* context, int sourceId, int* output, int outputCapacity);
 ECO_EXPORT int queryHardCollisionEntities(
         void* context,

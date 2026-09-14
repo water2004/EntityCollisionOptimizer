@@ -10,8 +10,8 @@
         beginCollisionFrame;
         addCollisionEntity;
         updateCollisionEntity;
-        invalidateCollisionEntityMetadata;
-        invalidateCollisionMetadata;
+        invalidateEntityPushabilityCache;
+        invalidatePushEligibilityFields;
         queryCollisionEntities;
         queryHardCollisionEntities;
         queryEntitiesInBox;

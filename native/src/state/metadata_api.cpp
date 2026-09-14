@@ -79,7 +79,7 @@ int updateCollisionEntity(
     }
 }
 
-int invalidateCollisionEntityMetadata(void* contextPointer, int entityId) {
+int invalidateEntityPushabilityCache(void* contextPointer, int entityId) {
     if (contextPointer == nullptr || entityId < 0) {
         return -1;
     }
@@ -99,22 +99,22 @@ int invalidateCollisionEntityMetadata(void* contextPointer, int entityId) {
     }
 }
 
-int invalidateCollisionMetadata(void* contextPointer, int mask) {
+int invalidatePushEligibilityFields(void* contextPointer, int fieldsToInvalidate) {
     if (contextPointer == nullptr
-            || (mask & ~(eco::METADATA_SELECTABLE | eco::METADATA_TEAM)) != 0) {
+            || (fieldsToInvalidate & ~(eco::METADATA_SELECTABLE | eco::METADATA_TEAM)) != 0) {
         return -1;
     }
     try {
         auto& context = *static_cast<eco::CollisionContext*>(contextPointer);
         for (std::size_t entityId = 0; entityId < context.metadata.size(); ++entityId) {
             eco::EntityMetadata& metadata = context.metadata[entityId];
-            if ((mask & eco::METADATA_SELECTABLE) != 0) {
+            if ((fieldsToInvalidate & eco::METADATA_SELECTABLE) != 0) {
                 if (metadata.selectableValid && !metadata.selectable) {
                     eco::updateEntityQueryability(context, static_cast<int>(entityId), true);
                 }
                 metadata.selectableValid = false;
             }
-            if ((mask & eco::METADATA_TEAM) != 0) {
+            if ((fieldsToInvalidate & eco::METADATA_TEAM) != 0) {
                 metadata.teamValid = false;
             }
         }

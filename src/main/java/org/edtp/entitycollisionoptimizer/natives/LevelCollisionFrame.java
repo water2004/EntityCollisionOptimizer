@@ -57,7 +57,7 @@ final class LevelCollisionFrame {
                 if (!entity.isRemoved()) addEntity(entity);
             }
         }
-        synchronizeGlobalInvalidations();
+        synchronizePushEligibilityRevisions();
         active = true;
     }
 
@@ -125,7 +125,7 @@ final class LevelCollisionFrame {
     synchronized void invalidateEntity(Entity entity) {
         if (!initialized) return;
         int id = ids.getId(entity);
-        if (id >= 0) FFMBackend.invalidateEntityMetadata(nativeContext, id);
+        if (id >= 0) FFMBackend.invalidateEntityPushabilityCache(nativeContext, id);
     }
 
     synchronized void updateSection(Entity entity) {
@@ -287,7 +287,7 @@ final class LevelCollisionFrame {
             boolean sourceUsesVanillaPush
     ) {
         addEntity(source);
-        synchronizeGlobalInvalidations();
+        synchronizePushEligibilityRevisions();
         // Derived teams can change without any scoreboard mutation (taming, owner resolution).
         // This is a semantic dependency, not an entity/mod whitelist or a density-dependent path.
         for (Entity target : derivedTeams) refreshNativeMetadata(ids.getId(target), target);
@@ -353,7 +353,7 @@ final class LevelCollisionFrame {
         return active && ids.contains(entity);
     }
 
-    private boolean isSelectable(int nativeId, Entity entity) {
+    private boolean isSelectableCached(int nativeId, Entity entity) {
         ensureSemanticCapacity(nativeId + 1);
         long entityRevision = ((CollisionCacheState) entity)
                 .entityCollisionOptimizer$collisionRevision();
@@ -381,20 +381,20 @@ final class LevelCollisionFrame {
         return teams[nativeId];
     }
 
-    private void synchronizeGlobalInvalidations() {
+    private void synchronizePushEligibilityRevisions() {
         long blockRevision = CollisionCacheEpochs.blockRevision();
         long teamRevision = CollisionCacheEpochs.teamRevision();
-        int mask = 0;
+        int fieldsToInvalidate = 0;
         if (nativeBlockRevision != blockRevision) {
             nativeBlockRevision = blockRevision;
-            mask |= INVALIDATE_SELECTABLE;
+            fieldsToInvalidate |= INVALIDATE_SELECTABLE;
         }
         if (nativeTeamRevision != teamRevision) {
             nativeTeamRevision = teamRevision;
-            mask |= INVALIDATE_TEAM;
+            fieldsToInvalidate |= INVALIDATE_TEAM;
         }
-        if (mask != 0) {
-            FFMBackend.invalidateMetadata(nativeContext, mask);
+        if (fieldsToInvalidate != 0) {
+            FFMBackend.invalidatePushEligibilityFields(nativeContext, fieldsToInvalidate);
         }
     }
 
@@ -408,7 +408,7 @@ final class LevelCollisionFrame {
                 nativeContext,
                 nativeId,
                 bounds,
-                isSelectable(nativeId, entity),
+                isSelectableCached(nativeId, entity),
                 entity.isPassenger(),
                 entity.isVehicle(),
                 entity.noPhysics,

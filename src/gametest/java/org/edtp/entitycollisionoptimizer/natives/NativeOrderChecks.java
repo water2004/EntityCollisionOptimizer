@@ -32,7 +32,7 @@ public final class NativeOrderChecks {
                     case 2 -> { body.x ^= -1; body.y ^= -1; body.z ^= -1; }
                     case 3 -> body.order = 1000L + step; // Key change without changing cell membership.
                     case 4 -> { body.selectable = !body.selectable; body.passenger = !body.passenger; }
-                    case 5 -> FFMBackend.invalidateMetadata(context, 3);
+                    case 5 -> FFMBackend.invalidatePushEligibilityFields(context, 3);
                     case 6 -> begin(context, bodies, 2);
                     case 7 -> begin(context, bodies, 1);
                 }
