@@ -17,3 +17,10 @@
 *.etl
 *.etl.*
 __pycache__/
+
+# Local analysis artifacts and editor state.
+/.vscode/
+/bin/
+/analysis_samples/
+/mspt_analysis/
+/extract_mspt_curves.py
