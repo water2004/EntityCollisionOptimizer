@@ -105,15 +105,6 @@ public final class FFMBackend {
         }
     }
 
-    public static void applyConfig() {
-        if (!initialized) {
-            return;
-        }
-        for (Context context : CONTEXTS) {
-            context.applyConfig();
-        }
-    }
-
     public static Context createContext() {
         ensureInitialized();
         MemorySegment address = MemorySegment.NULL;
@@ -122,7 +113,7 @@ public final class FFMBackend {
             if (address.equals(MemorySegment.NULL)) {
                 throw new IllegalStateException("Native library returned a null collision context");
             }
-            int status = (int) setGridSize.invokeExact(address, CollisionOptimizerConfig.gridSize);
+            int status = (int) setGridSize.invokeExact(address, CollisionOptimizerConfig.STARTUP_GRID_SIZE);
             checkStatus("configure native collision grid", status);
             Context context = new Context(address);
             CONTEXTS.add(context);
@@ -843,16 +834,6 @@ public final class FFMBackend {
             outputCapacity = newCapacity;
             queryResult.output = outputBuffer;
             queryResult.nativePush = nativePushBuffer;
-        }
-
-        private synchronized void applyConfig() {
-            ensureOpen();
-            try {
-                int status = (int) setGridSize.invokeExact(address, CollisionOptimizerConfig.gridSize);
-                checkStatus("configure native collision grid", status);
-            } catch (Throwable failure) {
-                throw new IllegalStateException("Failed to update the FFM collision configuration", failure);
-            }
         }
 
         @Override

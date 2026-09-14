@@ -4,6 +4,7 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.BoolArgumentType;
+import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.context.CommandContext;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -26,7 +27,10 @@ public final class CollisionOptimizerCommand {
                 .then(Commands.literal("check").executes(CollisionOptimizerCommand::status))
                 .then(Commands.literal("vanillaOrder")
                         .then(Commands.argument("value", BoolArgumentType.bool())
-                                .executes(CollisionOptimizerCommand::setOrder))));
+                                .executes(CollisionOptimizerCommand::setOrder)))
+                .then(Commands.literal("gridSize")
+                        .then(Commands.argument("value", IntegerArgumentType.integer(1))
+                                .executes(CollisionOptimizerCommand::setGridSize))));
     }
 
     private static int status(CommandContext<CommandSourceStack> context) {
@@ -34,7 +38,9 @@ public final class CollisionOptimizerCommand {
                 "Entity Collision Optimizer: "
                         + "; FFM initialized=" + FFMBackend.isInitialized()
                         + "; vanillaOrder active=" + CollisionOptimizerConfig.STARTUP_VANILLA_ORDER
-                        + ", next restart=" + CollisionOptimizerConfig.vanillaOrder), false);
+                        + ", next restart=" + CollisionOptimizerConfig.vanillaOrder
+                        + "; gridSize active=" + CollisionOptimizerConfig.STARTUP_GRID_SIZE
+                        + ", next restart=" + CollisionOptimizerConfig.gridSize), false);
         return 1;
     }
 
@@ -54,6 +60,25 @@ public final class CollisionOptimizerCommand {
         context.getSource().sendSuccess(() -> Component.literal(
                 "vanillaOrder=" + order + " saved for next restart; current="
                         + CollisionOptimizerConfig.STARTUP_VANILLA_ORDER), false);
+        return 1;
+    }
+
+    private static int setGridSize(CommandContext<CommandSourceStack> context) {
+        int size = IntegerArgumentType.getInteger(context, "value");
+        JsonObject config = new JsonObject();
+        config.addProperty("gridSize", size);
+        config.addProperty("vanillaOrder", CollisionOptimizerConfig.vanillaOrder);
+        try {
+            Files.writeString(CollisionOptimizerConfig.getConfigFile().toPath(),
+                    new GsonBuilder().setPrettyPrinting().create().toJson(config), StandardCharsets.UTF_8);
+        } catch (IOException failure) {
+            context.getSource().sendFailure(Component.literal("Cannot save config: " + failure.getMessage()));
+            return 0;
+        }
+        CollisionOptimizerConfig.gridSize = size;
+        context.getSource().sendSuccess(() -> Component.literal(
+                "gridSize=" + size + " saved for next restart; current="
+                        + CollisionOptimizerConfig.STARTUP_GRID_SIZE), false);
         return 1;
     }
 }

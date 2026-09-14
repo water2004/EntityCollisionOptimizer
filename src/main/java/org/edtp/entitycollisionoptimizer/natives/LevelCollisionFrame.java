@@ -70,7 +70,7 @@ final class LevelCollisionFrame {
         bodies.clear();
         ids.clear();
         initialized = false;
-        FFMBackend.beginFrame(nativeContext, new double[0], new int[0], 0, CollisionOptimizerConfig.gridSize);
+        FFMBackend.beginFrame(nativeContext, new double[0], new int[0], 0, CollisionOptimizerConfig.STARTUP_GRID_SIZE);
         teamIds.clear();
         derivedTeams.clear();
         Arrays.fill(teams, null);

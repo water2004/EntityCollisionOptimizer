@@ -24,6 +24,7 @@ public final class CollisionOptimizerConfig {
 
     static { loadConfig(); }
     public static final boolean STARTUP_VANILLA_ORDER = vanillaOrder;
+    public static final int STARTUP_GRID_SIZE = gridSize;
 
     private CollisionOptimizerConfig() {
     }
