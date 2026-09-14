@@ -33,10 +33,18 @@ public final class CollisionFrame {
     }
 
     public static void attach(ServerLevel level) {
-        EntitySectionStorageLevelBinding storage = (EntitySectionStorageLevelBinding) (Object)
-                ((PersistentEntitySectionManagerAccessor) (Object)
-                        ((ServerLevelAccessor) level).eco$entityManager()).eco$sectionStorage();
-        storage.eco$setQueryLevel(level);
+        /* Get the private entity manager for the server level, implemented in ServerLevelAccessor.java */
+        ServerLevelAccessor levelAccess =
+                (ServerLevelAccessor) (Object) level;
+        var entityManager = levelAccess.eco$entityManager();
+
+        PersistentEntitySectionManagerAccessor managerAccess =
+                (PersistentEntitySectionManagerAccessor) (Object) entityManager;
+        var sectionStorage = managerAccess.eco$sectionStorage();
+
+        EntitySectionStorageLevelBinding storageBinding =
+                (EntitySectionStorageLevelBinding) (Object) sectionStorage;
+        storageBinding.eco$setQueryLevel(level);
     }
 
     public static void end(ServerLevel level) {
