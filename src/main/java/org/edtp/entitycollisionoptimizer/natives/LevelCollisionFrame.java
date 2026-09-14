@@ -93,7 +93,7 @@ final class LevelCollisionFrame {
         }
 
         int nativeId = ids.addEntity(entity);
-        if (!VanillaEntityCollision.usesScoreboardTeam(entity)) derivedTeams.add(entity);
+        if (!VanillaEntityCollision.usesVanillaGetTeam(entity)) derivedTeams.add(entity);
         BlockPos position = entity.blockPosition();
         int sectionX = SectionPos.blockToSectionCoord(position.getX());
         int sectionY = SectionPos.blockToSectionCoord(position.getY());
@@ -108,7 +108,7 @@ final class LevelCollisionFrame {
         ensureSemanticCapacity(nativeId + 1);
         selectableEntityRevisions[nativeId] = UNCACHED;
         teamRevisions[nativeId] = UNCACHED;
-        if (!VanillaEntityCollision.classNeverHardCollides(entity)) {
+        if (!VanillaEntityCollision.usesVanillaCanBeCollidedWith(entity)) {
             refreshNativeMetadata(nativeId, entity);
         }
     }
@@ -167,7 +167,7 @@ final class LevelCollisionFrame {
                 nativeContext,
                 scan.inflate(1.0E-7),
                 ids.getId(source),
-                VanillaEntityCollision.usesVanillaHardCollision(source),
+                VanillaEntityCollision.usesVanillaCanCollideWith(source),
                 ids.size()
         );
         int[] matches = new int[result.size()];
@@ -256,7 +256,7 @@ final class LevelCollisionFrame {
                 nativeContext,
                 scan.inflate(1.0E-7),
                 excludeId,
-                source == null || VanillaEntityCollision.usesVanillaHardCollision(source),
+                source == null || VanillaEntityCollision.usesVanillaCanCollideWith(source),
                 ids.size()
         );
         if (result.size() == 0) {
@@ -371,7 +371,7 @@ final class LevelCollisionFrame {
     }
 
     private PlayerTeam team(int nativeId, Entity entity) {
-        if (!VanillaEntityCollision.usesScoreboardTeam(entity)) return entity.getTeam();
+        if (!VanillaEntityCollision.usesVanillaGetTeam(entity)) return entity.getTeam();
         ensureSemanticCapacity(nativeId + 1);
         long teamRevision = CollisionCacheEpochs.teamRevision();
         if (teamRevisions[nativeId] != teamRevision) {
@@ -381,6 +381,7 @@ final class LevelCollisionFrame {
         return teams[nativeId];
     }
 
+    /* setblock() will increment the block revision, causing the selectable values to be invalidated. Team values the same */
     private void synchronizePushEligibilityRevisions() {
         long blockRevision = CollisionCacheEpochs.blockRevision();
         long teamRevision = CollisionCacheEpochs.teamRevision();
@@ -418,7 +419,7 @@ final class LevelCollisionFrame {
                 collisionRuleId(VanillaEntityCollision.collisionRule(targetTeam)),
                 bodies.slot(entity),
                 !entity.isRemoved() && !entity.isSpectator()
-                        && !VanillaEntityCollision.classNeverHardCollides(entity),
+                        && !VanillaEntityCollision.usesVanillaCanBeCollidedWith(entity),
                 CollisionOptimizerConfig.STARTUP_VANILLA_ORDER
                         ? ((CollisionOrderState) entity).eco$sectionOrder() : 0L
         );

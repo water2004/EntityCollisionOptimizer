@@ -13,21 +13,21 @@ import net.minecraft.world.phys.Vec3;
  * or predicate replacement.
  */
 public final class VanillaEntityCollision {
-    private static final ClassValue<Boolean> SCOREBOARD_TEAM = declaringClass("getTeam", Entity.class);
-    private static final ClassValue<Boolean> VANILLA_HARD_TARGET = declaringClass(
+    private static final ClassValue<Boolean> USE_VANILLA_GET_TEAM = declaringClass("getTeam", Entity.class);
+    private static final ClassValue<Boolean> USE_VANILLA_CAN_BE_COLLIDED_WITH = declaringClass(
             "canBeCollidedWith",
             Entity.class,
             Entity.class
     );
-    private static final ClassValue<Boolean> VANILLA_HARD_SOURCE = declaringClass(
+    private static final ClassValue<Boolean> USE_VANILLA_CAN_COLLIDE_WITH = declaringClass(
             "canCollideWith",
             Entity.class,
             Entity.class
     );
 
     /** Only Entity's scoreboard lookup is revision-cached; derived vanilla teams are read live. */
-    public static boolean usesScoreboardTeam(Entity entity) {
-        return SCOREBOARD_TEAM.get(entity.getClass());
+    public static boolean usesVanillaGetTeam(Entity entity) {
+        return USE_VANILLA_GET_TEAM.get(entity.getClass());
     }
 
     private static final ClassValue<Boolean> USE_VANILLA_DO_PUSH = new ClassValue<>() {
@@ -114,13 +114,13 @@ public final class VanillaEntityCollision {
     }
 
     /** Entity's default canBeCollidedWith is always false; boats/shulkers/etc. override it. */
-    public static boolean classNeverHardCollides(Entity entity) {
-        return VANILLA_HARD_TARGET.get(entity.getClass());
+    public static boolean usesVanillaCanBeCollidedWith(Entity entity) {
+        return USE_VANILLA_CAN_BE_COLLIDED_WITH.get(entity.getClass());
     }
 
     /** Entity.canCollideWith only keeps hard targets; boats also keep pushable entities. */
-    public static boolean usesVanillaHardCollision(Entity source) {
-        return VANILLA_HARD_SOURCE.get(source.getClass());
+    public static boolean usesVanillaCanCollideWith(Entity source) {
+        return USE_VANILLA_CAN_COLLIDE_WITH.get(source.getClass());
     }
 
     public static boolean usesVanillaDoPush(LivingEntity source) {
@@ -138,6 +138,7 @@ public final class VanillaEntityCollision {
                 && USE_VANILLA_VELOCITY_SETTER.get(type);
     }
 
+    /* Returns a ClassValue that checks if <methodName> is declared in the <expectedOwner> class. */
     private static ClassValue<Boolean> declaringClass(
             String methodName,
             Class<?> expectedOwner,
