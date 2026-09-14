@@ -48,7 +48,7 @@ public final class CollisionBenchmarkRunner {
         try {
             if (!run.chamber.ready()) return;
             if (run.tick == 0) run.logWindow("start");
-            MovementScanDiagnostics.beginTick(run.optimized, true);
+            MovementScanDiagnostics.beginTick(true);
             run.tickStartedAt = System.nanoTime();
             if (run.tick < run.durationTicks) run.chamber.tick(run.tick);
             else run.chamber.drain(run.drainTick);
@@ -92,7 +92,6 @@ public final class CollisionBenchmarkRunner {
     private static final class BenchmarkRun {
         private final GameTestHelper helper;
         private final BenchmarkScenario chamber;
-        private final boolean optimized;
         private final int durationTicks;
         private final List<Double> samples;
         private int tick;
@@ -106,24 +105,19 @@ public final class CollisionBenchmarkRunner {
             chamber = scenario;
             durationTicks = chamber.durationTicks();
             samples = new ArrayList<>(durationTicks);
-            String mode = System.getenv().getOrDefault("ECO_BENCHMARK_PROFILE", "optimized");
-            if (!mode.equalsIgnoreCase("optimized") && !mode.equalsIgnoreCase("baseline")) {
-                throw new IllegalArgumentException("ECO_BENCHMARK_PROFILE must be optimized or baseline");
-            }
-            optimized = mode.equalsIgnoreCase("optimized");
         }
 
         private void start() {
             MovementScanDiagnostics.start();
             chamber.start();
-            EntityCollisionOptimizer.LOGGER.info("ECO_BENCHMARK_START scenario={} ticks={} profile_mode={} {}",
-                    chamber.name(), durationTicks, optimized ? "optimized" : "baseline", chamber.description());
+            EntityCollisionOptimizer.LOGGER.info("ECO_BENCHMARK_START scenario={} ticks={} profile_mode=optimized {}",
+                    chamber.name(), durationTicks, chamber.description());
         }
 
         private void logWindow(String phase) {
             EntityCollisionOptimizer.LOGGER.info(
-                    "ECO_MEASUREMENT_WINDOW phase={} pid={} trial=0 optimized={} epoch_ms={}",
-                    phase, ProcessHandle.current().pid(), optimized, System.currentTimeMillis());
+                    "ECO_MEASUREMENT_WINDOW phase={} pid={} trial=0 optimized=true epoch_ms={}",
+                    phase, ProcessHandle.current().pid(), System.currentTimeMillis());
         }
 
         private void report() {
@@ -134,8 +128,8 @@ public final class CollisionBenchmarkRunner {
             double median = (sorted.get(sorted.size() / 2 - 1) + sorted.get(sorted.size() / 2)) / 2.0;
             double p95 = sorted.get((int) Math.ceil(sorted.size() * 0.95) - 1);
             EntityCollisionOptimizer.LOGGER.info(String.format(Locale.ROOT,
-                    "ECO_BENCHMARK_RESULT scenario=%s mode=%s ticks=%d mean_mspt=%.3f median_mspt=%.3f p95_mspt=%.3f %s",
-                    chamber.name(), optimized ? "optimized" : "baseline", tick, mean, median, p95, chamber.summary()));
+                    "ECO_BENCHMARK_RESULT scenario=%s mode=optimized ticks=%d mean_mspt=%.3f median_mspt=%.3f p95_mspt=%.3f %s",
+                    chamber.name(), tick, mean, median, p95, chamber.summary()));
         }
 
         private void fail(Throwable failure) {

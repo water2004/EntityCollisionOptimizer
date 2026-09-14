@@ -20,7 +20,6 @@ public final class MovementScanDiagnostics {
     private static final int SAMPLE_INTERVAL = 67;
     private static final ThreadLocal<Probe> CURRENT = new ThreadLocal<>();
     private static final Set<Entity> POPULATION = Collections.newSetFromMap(new IdentityHashMap<>());
-    private static Totals baseline = new Totals("baseline");
     private static Totals optimized = new Totals("optimized");
     private static volatile Totals active;
 
@@ -29,7 +28,6 @@ public final class MovementScanDiagnostics {
     static void start() {
         if (!ENABLED) return;
         active = null;
-        baseline = new Totals("baseline");
         optimized = new Totals("optimized");
         POPULATION.clear();
     }
@@ -40,12 +38,11 @@ public final class MovementScanDiagnostics {
         POPULATION.addAll(entities);
     }
 
-    static void beginTick(boolean optimizedMode, boolean measured) {
+    static void beginTick(boolean measured) {
         if (!ENABLED) return;
-        Totals totals = optimizedMode ? optimized : baseline;
-        totals.normal.unique.clear();
-        totals.step.unique.clear();
-        active = measured ? totals : null;
+        optimized.normal.unique.clear();
+        optimized.step.unique.clear();
+        active = measured ? optimized : null;
     }
 
     static void endTick() {
@@ -60,7 +57,6 @@ public final class MovementScanDiagnostics {
     static void finish() {
         if (!ENABLED) return;
         endTick();
-        baseline.report();
         optimized.report();
         POPULATION.clear();
     }
