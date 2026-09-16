@@ -107,7 +107,15 @@ final class NativeImpulseParity {
             }
             bodies.set(JAVA_INT, 3L * STRIDE_BYTES + SYNC_OFFSET, source.needsSync ? 1 : 0);
             bodies.set(JAVA_INT, (long) STRIDE_BYTES + SYNC_OFFSET, target.needsSync ? 1 : 0);
-            FFMBackend.executePushRun(context, bodies, 5, 3, new int[]{-1, 1, -1}, 1, 1);
+            FFMBackend.executePushRun(
+                    context,
+                    bodies.asSlice(3L * STRIDE_BYTES, STRIDE_BYTES),
+                    bodies,
+                    5,
+                    new int[]{-1, 1, -1},
+                    1,
+                    1
+            );
             // Decode the API result; integration tests separately exercise the canonical field publication.
             if (bodies.get(JAVA_LONG, 3L * STRIDE_BYTES + VERSION_OFFSET) != 0) source.setDeltaMovement(readVelocity(bodies, 3));
             if (bodies.get(JAVA_LONG, (long) STRIDE_BYTES + VERSION_OFFSET) != 0) target.setDeltaMovement(readVelocity(bodies, 1));

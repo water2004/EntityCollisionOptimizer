@@ -97,16 +97,17 @@ ECO_EXPORT int queryEntitiesInBox(
 // On a metadata miss only the header and returned IDs are valid. nativePushOutput has capacity ints.
 ECO_EXPORT int queryPushableEntities(
         void* context,
-        int sourceId,
+        const double* sourceBounds,
+        int excludedEntityId,
         int sourceTeamId,
         int sourceCollisionRule,
-        int sourceUsesVanillaPush,
+        int sourceUsesNativePush,
         int* output,
         int* nativePushOutput,
         int outputCapacity
 );
 
-ECO_EXPORT int executePushRun(void* bodies, int capacity, int sourceSlot,
+ECO_EXPORT int executePushRun(void* sourceBody, void* targetBodies, int targetCapacity,
                              const int* targetSlots, int count);
 
 ECO_EXPORT int solveMovement(const void* body, double* data, const void* shapes, int count, int phase);

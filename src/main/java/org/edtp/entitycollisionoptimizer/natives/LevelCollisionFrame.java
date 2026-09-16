@@ -78,6 +78,7 @@ final class LevelCollisionFrame {
 
     synchronized void close() {
         active = false;
+        for (PushBatch batch : batchPool) batch.destroy();
         batchPool.clear();
         bodies.close();
         nativeContext.close();
@@ -286,25 +287,27 @@ final class LevelCollisionFrame {
             Team.CollisionRule sourceRule,
             boolean sourceUsesVanillaPush
     ) {
-        addEntity(source);
         synchronizePushEligibilityRevisions();
         // Derived teams can change without any scoreboard mutation (taming, owner resolution).
         // This is a semantic dependency, not an entity/mod whitelist or a density-dependent path.
         for (Entity target : derivedTeams) refreshNativeMetadata(ids.getId(target), target);
 
         int sourceId = ids.getId(source);
-        refreshNativeMetadata(sourceId, source);
+        if (sourceId >= 0) bodies.slot(source);
         int sourceTeamId = teamId(sourceTeam);
         int sourceRuleId = collisionRuleId(sourceRule);
+        boolean sourceUsesNativePush = sourceUsesVanillaPush
+                && VanillaMethodDetector.usesVanillaVectorPush(source);
         FFMBackend.QueryResult result;
         int refreshPasses = 0;
         do {
             result = FFMBackend.queryPushable(
                     nativeContext,
+                    source.getBoundingBox().inflate(0.2, 0.0, 0.2),
                     sourceId,
                     sourceTeamId,
                     sourceRuleId,
-                    sourceUsesVanillaPush,
+                    sourceUsesNativePush,
                     ids.size()
             );
             if (!result.metadataRequired()) {

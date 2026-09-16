@@ -19,7 +19,6 @@ import net.minecraft.world.entity.monster.cubemob.SulfurCube;
 import net.minecraft.world.entity.monster.warden.Warden;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.phys.Vec3;
-import org.edtp.entitycollisionoptimizer.gametest.mixin.LivingEntityTestInvoker;
 import org.edtp.entitycollisionoptimizer.natives.CollisionFrame;
 
 import java.util.List;
@@ -163,10 +162,14 @@ final class CollisionDispatchParity {
             zeroVelocities(List.of(vanillaSource, vanillaTarget, acceleratedSource, acceleratedTarget));
 
             CollisionFrame.end(level);
-            VanillaReference.pushEntities(vanillaSource);
+            if (VanillaReference.overridesPushEntities(vanillaSource)) {
+                VanillaReference.dispatchPushEntities(vanillaSource);
+            } else {
+                VanillaReference.pushEntities(vanillaSource);
+            }
 
             CollisionFrame.begin(level);
-            ((LivingEntityTestInvoker) acceleratedSource).entityCollisionOptimizer$invokePushEntities();
+            VanillaReference.dispatchPushEntities(acceleratedSource);
 
             assertEntityOutcomeMatches(helper, vanillaSource, acceleratedSource, "source: " + scenario);
             assertEntityOutcomeMatches(helper, vanillaTarget, acceleratedTarget, "target: " + scenario);

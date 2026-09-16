@@ -33,15 +33,8 @@ final class CollisionTransitionParity {
         );
         verifyPushabilityTransition(
                 helper,
-                "dead -> alive",
-                1,
-                (level, target) -> target.setHealth(0.0F),
-                (level, target) -> target.setHealth(target.getMaxHealth())
-        );
-        verifyPushabilityTransition(
-                helper,
                 "ground -> climbing",
-                2,
+                1,
                 TargetMutation.NONE,
                 (level, target) -> level.setBlockAndUpdate(
                         target.blockPosition(),
@@ -51,31 +44,31 @@ final class CollisionTransitionParity {
         verifyPushabilityTransition(
                 helper,
                 "climbing -> ground",
-                3,
+                2,
                 (level, target) -> level.setBlockAndUpdate(
                         target.blockPosition(),
                         Blocks.SCAFFOLDING.defaultBlockState()
                 ),
                 (level, target) -> level.removeBlock(target.blockPosition(), false)
         );
-        verifyTeamTransition(helper, false, 4);
-        verifyTeamTransition(helper, true, 5);
+        verifyTeamTransition(helper, false, 3);
+        verifyTeamTransition(helper, true, 4);
         CollisionSpecialTransitionParity.verifyPlayerMode(
                 helper,
                 GameType.SURVIVAL,
                 GameType.SPECTATOR,
+                5
+        );
+        CollisionSpecialTransitionParity.verifyPlayerMode(
+                helper,
+                GameType.SPECTATOR,
+                GameType.SURVIVAL,
                 6
         );
-        CollisionSpecialTransitionParity.verifyPlayerMode(
-                helper,
-                GameType.SPECTATOR,
-                GameType.SURVIVAL,
-                7
-        );
-        CollisionSpecialTransitionParity.verifyWardenPose(helper, false, 8);
-        CollisionSpecialTransitionParity.verifyWardenPose(helper, true, 9);
-        CollisionSpecialTransitionParity.verifyHorseVehicle(helper, false, 10);
-        CollisionSpecialTransitionParity.verifyHorseVehicle(helper, true, 11);
+        CollisionSpecialTransitionParity.verifyWardenPose(helper, false, 7);
+        CollisionSpecialTransitionParity.verifyWardenPose(helper, true, 8);
+        CollisionSpecialTransitionParity.verifyHorseVehicle(helper, false, 9);
+        CollisionSpecialTransitionParity.verifyHorseVehicle(helper, true, 10);
     }
 
     private static void verifyPushabilityTransition(

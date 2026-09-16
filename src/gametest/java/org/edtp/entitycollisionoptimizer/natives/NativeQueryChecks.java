@@ -39,7 +39,8 @@ public final class NativeQueryChecks {
                 IndexUpdateFixture.update(context, 0, new AABB(0, 0, 0, 0, 0, 0), 0, 0, 0,
                         source.selectable, source.passenger, source.entityPush, source.vectorPush,
                         source.team, source.rule, 900, false, source.order);
-                var empty = FFMBackend.queryPushable(context, 0, -1, 0, true, count);
+                var empty = FFMBackend.queryPushable(
+                        context, new AABB(0, 0, 0, 0, 0, 0), 0, -1, 0, true, count);
                 helper.assertTrue(empty.size() == 0 && empty.pushableCount() == 0
                         && empty.nonPassengerCount() == 0 && !empty.metadataRequired(), "empty source result");
                 empty.copyBodiesTo(new int[0], new int[0]);
@@ -84,10 +85,13 @@ public final class NativeQueryChecks {
 
     private static void compare(GameTestHelper helper, FFMBackend.Context context, Body[] bodies,
                                 int rule, boolean sourceNative, int capacityHint, int phase) {
-        var result = FFMBackend.queryPushable(context, 0, bodies[0].team, rule, sourceNative, capacityHint);
+        boolean nativeSource = sourceNative && bodies[0].vectorPush;
+        var result = FFMBackend.queryPushable(
+                context, bodies[0].box, 0, bodies[0].team, rule, nativeSource, capacityHint);
         if (result.metadataRequired()) {
             for (int i = 0; i < result.size(); i++) metadata(context, result.get(i), bodies[result.get(i)]);
-            result = FFMBackend.queryPushable(context, 0, bodies[0].team, rule, sourceNative, capacityHint);
+            result = FFMBackend.queryPushable(
+                    context, bodies[0].box, 0, bodies[0].team, rule, nativeSource, capacityHint);
         }
         helper.assertTrue(!result.metadataRequired(), "query metadata converged");
         Body source = bodies[0];

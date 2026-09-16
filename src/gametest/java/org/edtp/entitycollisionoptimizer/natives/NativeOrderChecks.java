@@ -49,7 +49,8 @@ public final class NativeOrderChecks {
 
     private static void compare(GameTestHelper helper, FFMBackend.Context context, Body[] bodies, int source, String label) {
         metadata(context, source, bodies[source]);
-        FFMBackend.QueryResult result = FFMBackend.queryPushable(context, source, -1, 0, true, bodies.length);
+        FFMBackend.QueryResult result = FFMBackend.queryPushable(
+                context, bodies[source].box, source, -1, 0, true, bodies.length);
         if (result.metadataRequired()) {
             var unique = new HashSet<Integer>();
             for (int i = 0; i < result.size(); i++) {
@@ -57,7 +58,8 @@ public final class NativeOrderChecks {
                 helper.assertTrue(unique.add(id), "duplicate metadata miss " + label);
                 metadata(context, id, bodies[id]);
             }
-            result = FFMBackend.queryPushable(context, source, -1, 0, true, bodies.length);
+            result = FFMBackend.queryPushable(
+                    context, bodies[source].box, source, -1, 0, true, bodies.length);
         }
         helper.assertTrue(!result.metadataRequired(), "metadata converged " + label);
         List<Integer> expected = new ArrayList<>();

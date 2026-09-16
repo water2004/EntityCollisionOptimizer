@@ -27,20 +27,26 @@ bool acceptsImpulse(const eco::CollisionBody& body) noexcept {
 
 } // namespace
 
-int executePushRun(void* bodyPointer, int capacity, int sourceSlot, const int* targetSlots, int count) {
-    if (bodyPointer == nullptr || targetSlots == nullptr || count < 0
-            || sourceSlot < 0 || sourceSlot >= capacity) return -1;
+int executePushRun(
+        void* sourcePointer,
+        void* targetPointer,
+        int targetCapacity,
+        const int* targetSlots,
+        int count
+) {
+    if (sourcePointer == nullptr || targetPointer == nullptr || targetSlots == nullptr
+            || count < 0 || targetCapacity < 0) return -1;
     // Validate the whole request before modifying persistent state. Query deduplication supplies
     // unique targets; their original order, including source accumulation, remains unchanged.
     for (int i = 0; i < count; ++i) {
-        if (targetSlots[i] < 0 || targetSlots[i] >= capacity || targetSlots[i] == sourceSlot) return -1;
+        if (targetSlots[i] < 0 || targetSlots[i] >= targetCapacity) return -1;
     }
-    auto* bodies = static_cast<eco::CollisionBody*>(bodyPointer);
-    auto& source = bodies[sourceSlot];
+    auto& source = *static_cast<eco::CollisionBody*>(sourcePointer);
+    auto* targets = static_cast<eco::CollisionBody*>(targetPointer);
     const bool pushSource = acceptsImpulse(source);
     if (source.state & eco::NO_PHYSICS) return 0;
     for (int i = 0; i < count; ++i) {
-        auto& target = bodies[targetSlots[i]];
+        auto& target = targets[targetSlots[i]];
         if (target.state & (eco::NO_PHYSICS | eco::SLEEPING)) continue;
         if (((source.state | target.state) & eco::PASSENGER) && source.root == target.root) continue;
         const bool pushTarget = acceptsImpulse(target);

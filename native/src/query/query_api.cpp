@@ -44,6 +44,26 @@ bool visitOrderedSections(const eco::LookupSections& sections, Visitor&& visitor
 }
 #endif
 
+template<class Visitor>
+bool visitSourceCells(const eco::Aabb& source, int gridSize, Visitor&& visitor) {
+    if (!eco::isIndexable(source)) return true;
+    const double negativeInfinity = -std::numeric_limits<double>::infinity();
+    const std::int64_t minX = eco::cellCoordinate(source.minX, gridSize);
+    const std::int64_t maxX = eco::cellCoordinate(std::nextafter(source.maxX, negativeInfinity), gridSize);
+    const std::int64_t minY = eco::cellCoordinate(source.minY, gridSize);
+    const std::int64_t maxY = eco::cellCoordinate(std::nextafter(source.maxY, negativeInfinity), gridSize);
+    const std::int64_t minZ = eco::cellCoordinate(source.minZ, gridSize);
+    const std::int64_t maxZ = eco::cellCoordinate(std::nextafter(source.maxZ, negativeInfinity), gridSize);
+    for (std::int64_t x = minX; x <= maxX; ++x) {
+        for (std::int64_t z = minZ; z <= maxZ; ++z) {
+            for (std::int64_t y = minY; y <= maxY; ++y) {
+                if (!visitor(eco::Cell{x, y, z})) return false;
+            }
+        }
+    }
+    return true;
+}
+
 } // namespace
 
 int queryCollisionEntities(void* contextPointer, int sourceId, int* output, int outputCapacity) {
@@ -257,15 +277,16 @@ int queryEntitiesInBox(
 
 int queryPushableEntities(
         void* contextPointer,
-        int sourceId,
+        const double* sourceBounds,
+        int excludedEntityId,
         int sourceTeamId,
         int sourceCollisionRule,
-        int sourceUsesVanillaPush,
+        int sourceUsesNativePush,
         int* output,
         int* nativePushOutput,
         int outputCapacity
 ) {
-    if (contextPointer == nullptr || sourceId < 0 || output == nullptr
+    if (contextPointer == nullptr || sourceBounds == nullptr || excludedEntityId < -1 || output == nullptr
             || nativePushOutput == nullptr || outputCapacity < 0
             || sourceCollisionRule < eco::COLLISION_ALWAYS
             || sourceCollisionRule > eco::COLLISION_PUSH_OTHER_TEAMS) {
@@ -273,26 +294,28 @@ int queryPushableEntities(
     }
     try {
         auto& context = *static_cast<eco::CollisionContext*>(contextPointer);
-        if (static_cast<std::size_t>(sourceId) >= context.boxes.size()) {
+        if (excludedEntityId >= 0
+                && static_cast<std::size_t>(excludedEntityId) >= context.boxes.size()) {
             return -1;
         }
 
-        // Snapshot source-only inputs: candidate iteration mutates scratch state, not this query.
-        // Empty/non-indexable sources have no candidates; do not convert NaN/Inf bounds to integers.
-        if (context.memberships[sourceId].empty()) {
+        const eco::Aabb source = eco::makeAabb(
+                sourceBounds[0], sourceBounds[1], sourceBounds[2],
+                sourceBounds[3], sourceBounds[4], sourceBounds[5]
+        );
+        if (!eco::isIndexable(source)) {
             output[0] = output[1] = output[2] = 0;
             return 0;
         }
-        const eco::Aabb source = context.boxes[sourceId];
         const eco::LookupSections lookup(source);
         const eco::TeamFilter teamFilter(sourceTeamId, sourceCollisionRule);
-        const bool nativeSource = sourceUsesVanillaPush != 0 && context.metadata[sourceId].vanillaVectorPush;
+        const bool nativeSource = sourceUsesNativePush != 0;
         int* const bodySlots = output + 3 + outputCapacity;
         context.metadataMisses.clear();
         int nonPassengerCount = 0;
         int actionableCount = 0;
         auto consume = [&](int candidateId) -> int {
-            if (candidateId == sourceId) return 0;
+            if (candidateId == excludedEntityId) return 0;
             const eco::EntityMetadata& target = context.metadata[candidateId];
 #if !ECO_VANILLA_ORDER
             if (!eco::intersects(source, context.boxes[candidateId])
@@ -345,8 +368,10 @@ int queryPushableEntities(
         })) return -3;
 
         eco::beginQuery(context);
-        for (const eco::CellSlot& slot : context.memberSlots[sourceId]) {
-            const eco::CellMembers& members = *slot.members;
+        if (!visitSourceCells(source, context.gridSize, [&](const eco::Cell& cell) {
+            const eco::CellMembers* memberPointer = context.cells.find(cell);
+            if (memberPointer == nullptr) return true;
+            const eco::CellMembers& members = *memberPointer;
             const auto selectCandidate = [&](int id) {
                 if (!lookup.contains(context.metadata[id])) return;
                 const eco::CellSlot sectionSlot = context.sectionSlots[id];
@@ -363,7 +388,7 @@ int queryPushableEntities(
                 unsigned active = 0;
                 for (unsigned lane = 0; lane < 4; ++lane) {
                     const int id = members.ids[index + lane];
-                    if (id == sourceId || context.queryMarks[id] == context.queryGeneration) continue;
+                    if (id == excludedEntityId || context.queryMarks[id] == context.queryGeneration) continue;
                     context.queryMarks[id] = context.queryGeneration;
                     active |= 1U << lane;
                 }
@@ -376,7 +401,7 @@ int queryPushableEntities(
             }
             for (; index < members.queryableCount; ++index) {
                 const int id = members.ids[index];
-                if (id == sourceId || context.queryMarks[id] == context.queryGeneration) continue;
+                if (id == excludedEntityId || context.queryMarks[id] == context.queryGeneration) continue;
                 context.queryMarks[id] = context.queryGeneration;
                 if (source.minX >= members.bounds.maxX[index]
                         || source.maxX <= members.bounds.minX[index]
@@ -388,7 +413,8 @@ int queryPushableEntities(
                 }
                 selectCandidate(id);
             }
-        }
+            return true;
+        })) return -3;
 
         for (std::size_t sectionIndex = 0; sectionIndex < context.orderedSectionCount; ++sectionIndex) {
             const auto& scratch = context.orderedSections[sectionIndex];
@@ -404,8 +430,21 @@ int queryPushableEntities(
             }
         }
 #else
-        int status = eco::visitIntersectingCandidates(context, sourceId, consume);
-        if (status != 0) return status;
+        eco::beginQuery(context);
+        int status = 0;
+        if (!visitSourceCells(source, context.gridSize, [&](const eco::Cell& cell) {
+            const eco::CellMembers* members = context.cells.find(cell);
+            if (members == nullptr) return true;
+            for (std::size_t index = 0; index < members->queryableCount; ++index) {
+                const int id = members->ids[index];
+                if (id == excludedEntityId || context.queryMarks[id] == context.queryGeneration) continue;
+                context.queryMarks[id] = context.queryGeneration;
+                if (!eco::intersects(source, context.boxes[id])) continue;
+                status = consume(id);
+                if (status != 0) return false;
+            }
+            return true;
+        })) return status == 0 ? -3 : status;
 #endif
         if (!context.metadataMisses.empty()) {
             std::copy(

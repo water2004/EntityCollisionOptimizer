@@ -3,6 +3,7 @@ package org.edtp.entitycollisionoptimizer.natives;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.phys.Vec3;
 import org.edtp.entitycollisionoptimizer.collision.CollisionBodyAccess;
+import org.edtp.entitycollisionoptimizer.collision.CollisionCacheState;
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
@@ -19,6 +20,7 @@ import static java.lang.foreign.ValueLayout.JAVA_LONG;
 public final class CollisionStateTable implements AutoCloseable {
     public static final int STRIDE_BYTES = 80, VERSION_OFFSET = 40, STATE_OFFSET = 48,
             ROOT_OFFSET = 52, SYNC_OFFSET = 56, Y_OFFSET = 64, POSITION_VERSION_OFFSET = 72;
+    private static final int VELOCITY_OFFSET = 2 * Double.BYTES;
     private final IdentityHashMap<Entity, Integer> slots = new IdentityHashMap<>();
     private final ArrayDeque<Integer> free = new ArrayDeque<>();
     private Entity[] entities = new Entity[0];
@@ -156,6 +158,53 @@ public final class CollisionStateTable implements AutoCloseable {
     int size() { return size; }
     public void invalidatePushState(int slot) { pushStates.invalidate(slot); }
     void refreshPushStates() { pushStates.refresh(); }
+
+    /** Returns a persistent source row when its lifetime is covered by the current batch lease. */
+    int sourceSlot(Entity entity) {
+        refreshPushStates();
+        Integer slot = slots.get(entity);
+        return slot != null && bound[slot] ? slot : -1;
+    }
+
+    /** Materializes a source that was already removed before the batch began. */
+    void snapshotDetachedSource(Entity entity, MemorySegment destination) {
+        if (!destination.isNative() || destination.isReadOnly()
+                || destination.byteSize() < STRIDE_BYTES) {
+            throw new IllegalArgumentException("Invalid source collision row");
+        }
+        destination.fill((byte) 0);
+        CollisionBodyAccess access = (CollisionBodyAccess) entity;
+        Vec3 position = access.eco$readPosition();
+        Vec3 velocity = access.eco$readVelocity();
+        destination.set(JAVA_DOUBLE, 0, position.x);
+        destination.set(JAVA_DOUBLE, Double.BYTES, position.z);
+        destination.set(JAVA_DOUBLE, VELOCITY_OFFSET, velocity.x);
+        destination.set(JAVA_DOUBLE, VELOCITY_OFFSET + Double.BYTES, velocity.y);
+        destination.set(JAVA_DOUBLE, VELOCITY_OFFSET + 2L * Double.BYTES, velocity.z);
+        int state = ((CollisionCacheState) entity).entityCollisionOptimizer$pushState()
+                | (entity.noPhysics ? CollisionCacheState.NO_PHYSICS : 0);
+        destination.set(JAVA_INT, STATE_OFFSET, state);
+        Entity root = entity.getRootVehicle();
+        Integer rootSlot = slots.get(root);
+        destination.set(JAVA_INT, ROOT_OFFSET,
+                rootSlot != null && bound[rootSlot] ? rootSlot : -1);
+        destination.set(JAVA_INT, SYNC_OFFSET, access.eco$readNeedsSync() ? 1 : 0);
+        destination.set(JAVA_DOUBLE, Y_OFFSET, position.y);
+    }
+
+    /** Publishes fields mutated on the detached source's batch-local row. */
+    void publishDetachedSource(Entity entity, MemorySegment source) {
+        CollisionBodyAccess access = (CollisionBodyAccess) entity;
+        if (source.get(JAVA_LONG, VERSION_OFFSET) != 0) {
+            access.eco$writeVelocity(new Vec3(
+                    source.get(JAVA_DOUBLE, VELOCITY_OFFSET),
+                    source.get(JAVA_DOUBLE, VELOCITY_OFFSET + Double.BYTES),
+                    source.get(JAVA_DOUBLE, VELOCITY_OFFSET + 2L * Double.BYTES)
+            ));
+        }
+        boolean needsSync = source.get(JAVA_INT, SYNC_OFFSET) != 0;
+        if (access.eco$readNeedsSync() != needsSync) access.eco$writeNeedsSync(needsSync);
+    }
 
     /** Materialize at most once between writes, on demand, never once per collision pair. */
     public Vec3 velocity(int slot) {

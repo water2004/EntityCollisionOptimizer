@@ -3,9 +3,14 @@ package org.edtp.entitycollisionoptimizer.gametest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.monster.zombie.Zombie;
+import net.minecraft.world.entity.EntitySelector;
 import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.scores.PlayerTeam;
+import net.minecraft.world.scores.Team;
+import org.edtp.entitycollisionoptimizer.collision.VanillaMethodDetector;
 import org.edtp.entitycollisionoptimizer.gametest.mixin.LivingEntityTestInvoker;
 import org.edtp.entitycollisionoptimizer.natives.CollisionFrame;
+import org.edtp.entitycollisionoptimizer.natives.PushBatch;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -38,11 +43,6 @@ final class CollisionRepeatedFrameParity {
                     accelerated.get(index).setPos(helper.absoluteVec(
                             new Vec3(30.5, 1.0, 25.0).add(offset)
                     ));
-                    float health = frame == 1 && index == vanilla.size() - 1
-                            ? 0.0F
-                            : vanilla.get(index).getMaxHealth();
-                    vanilla.get(index).setHealth(health);
-                    accelerated.get(index).setHealth(health);
                 }
                 zeroVelocities(vanilla);
                 zeroVelocities(accelerated);
@@ -63,6 +63,7 @@ final class CollisionRepeatedFrameParity {
                             "repeated frame " + frame + " candidates"
                     );
                 }
+                assertPushOrderMatches(helper, vanilla, accelerated, frame);
                 for (Zombie source : accelerated) {
                     if (source.isAlive()) {
                         ((LivingEntityTestInvoker) source).entityCollisionOptimizer$invokePushEntities();
@@ -86,6 +87,50 @@ final class CollisionRepeatedFrameParity {
                 entity.discard();
             }
             CollisionFrame.end(level);
+        }
+    }
+
+    private static void assertPushOrderMatches(
+            GameTestHelper helper,
+            List<Zombie> vanilla,
+            List<Zombie> accelerated,
+            int frame
+    ) {
+        for (int sourceIndex = 0; sourceIndex < vanilla.size(); sourceIndex++) {
+            Zombie vanillaSource = vanilla.get(sourceIndex);
+            Zombie acceleratedSource = accelerated.get(sourceIndex);
+            List<Integer> expected = vanillaSource.level().getEntities(
+                    vanillaSource,
+                    vanillaSource.getBoundingBox().inflate(0.2, 0.0, 0.2),
+                    EntitySelector.pushableBy(vanillaSource)
+            ).stream().map(vanilla::indexOf).toList();
+            List<Integer> acceleratedVanilla = acceleratedSource.level().getEntities(
+                    acceleratedSource,
+                    acceleratedSource.getBoundingBox().inflate(0.2, 0.0, 0.2),
+                    EntitySelector.pushableBy(acceleratedSource)
+            ).stream().map(accelerated::indexOf).toList();
+            helper.assertValueEqual(
+                    acceleratedVanilla,
+                    expected,
+                    "repeated frame " + frame + " source " + sourceIndex + " vanilla state"
+            );
+            PlayerTeam team = acceleratedSource.getTeam();
+            List<Integer> actual = new ArrayList<>();
+            try (PushBatch batch = CollisionFrame.collectPushable(
+                    acceleratedSource,
+                    team,
+                    team == null ? Team.CollisionRule.ALWAYS : team.getCollisionRule(),
+                    VanillaMethodDetector.usesVanillaDoPush(acceleratedSource)
+            )) {
+                for (int index = 0; index < batch.size(); index++) {
+                    actual.add(accelerated.indexOf(batch.target(index)));
+                }
+            }
+            helper.assertValueEqual(
+                    actual,
+                    expected,
+                    "repeated frame " + frame + " source " + sourceIndex + " push order"
+            );
         }
     }
 

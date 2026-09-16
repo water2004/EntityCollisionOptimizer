@@ -262,7 +262,10 @@ public final class FFMBackend {
     private static MemorySegment prepareEntityBounds(Context context, int id, AABB box) {
         context.ensureOpen();
         context.ensureOutputCapacity(id + 1);
-        MemorySegment bounds = context.boundsBuffer;
+        return prepareBounds(context.boundsBuffer, box);
+    }
+
+    private static MemorySegment prepareBounds(MemorySegment bounds, AABB box) {
         bounds.set(JAVA_DOUBLE, 0, box.minX);
         bounds.set(JAVA_DOUBLE, 8, box.minY);
         bounds.set(JAVA_DOUBLE, 16, box.minZ);
@@ -459,22 +462,25 @@ public final class FFMBackend {
 
     public static QueryResult queryPushable(
             Context nativeContext,
-            int sourceId,
+            AABB sourceBounds,
+            int excludedEntityId,
             int sourceTeamId,
             int sourceCollisionRule,
-            boolean sourceUsesVanillaPush,
+            boolean sourceUsesNativePush,
             int entityCount
     ) {
         synchronized (nativeContext) {
             nativeContext.ensureOpen();
             nativeContext.ensureOutputCapacity(entityCount);
+            MemorySegment bounds = prepareBounds(nativeContext.boundsBuffer, sourceBounds);
             try {
                 int resultSize = (int) queryPushable.invokeExact(
                         nativeContext.address,
-                        sourceId,
+                        bounds,
+                        excludedEntityId,
                         sourceTeamId,
                         sourceCollisionRule,
-                        sourceUsesVanillaPush ? 1 : 0,
+                        sourceUsesNativePush ? 1 : 0,
                         nativeContext.outputBuffer,
                         nativeContext.nativePushBuffer,
                         nativeContext.outputCapacity
@@ -502,10 +508,14 @@ public final class FFMBackend {
     }
 
     /** Native owns velocity/version/sync and consumes shared guards. Only target IDs are submitted. */
-    public static void executePushRun(Context context, MemorySegment bodies, int capacity, int sourceSlot,
+    public static void executePushRun(Context context, MemorySegment sourceBody,
+                                      MemorySegment targetBodies, int targetCapacity,
                                       int[] targetSlots, int from, int count) {
-        if (!bodies.isNative() || bodies.isReadOnly() || bodies.byteSize() < (long) capacity * CollisionStateTable.STRIDE_BYTES
-                || sourceSlot < 0 || sourceSlot >= capacity || from < 0 || count < 0
+        if (!sourceBody.isNative() || sourceBody.isReadOnly()
+                || sourceBody.byteSize() < CollisionStateTable.STRIDE_BYTES
+                || !targetBodies.isNative() || targetBodies.isReadOnly()
+                || targetBodies.byteSize() < (long) targetCapacity * CollisionStateTable.STRIDE_BYTES
+                || from < 0 || count < 0
                 || from > targetSlots.length - count) {
             throw new IllegalArgumentException("Invalid native push run size " + count);
         }
@@ -515,7 +525,7 @@ public final class FFMBackend {
             context.ensureOutputCapacity(count);
             MemorySegment.copy(targetSlots, from, context.runIdBuffer, JAVA_INT, 0, count);
             try {
-                int status = (int) executeRun.invokeExact(bodies, capacity, sourceSlot,
+                int status = (int) executeRun.invokeExact(sourceBody, targetBodies, targetCapacity,
                         context.runIdBuffer, count);
                 checkStatus("execute native push run", status);
             } catch (Throwable failure) {
@@ -716,6 +726,7 @@ public final class FFMBackend {
                 FunctionDescriptor.of(
                         JAVA_INT,
                         ADDRESS,
+                        ADDRESS,
                         JAVA_INT,
                         JAVA_INT,
                         JAVA_INT,
@@ -727,7 +738,7 @@ public final class FFMBackend {
         );
         executeRun = linker.downcallHandle(
                 library.find("executePushRun").orElseThrow(() -> missingSymbol("executePushRun")),
-                FunctionDescriptor.of(JAVA_INT, ADDRESS, JAVA_INT, JAVA_INT, ADDRESS, JAVA_INT)
+                FunctionDescriptor.of(JAVA_INT, ADDRESS, ADDRESS, JAVA_INT, ADDRESS, JAVA_INT)
         );
         movement = linker.downcallHandle(
                 library.find("solveMovement").orElseThrow(() -> missingSymbol("solveMovement")),

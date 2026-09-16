@@ -3,6 +3,8 @@ package org.edtp.entitycollisionoptimizer.natives;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 
+import java.lang.foreign.Arena;
+import java.lang.foreign.MemorySegment;
 import java.util.function.Consumer;
 
 
@@ -11,6 +13,11 @@ public final class PushBatch implements AutoCloseable {
     private final FFMBackend.Context context;
     private final CollisionStateTable bodies;
     private final Consumer<PushBatch> recycler;
+    private final Arena sourceArena = Arena.ofShared();
+    private final MemorySegment detachedSourceBody = sourceArena.allocate(
+            CollisionStateTable.STRIDE_BYTES,
+            Double.BYTES
+    );
     private int[] bodySlots = new int[0];
     private int[] nativeFlags = new int[0];
     private int size;
@@ -48,10 +55,17 @@ public final class PushBatch implements AutoCloseable {
     public void applyNativeRun(LivingEntity source, int from, int to) {
         if (from < 0 || to < from || to > size) throw new IndexOutOfBoundsException("Invalid push run range");
         if (from == to) return;
-        int sourceSlot = bodies.slot(source);
-        bodies.refreshPushStates();
-        FFMBackend.executePushRun(context, bodies.memory(), bodies.capacity(), sourceSlot,
+        int sourceSlot = bodies.sourceSlot(source);
+        MemorySegment sourceBody;
+        if (sourceSlot >= 0) {
+            sourceBody = bodies.row(sourceSlot);
+        } else {
+            bodies.snapshotDetachedSource(source, detachedSourceBody);
+            sourceBody = detachedSourceBody;
+        }
+        FFMBackend.executePushRun(context, sourceBody, bodies.memory(), bodies.capacity(),
                 bodySlots, from, to - from);
+        if (sourceSlot < 0) bodies.publishDetachedSource(source, sourceBody);
     }
 
     @Override
@@ -62,5 +76,10 @@ public final class PushBatch implements AutoCloseable {
             borrowed = false;
             recycler.accept(this);
         }
+    }
+
+    void destroy() {
+        if (borrowed) throw new IllegalStateException("Destroying a borrowed push batch");
+        sourceArena.close();
     }
 }
