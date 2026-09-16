@@ -1,38 +1,26 @@
 #pragma once
 
-#ifndef ECO_VANILLA_ORDER
-#define ECO_VANILLA_ORDER 1
-#endif
-
 #include "eco/export.h"
 #include <cstdint>
 
 extern "C" {
 ECO_EXPORT int putCollisionEntity(
-        void* context, int id, const double* bounds, int x, int y, int z
-#if ECO_VANILLA_ORDER
-        ,
+        void* context, int id, const double* bounds, int x, int y, int z,
         std::int64_t sectionOrder
-#endif
 );
 ECO_EXPORT int removeCollisionEntity(void* context, int id);
 ECO_EXPORT int updateCollisionLocation(
-        void* context, int id, int x, int y, int z
-#if ECO_VANILLA_ORDER
-        , std::int64_t sectionOrder
-#endif
+        void* context, int id, int x, int y, int z, std::int64_t sectionOrder
 );
 ECO_EXPORT int scanCollisionBlocks(const std::uint16_t* const* rows, int* query, int* output, int capacity);
 
 ECO_EXPORT void* createCollisionContext();
 ECO_EXPORT void destroyCollisionContext(void* context);
-ECO_EXPORT int setCollisionGridSize(void* context, int gridSize);
 ECO_EXPORT int beginCollisionFrame(
         void* context,
         const double* aabbs,
         const int* sections,
-        int entityCount,
-        int gridSize
+        int entityCount
 );
 ECO_EXPORT int addCollisionEntity(
         void* context,
@@ -59,10 +47,8 @@ ECO_EXPORT int updateCollisionEntity(
         int teamId,
         int collisionRule,
         int bodySlot,
-        int hardCollidable
-#if ECO_VANILLA_ORDER
-        , std::int64_t sectionOrder
-#endif
+        int hardCollidable,
+        std::int64_t sectionOrder
 );
 ECO_EXPORT int invalidateEntityPushabilityCache(void* context, int entityId);
 ECO_EXPORT int invalidatePushEligibilityFields(void* context, int fieldsToInvalidate);
@@ -80,8 +66,7 @@ ECO_EXPORT int queryHardCollisionEntities(
         int* output,
         int outputCapacity
 );
-// Whole-level box scan for EntitySectionStorage.getEntities. The ordered build
-// preserves section and insertion order; the unordered build omits that cost.
+// Whole-level box scan for EntitySectionStorage.getEntities in vanilla order.
 ECO_EXPORT int queryEntitiesInBox(
         void* context,
         double minX,

@@ -13,7 +13,6 @@ import net.minecraft.world.level.entity.Visibility;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import org.edtp.entitycollisionoptimizer.EntityCollisionOptimizer;
-import org.edtp.entitycollisionoptimizer.config.CollisionOptimizerConfig;
 import org.edtp.entitycollisionoptimizer.natives.CollisionFrame;
 
 import java.util.ArrayList;
@@ -106,9 +105,7 @@ final class EntityQueryParity {
     private static void assertTraversal(
             GameTestHelper helper, List<? extends Entity> actual, List<? extends Entity> expected, String label
     ) {
-        boolean matches = CollisionOptimizerConfig.STARTUP_VANILLA_ORDER
-                ? actual.equals(expected)
-                : actual.size() == expected.size() && identitySet(actual).equals(identitySet(expected));
+        boolean matches = actual.equals(expected);
         helper.assertTrue(matches, label + ": expected=" + ids(expected) + ", actual=" + ids(actual));
     }
 
@@ -117,9 +114,7 @@ final class EntityQueryParity {
     ) {
         int expectedSize = Math.min(2, complete.size());
         boolean matches = actual.size() == expectedSize && identitySet(complete).containsAll(actual);
-        if (CollisionOptimizerConfig.STARTUP_VANILLA_ORDER) {
-            matches &= actual.equals(complete.subList(0, expectedSize));
-        }
+        matches &= actual.equals(complete.subList(0, expectedSize));
         helper.assertTrue(matches, "abort traversal: complete=" + ids(complete) + ", actual=" + ids(actual));
     }
 

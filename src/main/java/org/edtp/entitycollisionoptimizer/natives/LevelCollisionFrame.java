@@ -4,7 +4,6 @@ import org.edtp.entitycollisionoptimizer.collision.CollisionCacheEpochs;
 import org.edtp.entitycollisionoptimizer.collision.CollisionCacheState;
 import org.edtp.entitycollisionoptimizer.collision.CollisionOrderState;
 import org.edtp.entitycollisionoptimizer.collision.VanillaMethodDetector;
-import org.edtp.entitycollisionoptimizer.config.CollisionOptimizerConfig;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
 import net.minecraft.server.level.ServerLevel;
@@ -70,7 +69,7 @@ final class LevelCollisionFrame {
         bodies.clear();
         ids.clear();
         initialized = false;
-        FFMBackend.beginFrame(nativeContext, new double[0], new int[0], 0, CollisionOptimizerConfig.STARTUP_GRID_SIZE);
+        FFMBackend.beginFrame(nativeContext, new double[0], new int[0], 0);
         teamIds.clear();
         derivedTeams.clear();
         Arrays.fill(teams, null);
@@ -99,13 +98,8 @@ final class LevelCollisionFrame {
         int sectionX = SectionPos.blockToSectionCoord(position.getX());
         int sectionY = SectionPos.blockToSectionCoord(position.getY());
         int sectionZ = SectionPos.blockToSectionCoord(position.getZ());
-        if (CollisionOptimizerConfig.STARTUP_VANILLA_ORDER) {
-            FFMBackend.putOrderedEntity(nativeContext, nativeId, entity.getBoundingBox(),
-                    sectionX, sectionY, sectionZ, ((CollisionOrderState) entity).eco$sectionOrder());
-        } else {
-            FFMBackend.putEntity(nativeContext, nativeId, entity.getBoundingBox(),
-                    sectionX, sectionY, sectionZ);
-        }
+        FFMBackend.putEntity(nativeContext, nativeId, entity.getBoundingBox(),
+                sectionX, sectionY, sectionZ, ((CollisionOrderState) entity).eco$sectionOrder());
         ensureSemanticCapacity(nativeId + 1);
         selectableEntityRevisions[nativeId] = UNCACHED;
         teamRevisions[nativeId] = UNCACHED;
@@ -136,12 +130,8 @@ final class LevelCollisionFrame {
         int sectionX = SectionPos.blockToSectionCoord(position.getX());
         int sectionY = SectionPos.blockToSectionCoord(position.getY());
         int sectionZ = SectionPos.blockToSectionCoord(position.getZ());
-        if (CollisionOptimizerConfig.STARTUP_VANILLA_ORDER) {
-            FFMBackend.updateOrderedLocation(nativeContext, id, sectionX, sectionY, sectionZ,
-                    ((CollisionOrderState) entity).eco$sectionOrder());
-        } else {
-            FFMBackend.updateLocation(nativeContext, id, sectionX, sectionY, sectionZ);
-        }
+        FFMBackend.updateLocation(nativeContext, id, sectionX, sectionY, sectionZ,
+                ((CollisionOrderState) entity).eco$sectionOrder());
     }
 
     synchronized void removeEntity(Entity entity) {
@@ -424,8 +414,7 @@ final class LevelCollisionFrame {
                 bodies.slot(entity),
                 !entity.isRemoved() && !entity.isSpectator()
                         && !VanillaMethodDetector.usesVanillaCanBeCollidedWith(entity),
-                CollisionOptimizerConfig.STARTUP_VANILLA_ORDER
-                        ? ((CollisionOrderState) entity).eco$sectionOrder() : 0L
+                ((CollisionOrderState) entity).eco$sectionOrder()
         );
     }
 

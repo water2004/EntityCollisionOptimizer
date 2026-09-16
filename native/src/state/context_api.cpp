@@ -20,37 +20,19 @@ void destroyCollisionContext(void* context) {
     delete static_cast<eco::CollisionContext*>(context);
 }
 
-int setCollisionGridSize(void* contextPointer, int gridSize) {
-    if (contextPointer == nullptr || gridSize <= 0) {
-        return -1;
-    }
-    try {
-        auto& context = *static_cast<eco::CollisionContext*>(contextPointer);
-        if (context.gridSize != gridSize) {
-            context.gridSize = gridSize;
-            eco::rebuildSpatialIndex(context);
-        }
-        return 0;
-    } catch (...) {
-        return -2;
-    }
-}
-
 int beginCollisionFrame(
         void* contextPointer,
         const double* aabbs,
         const int* sections,
-        int entityCount,
-        int gridSize
+        int entityCount
 ) {
-    if (contextPointer == nullptr || entityCount < 0 || gridSize <= 0
+    if (contextPointer == nullptr || entityCount < 0
             || (entityCount > 0
                     && (aabbs == nullptr || sections == nullptr))) {
         return -1;
     }
     try {
         auto& context = *static_cast<eco::CollisionContext*>(contextPointer);
-        context.gridSize = gridSize;
         context.boxes.resize(static_cast<std::size_t>(entityCount));
         context.metadata.assign(static_cast<std::size_t>(entityCount), {});
         context.hardEntityCount = 0;
@@ -64,8 +46,8 @@ int beginCollisionFrame(
             metadata.sectionX = section[0];
             metadata.sectionY = section[1];
             metadata.sectionZ = section[2];
+            metadata.sectionOrder = index;
         }
-        eco::rebuildSpatialIndex(context);
         eco::rebuildSectionIndex(context);
         return 0;
     } catch (...) {
@@ -98,9 +80,6 @@ int addCollisionEntity(
         metadata.sectionY = sectionY;
         metadata.sectionZ = sectionZ;
         context.metadata.push_back(metadata);
-        context.memberships.push_back(eco::coveredCells(box, context.gridSize));
-        context.queryMarks.push_back(0);
-        eco::insertMemberships(context, entityId, context.memberships.back());
         eco::insertSectionEntity(context, entityId);
         return entityId;
     } catch (...) {

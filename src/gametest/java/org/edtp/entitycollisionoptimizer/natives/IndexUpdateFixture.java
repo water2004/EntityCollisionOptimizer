@@ -15,10 +15,6 @@ final class IndexUpdateFixture {
         bounds.set(0, box);
         FFMBackend.updateEntity(context, id, bounds.row(0), selectable, passenger, false, false,
                 entityPush, vectorPush, team, rule, bodySlot, hardCollidable, order);
-        if (org.edtp.entitycollisionoptimizer.config.CollisionOptimizerConfig.STARTUP_VANILLA_ORDER) {
-            FFMBackend.updateOrderedLocation(context, id, sectionX, sectionY, sectionZ, order);
-        } else {
-            FFMBackend.updateLocation(context, id, sectionX, sectionY, sectionZ);
-        }
+        FFMBackend.updateLocation(context, id, sectionX, sectionY, sectionZ, order);
     }
 }

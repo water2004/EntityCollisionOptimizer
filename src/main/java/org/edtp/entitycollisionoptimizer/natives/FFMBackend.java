@@ -1,7 +1,6 @@
 package org.edtp.entitycollisionoptimizer.natives;
 
 import org.edtp.entitycollisionoptimizer.EntityCollisionOptimizer;
-import org.edtp.entitycollisionoptimizer.config.CollisionOptimizerConfig;
 import org.edtp.entitycollisionoptimizer.ffm.FFM;
 import net.minecraft.world.phys.AABB;
 
@@ -35,7 +34,6 @@ public final class FFMBackend {
     private static MethodHandle createContextHandle;
     private static MethodHandle destroyContextHandle;
     private static MethodHandle beginFrame;
-    private static MethodHandle setGridSize;
     private static MethodHandle addEntity;
     private static MethodHandle putEntity, removeEntity, updateLocation;
     private static MethodHandle updateEntity;
@@ -113,8 +111,6 @@ public final class FFMBackend {
             if (address.equals(MemorySegment.NULL)) {
                 throw new IllegalStateException("Native library returned a null collision context");
             }
-            int status = (int) setGridSize.invokeExact(address, CollisionOptimizerConfig.STARTUP_GRID_SIZE);
-            checkStatus("configure native collision grid", status);
             Context context = new Context(address);
             CONTEXTS.add(context);
             return context;
@@ -134,8 +130,7 @@ public final class FFMBackend {
             Context nativeContext,
             double[] aabbs,
             int[] sections,
-            int entityCount,
-            int gridSize
+            int entityCount
     ) {
         synchronized (nativeContext) {
             nativeContext.ensureOpen();
@@ -149,8 +144,7 @@ public final class FFMBackend {
                             nativeContext.address,
                             aabbMemory,
                             sectionMemory,
-                            entityCount,
-                            gridSize
+                            entityCount
                     );
                 } catch (Throwable failure) {
                     throw new IllegalStateException("FFM beginFrame call failed", failure);
@@ -236,18 +230,6 @@ public final class FFMBackend {
     }
 
     public static void putEntity(
-            Context context, int id, AABB box, int x, int y, int z
-    ) {
-        synchronized (context) {
-            MemorySegment bounds = prepareEntityBounds(context, id, box);
-            try { checkStatus("insert persistent entity", (int) putEntity.invokeExact(
-                    context.address, id, bounds, x, y, z
-            )); }
-            catch (Throwable failure) { throw new IllegalStateException("Persistent entity insertion failed", failure); }
-        }
-    }
-
-    public static void putOrderedEntity(
             Context context, int id, AABB box, int x, int y, int z, long sectionOrder
     ) {
         synchronized (context) {
@@ -284,18 +266,6 @@ public final class FFMBackend {
     }
 
     public static void updateLocation(
-            Context context, int id, int x, int y, int z
-    ) {
-        synchronized (context) {
-            context.ensureOpen();
-            try { checkStatus("update persistent location", (int) updateLocation.invokeExact(
-                    context.address, id, x, y, z
-            )); }
-            catch (Throwable failure) { throw new IllegalStateException("Persistent location update failed", failure); }
-        }
-    }
-
-    public static void updateOrderedLocation(
             Context context, int id, int x, int y, int z, long sectionOrder
     ) {
         synchronized (context) {
@@ -556,8 +526,7 @@ public final class FFMBackend {
     }
 
     private static void loadNativeLibrary() throws IOException {
-        String libraryName = System.mapLibraryName(CollisionOptimizerConfig.STARTUP_VANILLA_ORDER
-                ? "EntityCollisionOptimizer" : "EntityCollisionOptimizerUnordered");
+        String libraryName = System.mapLibraryName("EntityCollisionOptimizer");
         String resourcePath = platformNativePath() + libraryName;
         File extractedLibrary;
 
@@ -601,31 +570,20 @@ public final class FFMBackend {
                         ADDRESS,
                         ADDRESS,
                         ADDRESS,
-                        JAVA_INT,
                         JAVA_INT
                 )
         );
-        setGridSize = linker.downcallHandle(
-                library.find("setCollisionGridSize").orElseThrow(() -> missingSymbol("setCollisionGridSize")),
-                FunctionDescriptor.of(JAVA_INT, ADDRESS, JAVA_INT)
-        );
-        FunctionDescriptor putEntityDescriptor = CollisionOptimizerConfig.STARTUP_VANILLA_ORDER
-                ? FunctionDescriptor.of(JAVA_INT, ADDRESS, JAVA_INT, ADDRESS,
-                        JAVA_INT, JAVA_INT, JAVA_INT, JAVA_LONG)
-                : FunctionDescriptor.of(JAVA_INT, ADDRESS, JAVA_INT, ADDRESS,
-                        JAVA_INT, JAVA_INT, JAVA_INT);
         putEntity = linker.downcallHandle(
-                library.find("putCollisionEntity").orElseThrow(), putEntityDescriptor
+                library.find("putCollisionEntity").orElseThrow(),
+                FunctionDescriptor.of(JAVA_INT, ADDRESS, JAVA_INT, ADDRESS,
+                        JAVA_INT, JAVA_INT, JAVA_INT, JAVA_LONG)
         );
         removeEntity = linker.downcallHandle(library.find("removeCollisionEntity").orElseThrow(),
                 FunctionDescriptor.of(JAVA_INT, ADDRESS, JAVA_INT));
-        FunctionDescriptor updateLocationDescriptor = CollisionOptimizerConfig.STARTUP_VANILLA_ORDER
-                ? FunctionDescriptor.of(JAVA_INT, ADDRESS, JAVA_INT,
-                        JAVA_INT, JAVA_INT, JAVA_INT, JAVA_LONG)
-                : FunctionDescriptor.of(JAVA_INT, ADDRESS, JAVA_INT,
-                        JAVA_INT, JAVA_INT, JAVA_INT);
         updateLocation = linker.downcallHandle(
-                library.find("updateCollisionLocation").orElseThrow(), updateLocationDescriptor
+                library.find("updateCollisionLocation").orElseThrow(),
+                FunctionDescriptor.of(JAVA_INT, ADDRESS, JAVA_INT,
+                        JAVA_INT, JAVA_INT, JAVA_INT, JAVA_LONG)
         );
         addEntity = linker.downcallHandle(
                 library.find("addCollisionEntity").orElseThrow(() -> missingSymbol("addCollisionEntity")),
@@ -660,18 +618,9 @@ public final class FFMBackend {
                         JAVA_INT,
                         JAVA_LONG
                 );
-        if (!CollisionOptimizerConfig.STARTUP_VANILLA_ORDER) {
-            var layouts = updateEntityDescriptor.argumentLayouts();
-            updateEntityDescriptor = FunctionDescriptor.of(JAVA_INT,
-                    layouts.subList(0, layouts.size() - 1).toArray(java.lang.foreign.MemoryLayout[]::new));
-        }
         updateEntity = linker.downcallHandle(
                 library.find("updateCollisionEntity")
                         .orElseThrow(() -> missingSymbol("updateCollisionEntity")), updateEntityDescriptor);
-        if (!CollisionOptimizerConfig.STARTUP_VANILLA_ORDER) {
-            // Discard the constant placeholder before crossing FFM; unordered native has no order argument.
-            updateEntity = java.lang.invoke.MethodHandles.dropArguments(updateEntity, 13, long.class);
-        }
         invalidateEntityPushabilityCache = linker.downcallHandle(
                 library.find("invalidateEntityPushabilityCache")
                         .orElseThrow(() -> missingSymbol("invalidateEntityPushabilityCache")),
@@ -789,7 +738,6 @@ public final class FFMBackend {
         createContextHandle = null;
         destroyContextHandle = null;
         beginFrame = null;
-        setGridSize = null;
         addEntity = null;
         putEntity = removeEntity = updateLocation = null;
         updateEntity = null;

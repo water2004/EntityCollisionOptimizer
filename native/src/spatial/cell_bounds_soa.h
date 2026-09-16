@@ -65,6 +65,16 @@ struct CellBoundsSoa {
         maxZ.pop_back();
     }
 
+    void erase(std::size_t index) {
+        const auto offset = static_cast<std::ptrdiff_t>(index);
+        minX.erase(minX.begin() + offset);
+        minY.erase(minY.begin() + offset);
+        minZ.erase(minZ.begin() + offset);
+        maxX.erase(maxX.begin() + offset);
+        maxY.erase(maxY.begin() + offset);
+        maxZ.erase(maxZ.begin() + offset);
+    }
+
     void clear() noexcept {
         minX.clear();
         minY.clear();

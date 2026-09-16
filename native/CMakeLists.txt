@@ -111,11 +111,9 @@ set(ECO_COMMON_SOURCES
 )
 
 add_library(EntityCollisionOptimizer SHARED ${ECO_COMMON_SOURCES})
-add_library(EntityCollisionOptimizerUnordered SHARED ${ECO_COMMON_SOURCES})
-target_compile_definitions(EntityCollisionOptimizerUnordered PRIVATE ECO_VANILLA_ORDER=0)
 
 # Module-qualified internal includes and the stable FFM ABI headers.
-foreach(target EntityCollisionOptimizer EntityCollisionOptimizerUnordered)
+foreach(target EntityCollisionOptimizer)
     target_include_directories(${target} PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src" "${CMAKE_CURRENT_SOURCE_DIR}/include")
 endforeach()
 
@@ -131,6 +129,4 @@ endif()
 if(ECO_NATIVE_SYMBOLS AND AR_WINDOWS)
     target_compile_options(EntityCollisionOptimizer PRIVATE /Z7)
     target_link_options(EntityCollisionOptimizer PRIVATE /DEBUG:FULL)
-    target_compile_options(EntityCollisionOptimizerUnordered PRIVATE /Z7)
-    target_link_options(EntityCollisionOptimizerUnordered PRIVATE /DEBUG:FULL)
 endif()

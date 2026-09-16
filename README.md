@@ -10,17 +10,17 @@
 
 ---
 
-Entity Collision Optimizer is a server-side Fabric mod for Minecraft 26.2 that uses a C++ native backend to accelerate entity queries, pushing, and movement collision while **preserving vanilla entity-collision behavior by default**. Its optional unordered mode reaches **6.58× the Vanilla tick-processing rate** and **4.87× the Lithium rate** in the dense-entity comparison below. Install it and it works; connecting clients do not need the mod.
+Entity Collision Optimizer is a server-side Fabric mod for Minecraft 26.2 that uses a C++ native backend to accelerate entity queries, pushing, and movement collision while **preserving vanilla entity-collision behavior**. Install it and it works; connecting clients do not need the mod.
 
 ## Why use Entity Collision Optimizer?
 
 Crowded mob farms, transport systems, and other entity-heavy builds can spend a large share of their tick time finding nearby entities, checking bounding boxes, applying pushes, and resolving movement against blocks. Entity Collision Optimizer focuses on that work alone. It does not attempt to optimize AI, pathfinding, chunk generation, networking, or client rendering, so the improvement you see depends on how much collision work your server performs.
 
-This is not a collision limiter or an approximate simulation. With the default ordered backend, vanilla entities produce the same candidates in the same order, run the same collision rules, and publish each velocity or movement update at the same point as Mojang's implementation. The algorithm does not change with entity density and never drops candidates.
+This is not a collision limiter or an approximate simulation. Vanilla entities produce the same candidates in the same order, run the same collision rules, and publish each velocity or movement update at the same point as Mojang's implementation. The algorithm does not change with entity density and never drops candidates.
 
 ## In-game comparison
 
-The screenshots below use the same dense zombified-piglin enclosure and the same test conditions. Entity Collision Optimizer was run with `vanillaOrder=false`, which removes the work performed solely to reproduce vanilla's entity candidate order. The live tick overlay reports the following results:
+The screenshots below use the same dense zombified-piglin enclosure and the same test conditions. The ECO result was recorded with an earlier, now-removed unordered backend and is retained as historical performance data; it does not represent the current ordered-only release. The live tick overlay reported:
 
 | Setup | MSPT | Speed vs Vanilla | MSPT reduction vs Vanilla |
 | --- | ---: | ---: | ---: |
@@ -47,11 +47,9 @@ In this scene, Entity Collision Optimizer reduces MSPT by **84.8% versus Vanilla
 
 ### Scaling with entity count
 
-A separate zombie stress test increased the entity count over time while sampling the in-game HUD five times per second. The solid curves below show the median MSPT for each 25-entity bin; faint points are the raw readings and the shaded regions show the interquartile range. With ECO disabled, the server crosses the 50 MSPT tick budget at roughly 924 entities. Both ECO runs remain below that limit through approximately 1,500 entities, and enabling `vanillaOrder` has only a small effect in this workload.
+A separate zombie stress test increased the entity count over time while sampling the in-game HUD five times per second. The solid curves below show the median MSPT for each 25-entity bin; faint points are the raw readings and the shaded regions show the interquartile range. With ECO disabled, the server crosses the 50 MSPT tick budget at roughly 924 entities. Both historical ECO configurations remain below that limit through approximately 1,500 entities, and preserving vanilla order had only a small effect in this workload.
 
-![MSPT plotted against entity count with ECO disabled, ECO enabled, and ECO enabled with vanillaOrder](docs/images/comparison/mspt-vs-entity.png)
-
-Disabling `vanillaOrder` does not change redstone update order or block logic, so it does not affect most redstone machines. It can change the outcome of machines that depend on the exact order of entity pushes, collision timing, or entity trajectories; test those designs with the option disabled before deployment.
+![Historical MSPT comparison with ECO disabled and two earlier ECO configurations](docs/images/comparison/mspt-vs-entity.png)
 
 These values are live snapshots from this particular scene, not a multi-run statistical benchmark. Absolute performance depends on hardware, JVM, mod set, and workload; the screenshots are included to make this specific comparison directly inspectable.
 
@@ -59,7 +57,7 @@ These values are live snapshots from this particular scene, not a multi-run stat
 
 Minecraft stores entities in sections. A collision query walks the relevant sections, visits Java objects, checks their bounding boxes and builds the data needed by the pushing or movement code. This is simple and flexible, but the object access, temporary allocations and repeated preparation become expensive when many entities occupy a small area.
 
-Entity Collision Optimizer keeps a C++ native collision context for each dimension and updates it as entities are tracked, moved, transferred between dimensions, or removed. A persistent fine-grained XYZ grid narrows each query to nearby entities. In the default backend, a second section index restores Minecraft's section traversal and insertion order after that spatial filtering, so preserving vanilla order does not require sorting every result.
+Entity Collision Optimizer keeps a C++ native collision context for each dimension and updates it as entities are tracked, moved, transferred between dimensions, or removed. A compact section index mirrors Minecraft's section traversal and insertion order, while vectorized bounding-box checks narrow each query to intersecting entities without sorting every result.
 
 Position, velocity, bounding-box and synchronization state used by collision code live in compact shared off-heap tables. Java and C++ native code operate on the same state, while Java objects such as `Vec3` are materialized only when Java code actually reads them. Candidate bounds use a SoA layout so hot AABB loops make effective use of CPU caches and AVX2.
 
@@ -97,12 +95,7 @@ An unsupported native platform or an FFM initialization failure is reported as a
 
 ## Configuration
 
-Use `/eco` to show the active backend, FFM state, and entity-order mode. Use `/eco vanillaOrder true|false` to select the mode for the next restart:
-
-- `true` (default) preserves Minecraft's entity candidate order and update semantics.
-- `false` selects the unordered native backend and removes all work needed solely to reproduce vanilla order. It still finds and deduplicates the complete candidate set, but push order and the resulting state may differ from vanilla. Redstone update order and block logic are unchanged, so most redstone machines are unaffected; machines that rely on exact entity push order or trajectories should be tested separately.
-
-The backend is selected at startup, so changing the mode does not affect the running server and takes effect after a restart.
+Use `/eco` to check whether the FFM backend initialized successfully. The mod has no runtime tuning options and always preserves Minecraft's entity candidate order and update semantics.
 
 ## Compatibility
 

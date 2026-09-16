@@ -16,7 +16,7 @@ public final class NativeQueryChecks {
         for (int count : new int[]{2, 8, 20}) {
             try (var context = FFMBackend.createContext()) {
                 FFMBackend.beginFrame(context, new double[count * 6],
-                        new int[count * 3], count, 4);
+                        new int[count * 3], count);
                 for (int phase = 0; phase < 90; phase++) {
                     Body[] bodies = bodies(count, phase);
                     for (int id = 0; id < count; id++) {

@@ -19,10 +19,8 @@ int updateCollisionEntity(
         int teamId,
         int collisionRule,
         int bodySlot,
-        int hardCollidable
-#if ECO_VANILLA_ORDER
-        , std::int64_t sectionOrder
-#endif
+        int hardCollidable,
+        std::int64_t sectionOrder
 ) {
     if (contextPointer == nullptr || entityId < 0 || bodySlot < 0
             || collisionRule < eco::COLLISION_ALWAYS || collisionRule > eco::COLLISION_PUSH_OTHER_TEAMS) {
@@ -52,8 +50,9 @@ int updateCollisionEntity(
         const bool hard = hardCollidable != 0;
         if (metadata.hardCollidable != hard) {
             if (hard) ++context.hardEntityCount; else --context.hardEntityCount;
-            if (static_cast<std::size_t>(entityId) < context.memberSlots.size()) {
-                for (const auto& slot : context.memberSlots[entityId]) {
+            if (static_cast<std::size_t>(entityId) < context.sectionSlots.size()) {
+                const auto slot = context.sectionSlots[entityId];
+                if (slot.members != nullptr) {
                     if (hard) ++slot.members->hardCount; else --slot.members->hardCount;
                 }
             }
@@ -62,12 +61,10 @@ int updateCollisionEntity(
         metadata.teamId = teamId;
         metadata.collisionRule = collisionRule;
         metadata.bodySlot = bodySlot;
-#if ECO_VANILLA_ORDER
         if (metadata.sectionOrder != sectionOrder) {
             metadata.sectionOrder = sectionOrder;
             eco::invalidateSectionOrder(context, entityId);
         }
-#endif
         metadata.selectableValid = true;
         metadata.teamValid = true;
         if (wasQueryable != metadata.selectable) {

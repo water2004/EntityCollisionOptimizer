@@ -15,9 +15,8 @@ public final class VerticalIndexChecks {
     public static void verify(GameTestHelper helper) {
         int queries = 0;
         for (int count : new int[]{2, 8, 20}) {
-            for (int grid : new int[]{1, 2, 4}) {
-                try (var context = FFMBackend.createContext()) {
-                    FFMBackend.beginFrame(context, new double[count * 6], new int[count * 3], count, grid);
+            try (var context = FFMBackend.createContext()) {
+                    FFMBackend.beginFrame(context, new double[count * 6], new int[count * 3], count);
                     for (int anchor : new int[]{-17, -4, -1, 0, 1, 15, 16}) {
                         for (int phase = 0; phase < 9; phase++) {
                             AABB[] boxes = new AABB[count];
@@ -50,7 +49,7 @@ public final class VerticalIndexChecks {
                                 pushable.sort(Comparator.<Integer>comparingLong(id ->
                                                 SectionPos.asLong(0, section(boxes[id].minY), 0))
                                         .thenComparingInt(id -> count - id));
-                                String label = "grid=" + grid + " anchor=" + anchor
+                                String label = "anchor=" + anchor
                                         + " phase=" + phase + " source=" + source;
                                 equalSet(helper, FFMBackend.query(context, source, count), overlaps, label);
                                 helper.assertValueEqual(ids(FFMBackend.queryPushable(
@@ -70,11 +69,10 @@ public final class VerticalIndexChecks {
                             }
                         }
                     }
-                }
             }
         }
         EntityCollisionOptimizer.LOGGER.info(
-                "ECO_VERTICAL_INDEX_CHECKS entities=2,8,20 grids=1,2,4 queries={} ordered=true deduplicated=true result=passed",
+                "ECO_VERTICAL_INDEX_CHECKS entities=2,8,20 queries={} ordered=true result=passed",
                 queries);
     }
 

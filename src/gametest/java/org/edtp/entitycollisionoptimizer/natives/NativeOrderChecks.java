@@ -22,7 +22,7 @@ public final class NativeOrderChecks {
         Body[] bodies = new Body[count];
         for (int i = 0; i < count; i++) bodies[i] = new Body(i, count);
         try (var context = FFMBackend.createContext()) {
-            begin(context, bodies, 1);
+            begin(context, bodies);
             for (int step = 0; step < 96; step++) {
                 int id = (step * 7 + 1) % count;
                 Body body = bodies[id];
@@ -33,8 +33,7 @@ public final class NativeOrderChecks {
                     case 3 -> body.order = 1000L + step; // Key change without changing cell membership.
                     case 4 -> { body.selectable = !body.selectable; body.passenger = !body.passenger; }
                     case 5 -> FFMBackend.invalidatePushEligibilityFields(context, 3);
-                    case 6 -> begin(context, bodies, 2);
-                    case 7 -> begin(context, bodies, 1);
+                    case 6, 7 -> begin(context, bodies);
                 }
                 IndexUpdateFixture.update(context, id, body.box, body.x, body.y, body.z,
                         body.selectable, body.passenger, true, true,
@@ -87,7 +86,7 @@ public final class NativeOrderChecks {
         }
     }
 
-    private static void begin(FFMBackend.Context context, Body[] bodies, int grid) {
+    private static void begin(FFMBackend.Context context, Body[] bodies) {
         double[] boxes = new double[bodies.length * 6];
         int[] sections = new int[bodies.length * 3];
         for (int i = 0; i < bodies.length; i++) {
@@ -95,7 +94,7 @@ public final class NativeOrderChecks {
             System.arraycopy(new double[]{b.minX, b.minY, b.minZ, b.maxX, b.maxY, b.maxZ}, 0, boxes, i * 6, 6);
             System.arraycopy(new int[]{bodies[i].x, bodies[i].y, bodies[i].z}, 0, sections, i * 3, 3);
         }
-        FFMBackend.beginFrame(context, boxes, sections, bodies.length, grid);
+        FFMBackend.beginFrame(context, boxes, sections, bodies.length);
     }
 
     private static void metadata(FFMBackend.Context context, int id, Body body) {

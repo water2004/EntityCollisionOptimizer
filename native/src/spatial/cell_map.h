@@ -1,16 +1,9 @@
 #pragma once
 
-#ifndef ECO_VANILLA_ORDER
-#define ECO_VANILLA_ORDER 1
-#endif
-
 #include <cstddef>
 #include <cstdint>
 #include <vector>
-
-#if ECO_VANILLA_ORDER
 #include "spatial/cell_bounds_soa.h"
-#endif
 
 namespace eco {
 
@@ -28,17 +21,14 @@ struct CellHash {
 
 struct CellMembers {
     std::vector<int> ids;
-#if ECO_VANILLA_ORDER
+    // Parallel to ids so section order stays untouched while push queries can
+    // skip entities already known to be ineligible.
+    std::vector<std::uint8_t> queryable;
     CellBoundsSoa bounds;
-#endif
-    // Fine-grid members are partitioned in place: query candidates occupy
-    // [0, queryableCount), known-unpushable entities occupy the tail.
     std::size_t queryableCount = 0;
-    // Hard members resident in this cell; hard-only scans skip empty cells outright.
+    // Hard members resident in this section; hard-only scans skip empty sections.
     std::size_t hardCount = 0;
-#if ECO_VANILLA_ORDER
     bool orderDirty = true;
-#endif
     CellMembers* poolNext = nullptr;
 };
 

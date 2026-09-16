@@ -97,11 +97,8 @@ jobs:
               'fabric.mod.json',
               'org/edtp/entitycollisionoptimizer/mixin/BodyFieldConsumersMixin.class',
               'natives/windows-x64/EntityCollisionOptimizer.dll',
-              'natives/windows-x64/EntityCollisionOptimizerUnordered.dll',
               'natives/linux-x64/libEntityCollisionOptimizer.so',
-              'natives/linux-x64/libEntityCollisionOptimizerUnordered.so',
-              'natives/macos-x64/libEntityCollisionOptimizer.dylib',
-              'natives/macos-x64/libEntityCollisionOptimizerUnordered.dylib'
+              'natives/macos-x64/libEntityCollisionOptimizer.dylib'
             )
             $entryNames = [System.Collections.Generic.HashSet[string]]::new(
               [string[]]$archive.Entries.FullName,

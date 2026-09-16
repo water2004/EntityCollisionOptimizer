@@ -16,11 +16,7 @@ public final class BodyMixinPlugin implements IMixinConfigPlugin {
             BodyFieldAccess.rewrite(node);
         }
     }
-    @Override public boolean shouldApplyMixin(String target, String mixin) {
-        if (mixin.endsWith(".EntitySectionMixin") || mixin.endsWith(".EntityOrderMixin"))
-            return org.edtp.entitycollisionoptimizer.config.CollisionOptimizerConfig.STARTUP_VANILLA_ORDER;
-        return true;
-    }
+    @Override public boolean shouldApplyMixin(String target, String mixin) { return true; }
     @Override public void onLoad(String mixinPackage) {}
     @Override public String getRefMapperConfig() { return null; }
     @Override public void acceptTargets(Set<String> mine, Set<String> others) {}

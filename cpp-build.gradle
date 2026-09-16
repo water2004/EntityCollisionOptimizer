@@ -74,11 +74,8 @@ def generatedNativeResources = layout.buildDirectory.dir("generated/nativeResour
 def nativeOutputRoot = new File(cppProjectDir, "out/entity-collision-optimizer")
 def nativeLibraryFiles = files(
         new File(nativeOutputRoot, "win-x64/EntityCollisionOptimizer.dll"),
-        new File(nativeOutputRoot, "win-x64/EntityCollisionOptimizerUnordered.dll"),
         new File(nativeOutputRoot, "linux-x64/libEntityCollisionOptimizer.so"),
-        new File(nativeOutputRoot, "linux-x64/libEntityCollisionOptimizerUnordered.so"),
-        new File(nativeOutputRoot, "macos-x64/libEntityCollisionOptimizer.dylib"),
-        new File(nativeOutputRoot, "macos-x64/libEntityCollisionOptimizerUnordered.dylib")
+        new File(nativeOutputRoot, "macos-x64/libEntityCollisionOptimizer.dylib")
 )
 def prepareNativeResources = tasks.register("prepareNativeResources") {
     group = "build native"
@@ -97,17 +94,14 @@ def prepareNativeResources = tasks.register("prepareNativeResources") {
 
             copySpec.from(new File(nativeOutputRoot, "win-x64")) {
                 include "EntityCollisionOptimizer.dll"
-                include "EntityCollisionOptimizerUnordered.dll"
                 into "natives/windows-x64"
             }
             copySpec.from(new File(nativeOutputRoot, "linux-x64")) {
                 include "libEntityCollisionOptimizer.so"
-                include "libEntityCollisionOptimizerUnordered.so"
                 into "natives/linux-x64"
             }
             copySpec.from(new File(nativeOutputRoot, "macos-x64")) {
                 include "libEntityCollisionOptimizer.dylib"
-                include "libEntityCollisionOptimizerUnordered.dylib"
                 into "natives/macos-x64"
             }
         }

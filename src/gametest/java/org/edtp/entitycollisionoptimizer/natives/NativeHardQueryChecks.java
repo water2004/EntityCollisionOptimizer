@@ -1,5 +1,6 @@
 package org.edtp.entitycollisionoptimizer.natives;
 
+import net.minecraft.core.SectionPos;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.phys.AABB;
 import org.edtp.entitycollisionoptimizer.EntityCollisionOptimizer;
@@ -15,7 +16,7 @@ public final class NativeHardQueryChecks {
         AABB player = new AABB(-0.3, 64, -0.3, 0.3, 65.8, 0.3);
         for (boolean snapshot : new boolean[]{false, true}) {
             try (var context = FFMBackend.createContext()) {
-                if (snapshot) FFMBackend.beginFrame(context, new double[0], new int[0], 0, 1);
+                if (snapshot) FFMBackend.beginFrame(context, new double[0], new int[0], 0);
                 for (boolean hardOnly : new boolean[]{true, false}) {
                     helper.assertValueEqual(FFMBackend.queryHard(context, player, -1, hardOnly, 0).size(),
                             0, "spawn query in empty world, snapshot=" + snapshot);
@@ -28,7 +29,7 @@ public final class NativeHardQueryChecks {
         int queries = 0;
         for (int count : new int[]{2, 8, 20}) {
             try (var context = FFMBackend.createContext()) {
-                FFMBackend.beginFrame(context, new double[count * 6], new int[count * 3], count, 4);
+                FFMBackend.beginFrame(context, new double[count * 6], new int[count * 3], count);
                 for (int phase = 0; phase < 36; phase++) {
                     Body[] bodies = bodies(count, phase);
                     for (int id = 0; id < count; id++) {
@@ -62,7 +63,13 @@ public final class NativeHardQueryChecks {
                 };
                 box = new AABB(x, source.minY, source.minZ, x + 1, source.maxY, source.maxZ);
             }
-            bodies[id] = new Body(box, id, id, id, id % 3 != 0);
+            bodies[id] = new Body(
+                    box,
+                    SectionPos.posToSectionCoord((box.minX + box.maxX) * 0.5),
+                    SectionPos.posToSectionCoord(box.minY),
+                    SectionPos.posToSectionCoord((box.minZ + box.maxZ) * 0.5),
+                    id % 3 != 0
+            );
         }
         return bodies;
     }
@@ -81,7 +88,14 @@ public final class NativeHardQueryChecks {
         var result = FFMBackend.queryHard(context, scan, 0, hardOnly, capacity);
         Set<Integer> expected = new HashSet<>();
         for (int id = 1; id < bodies.length; id++) {
-            if ((!hardOnly || bodies[id].hard) && scan.intersects(bodies[id].box)) expected.add(id);
+            Body body = bodies[id];
+            if ((!hardOnly || body.hard) && scan.intersects(body.box)
+                    && body.x >= SectionPos.posToSectionCoord(scan.minX - 2.0)
+                    && body.x <= SectionPos.posToSectionCoord(scan.maxX + 2.0)
+                    && body.y >= SectionPos.posToSectionCoord(scan.minY - 4.0)
+                    && body.y <= SectionPos.posToSectionCoord(scan.maxY)
+                    && body.z >= SectionPos.posToSectionCoord(scan.minZ - 2.0)
+                    && body.z <= SectionPos.posToSectionCoord(scan.maxZ + 2.0)) expected.add(id);
         }
         List<Integer> actual = new ArrayList<>();
         for (int i = 0; i < result.size(); i++) actual.add(result.get(i));
