@@ -86,11 +86,8 @@ jobs:
         run: |
           $version = '${{ steps.release.outputs.version }}'
           $mainJar = "build/libs/entity_collision_optimizer-$version.jar"
-          $sourcesJar = "build/libs/entity_collision_optimizer-$version-sources.jar"
-          foreach ($path in @($mainJar, $sourcesJar)) {
-            if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
-              throw "Expected release artifact is missing: $path"
-            }
+          if (-not (Test-Path -LiteralPath $mainJar -PathType Leaf)) {
+            throw "Expected release artifact is missing: $mainJar"
           }
 
           Add-Type -AssemblyName System.IO.Compression.FileSystem
@@ -98,6 +95,7 @@ jobs:
           try {
             $requiredEntries = @(
               'fabric.mod.json',
+              'org/edtp/entitycollisionoptimizer/mixin/BodyFieldConsumersMixin.class',
               'natives/windows-x64/EntityCollisionOptimizer.dll',
               'natives/windows-x64/EntityCollisionOptimizerUnordered.dll',
               'natives/linux-x64/libEntityCollisionOptimizer.so',
@@ -130,7 +128,7 @@ jobs:
           }
 
           New-Item -ItemType Directory -Path dist | Out-Null
-          Copy-Item -LiteralPath $mainJar, $sourcesJar -Destination dist
+          Copy-Item -LiteralPath $mainJar -Destination dist
           $hashLines = Get-ChildItem dist -Filter '*.jar' |
             Sort-Object Name |
             ForEach-Object {
@@ -146,12 +144,16 @@ jobs:
         run: |
           $tag = '${{ steps.release.outputs.tag }}'
           $version = '${{ steps.release.outputs.version }}'
+          $notesFile = ".github/release-notes/$version.md"
+          if (-not (Test-Path -LiteralPath $notesFile -PathType Leaf)) {
+            throw "Release notes are missing: $notesFile"
+          }
           $assets = Get-ChildItem dist -File | ForEach-Object { $_.FullName }
           $arguments = @(
             'release', 'create', $tag
           ) + $assets + @(
             '--verify-tag',
-            '--notes', 'See the README for details.',
+            '--notes-file', $notesFile,
             '--title', "Entity Collision Optimizer $version"
           )
           if ('${{ steps.release.outputs.prerelease }}' -eq 'true') {
