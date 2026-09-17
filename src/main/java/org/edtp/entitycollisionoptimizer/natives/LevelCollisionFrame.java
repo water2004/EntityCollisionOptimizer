@@ -64,17 +64,6 @@ final class LevelCollisionFrame {
         active = false;
     }
 
-    synchronized void suspend() {
-        active = false;
-        bodies.clear();
-        ids.clear();
-        initialized = false;
-        FFMBackend.beginFrame(nativeContext, new double[0], new int[0], 0);
-        teamIds.clear();
-        derivedTeams.clear();
-        Arrays.fill(teams, null);
-    }
-
     synchronized void close() {
         active = false;
         for (PushBatch batch : batchPool) batch.destroy();

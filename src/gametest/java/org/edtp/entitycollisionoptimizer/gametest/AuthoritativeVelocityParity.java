@@ -67,29 +67,6 @@ final class AuthoritativeVelocityParity {
                             new Vec3(.75, 0, .125), "Java add reads and writes shared velocity");
                 }
             }
-            // Suspending for vanilla/Carpet must materialize pending native data before detaching.
-            for (int phase = 0; phase < 2; phase++) {
-                Vec3[] initial = snapshot(entities);
-                boolean[] initialSync = new boolean[count];
-                for (int i = 0; i < count; i++) initialSync[i] = entities.get(i).needsSync;
-                CollisionFrame.begin(helper.getLevel());
-                try (var batch = CollisionFrame.collectPushable(source, null, Team.CollisionRule.ALWAYS, true)) {
-                    for (int i = 0; i < batch.size(); i++) batch.target(i).push(source);
-                    Vec3[] expected = snapshot(entities);
-                    for (int i = 0; i < count; i++) {
-                        entities.get(i).setDeltaMovement(initial[i]);
-                        entities.get(i).needsSync = initialSync[i];
-                    }
-                    batch.applyNativeRun(source, 0, batch.size());
-                    // Close the lease before switching owners, without observing the result.
-                    batch.close();
-                    CollisionFrame.suspend(helper.getLevel());
-                    for (int i = 0; i < count; i++) {
-                        NativeImpulseParity.exact(helper, (Vec3) stored(storageField(), entities.get(i)),
-                                expected[i], "suspend materializes current velocity, phase=" + phase);
-                    }
-                }
-            }
         }
     }
 

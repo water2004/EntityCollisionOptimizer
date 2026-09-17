@@ -10,6 +10,7 @@ import net.minecraft.world.scores.PlayerTeam;
 import net.minecraft.world.scores.Team;
 import org.edtp.entitycollisionoptimizer.collision.VanillaMethodDetector;
 import org.edtp.entitycollisionoptimizer.natives.CollisionFrame;
+import org.edtp.entitycollisionoptimizer.natives.TestFrameAccess;
 import org.edtp.entitycollisionoptimizer.natives.FFMBackend;
 
 import java.util.ArrayList;
@@ -73,8 +74,10 @@ final class CollisionIsolationParity {
             int entityCount,
             double coordinate
     ) {
-        // Reset the fixture explicitly; ending a tick no longer discards persistent members.
-        CollisionFrame.suspend(level);
+        // Ending a tick no longer discards persistent members; the fixture teardown and
+        // rebuild the frame explicitly through the test-only injection point.
+        CollisionFrame.end(level);
+        TestFrameAccess.destroy(level);
         CollisionFrame.begin(level);
         List<Zombie> entities = new ArrayList<>(entityCount);
         Vec3 position = new Vec3(coordinate, 64.0, coordinate);

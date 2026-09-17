@@ -247,7 +247,7 @@ public final class CollisionStateTable implements AutoCloseable {
         bound = Arrays.copyOf(bound, capacity);
     }
 
-    /** Release ownership while retaining allocation for an explicit disable/re-enable cycle. */
+    /** Detaches every body (materializing pending state) and resets slot bookkeeping; called by close(). Arena storage is retained for reuse or released by close(). */
     void clear() {
         if (borrowers != 0) throw new IllegalStateException("Clearing a borrowed collision table");
         for (int slot = 0; slot < size; slot++) {

@@ -55,12 +55,6 @@ public final class CollisionFrame {
         }
     }
 
-    /** Disabling native collision materializes outstanding state on this level's thread. */
-    public static void suspend(ServerLevel level) {
-        LevelCollisionFrame frame = LEVEL_FRAMES.get(level);
-        if (frame != null) frame.suspend();
-    }
-
     public static void destroy() {
         for (LevelCollisionFrame frame : LEVEL_FRAMES.values()) {
             frame.close();

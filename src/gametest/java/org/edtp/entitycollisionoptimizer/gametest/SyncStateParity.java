@@ -83,10 +83,6 @@ final class SyncStateParity {
                 if (enabled) batch.applyNativeRun(source, 0, batch.size());
                 else for (int i = 0; i < batch.size(); i++) batch.target(i).push(source);
             }
-            CollisionFrame.suspend(helper.getLevel());
-            for (Entity entity : entities) {
-                helper.assertTrue(entity.needsSync && physicalSync(entity), "detach materializes pending sync");
-            }
             return states;
         }
     }
