@@ -9,7 +9,8 @@
       "org.edtp.entitycollisionoptimizer.gametest.ZombieCollisionBenchmark",
       "org.edtp.entitycollisionoptimizer.gametest.ElderGuardianBenchmark",
       "org.edtp.entitycollisionoptimizer.gametest.ClimbingCollisionBenchmark",
-      "org.edtp.entitycollisionoptimizer.gametest.VanillaCollisionParityGameTests"
+      "org.edtp.entitycollisionoptimizer.gametest.VanillaCollisionParityGameTests",
+      "org.edtp.entitycollisionoptimizer.cramming.ZombieCrammingParityGameTests"
     ]
   },
   "mixins": ["entity_collision_optimizer-gametest.mixins.json"],

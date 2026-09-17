@@ -78,6 +78,19 @@ if (providers.gradleProperty("benchmark").isPresent()
             eula = true
         }
     }
+
+    if (providers.gradleProperty("parity").isPresent()) {
+        def crammingTrace = layout.buildDirectory.file("gametest-baselines/zombie-cramming.bin")
+
+        sourceSets.gametest.java.srcDir("src/crammingTest/java")
+        loom.runs.named("gameTest") {
+            property "entity_collision_optimizer.cramming.mode", "compare"
+            property "entity_collision_optimizer.cramming.trace", crammingTrace.get().asFile.absolutePath
+        }
+        tasks.named("runGameTest") {
+            dependsOn project(":vanilla-gametest").tasks.named("runGameTest")
+        }
+    }
 }
 
 dependencies {
