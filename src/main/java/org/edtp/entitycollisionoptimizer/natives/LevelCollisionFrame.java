@@ -282,7 +282,7 @@ final class LevelCollisionFrame {
         do {
             result = FFMBackend.queryPushable(
                     nativeContext,
-                    source.getBoundingBox().inflate(0.2, 0.0, 0.2),
+                    source.getBoundingBox(),
                     sourceId,
                     sourceTeamId,
                     sourceRuleId,

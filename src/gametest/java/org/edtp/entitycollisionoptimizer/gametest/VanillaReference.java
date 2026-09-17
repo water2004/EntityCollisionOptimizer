@@ -22,7 +22,7 @@ final class VanillaReference {
     static void pushEntities(LivingEntity source) {
         List<Entity> list = source.level().getEntities(
                 source,
-                source.getBoundingBox().inflate(0.2, 0.0, 0.2),
+                source.getBoundingBox(),
                 EntitySelector.pushableBy(source)
         );
         if (list.isEmpty()) {
