@@ -28,7 +28,7 @@ final class NativePushRunParity {
     }
 
     private static void compare(GameTestHelper helper, int count, Vec3 initial, int guards) {
-        try (var scene = new InteractionScene(helper, true)) {
+        try (var scene = new InteractionScene(helper)) {
             var source = (Zombie) scene.spawn(EntityTypes.ZOMBIE, new Vec3(4.5, 1, 4.5));
             List<Entity> entities = new ArrayList<>();
             entities.add(source);

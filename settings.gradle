@@ -14,9 +14,3 @@ plugins {
 }
 
 rootProject.name = 'EntityCollisionOptimizer'
-
-// The vanilla side of the cross-process parity test is a standalone test mod.
-// Keep it out of normal builds so the published project remains single-module.
-if (gradle.startParameter.projectProperties.containsKey('parity')) {
-    include 'vanilla-gametest'
-}

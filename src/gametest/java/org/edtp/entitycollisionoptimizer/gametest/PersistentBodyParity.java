@@ -16,7 +16,7 @@ import java.util.List;
 final class PersistentBodyParity {
     static void verify(GameTestHelper helper) {
         for (int count : new int[]{2, 8, 20}) {
-            try (var scene = new InteractionScene(helper, true)) {
+            try (var scene = new InteractionScene(helper)) {
                 List<LivingEntity> entities = new ArrayList<>();
                 for (int i = 0; i < count; i++) entities.add((LivingEntity) scene.spawn(EntityTypes.ZOMBIE,
                         new Vec3(4.5 + (i % 5) * .025, 1, 4.5 + (i / 5) * .025)));

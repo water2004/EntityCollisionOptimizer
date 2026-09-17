@@ -112,10 +112,11 @@ Minecraft 按区段存储实体。一次碰撞查询需要遍历相关区段、�
 
 ```powershell
 ./gradlew.bat build
-./gradlew.bat runGameTest -Pparity
+./gradlew.bat runGameTest -PunitTest
+./gradlew.bat runGameTest -PintegrationTest
 ```
 
-差分 GameTest 会比较原版与优化路径在实体推动、玩家、载具、投射物、爆炸、活塞、粘液块与蜂蜜块、流体、气泡柱、冰面、异形方块碰撞箱、区块加载边界和跨维度传送等场景下的结果。
+单元 GameTest 覆盖聚焦的碰撞契约和确定性边界条件。集成 GameTest 会先在不加载本模组的进程中运行真实场景，再在加载本模组的进程中运行，并要求两边轨迹逐字节一致。测试职责和命令详见 [TESTING.md](TESTING.md)。
 
 压测必须通过 `-Pbenchmark` 显式启用，普通构建不会启动压测服务器。可以使用 `-PcompatModsDir=<目录>` 为测试运行加入额外模组。
 

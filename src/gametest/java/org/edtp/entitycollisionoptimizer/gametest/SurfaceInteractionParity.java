@@ -41,7 +41,7 @@ final class SurfaceInteractionParity {
 
     private static List<InteractionScene.State> run(GameTestHelper helper, boolean enabled,
                                                      EntityType<?> type, Block floor, boolean falling) {
-        try (var scene = new InteractionScene(helper, enabled)) {
+        try (var scene = new InteractionScene(helper)) {
             scene.floor(floor);
             for (int y = 1; y <= 4; y++) for (int z = 1; z <= 8; z++) scene.block(10, y, z, Blocks.STONE);
             Entity entity = scene.spawn(type, new Vec3(4.5, falling ? 3.2 : 1.0, 4.5));

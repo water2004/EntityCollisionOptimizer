@@ -18,7 +18,7 @@ import java.util.List;
 final class PositionWriteParity {
     static void verify(GameTestHelper helper) {
         for (int count : new int[]{2, 8, 20}) {
-            try (var scene = new InteractionScene(helper, true)) {
+            try (var scene = new InteractionScene(helper)) {
                 List<LivingEntity> entities = new ArrayList<>();
                 List<Vec3> homes = new ArrayList<>();
                 for (int i = 0; i < count; i++) {

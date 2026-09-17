@@ -1,6 +1,7 @@
 # 项目排除路径
 /.gradle/
 /build/
+/vanilla-gametest/.gradle/
 /vanilla-gametest/build/
 /dist/
 /build/classes/java/main/

@@ -55,7 +55,7 @@ final class TntCannonParity {
     }
 
     private static Shot openAirShot(GameTestHelper helper, boolean enabled) {
-        try (var scene = new InteractionScene(helper, enabled, 12, 8, 12)) {
+        try (var scene = new InteractionScene(helper, 12, 8, 12)) {
             scene.floor(Blocks.OBSIDIAN);
             for (int y = 1; y <= 4; y++) for (int z = 4; z <= 6; z++) scene.block(3, y, z, Blocks.OBSIDIAN);
             var payload = primed(scene, new Vec3(6.5, 2.0, 5.5), 80);
@@ -66,7 +66,7 @@ final class TntCannonParity {
     }
 
     private static Shot triDirectionalBomber(GameTestHelper helper, boolean enabled) {
-        try (var scene = new InteractionScene(helper, enabled, 10, 6, 16)) {
+        try (var scene = new InteractionScene(helper, 10, 6, 16)) {
             scene.floor(Blocks.STONE);
             int ox = 2, oy = 1, oz = 1;
             scene.block(ox + 3, oy, oz + 9, wall(WallSide.NONE, WallSide.NONE, WallSide.TALL, WallSide.NONE));
@@ -123,7 +123,7 @@ final class TntCannonParity {
     }
 
     private static Shot trencherRailCell(GameTestHelper helper, boolean enabled) {
-        try (var scene = new InteractionScene(helper, enabled, 12, 6, 10)) {
+        try (var scene = new InteractionScene(helper, 12, 6, 10)) {
             scene.floor(Blocks.STONE);
             int ox = 3, oy = 1, oz = 3;
             scene.block(ox + 1, oy, oz, Blocks.SANDSTONE);
@@ -156,7 +156,7 @@ final class TntCannonParity {
     }
 
     private static Shot worldEaterCell(GameTestHelper helper, boolean enabled) {
-        try (var scene = new InteractionScene(helper, enabled, 12, 6, 10)) {
+        try (var scene = new InteractionScene(helper, 12, 6, 10)) {
             scene.floor(Blocks.STONE);
             int ox = 6, oy = 2, oz = 5;
             scene.block(ox - 1, oy - 1, oz - 1, Blocks.SMOOTH_STONE);

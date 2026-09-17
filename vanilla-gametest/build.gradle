@@ -15,7 +15,7 @@ dependencies {
     implementation "net.fabricmc.fabric-api:fabric-api:${fabric_api_version}"
 }
 
-sourceSets.main.java.srcDir(rootProject.file('src/crammingTest/java'))
+sourceSets.main.java.srcDir(file('../src/integrationTest/java'))
 
 fabricApi {
     configureTests {
@@ -27,15 +27,20 @@ fabricApi {
     }
 }
 
-def crammingTrace = rootProject.layout.buildDirectory.file('gametest-baselines/zombie-cramming.bin')
+def integrationTraceDir = file('../build/gametest-baselines')
 
 loom {
     runs {
         configureEach {
-            property 'entity_collision_optimizer.cramming.mode', 'record'
-            property 'entity_collision_optimizer.cramming.trace', crammingTrace.get().asFile.absolutePath
-            property 'fabric-api.gametest.filter', 'entity_collision_optimizer-vanilla-gametest:zombie_cramming_parity_game_tests_real_zombie_cramming_parity'
+            property 'entity_collision_optimizer.integration.mode', 'record'
+            property 'entity_collision_optimizer.integration.trace_dir', integrationTraceDir.absolutePath
         }
+    }
+}
+
+tasks.named('runGameTest') {
+    doFirst {
+        delete integrationTraceDir
     }
 }
 

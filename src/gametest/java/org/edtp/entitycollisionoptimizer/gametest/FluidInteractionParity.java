@@ -42,7 +42,7 @@ final class FluidInteractionParity {
     }
 
     private static List<InteractionScene.State> run(GameTestHelper helper, boolean enabled, EntityType<?> type, int fixture) {
-        try (var scene = new InteractionScene(helper, enabled)) {
+        try (var scene = new InteractionScene(helper)) {
             scene.floor(Blocks.STONE);
             for (int x = 1; x <= 10; x++) for (int y = 1; y <= 2; y++) {
                 scene.block(x, y, 2, Blocks.STONE);

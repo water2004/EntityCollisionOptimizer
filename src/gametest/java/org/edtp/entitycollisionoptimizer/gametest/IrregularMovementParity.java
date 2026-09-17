@@ -54,7 +54,7 @@ final class IrregularMovementParity {
 
     private static List<InteractionScene.State> run(GameTestHelper helper, boolean enabled,
                                                      EntityType<?> type, BlockState obstacle, boolean crouching) {
-        try (var scene = new InteractionScene(helper, enabled)) {
+        try (var scene = new InteractionScene(helper)) {
             scene.floor(Blocks.STONE);
             scene.block(5, 1, 4, obstacle);
             scene.block(5, 1, 5, Blocks.STONE_SLAB);

@@ -24,7 +24,7 @@ final class PushStateParity {
     }
 
     private static void compare(GameTestHelper helper, int count) {
-        try (var scene = new InteractionScene(helper, true)) {
+        try (var scene = new InteractionScene(helper)) {
             List<LivingEntity> entities = new ArrayList<>();
             for (int i = 0; i < count; i++) entities.add((LivingEntity) scene.spawn(EntityTypes.ZOMBIE,
                     new Vec3(4.4 + i % 5 * .04, 1, 4.4 + i / 5 * .04)));

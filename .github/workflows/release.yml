@@ -81,6 +81,14 @@ jobs:
         shell: pwsh
         run: .\gradlew.bat clean build --no-daemon "-PreleaseVersion=${{ steps.release.outputs.version }}"
 
+      - name: Run correctness GameTests
+        shell: pwsh
+        run: |
+          .\gradlew.bat runGameTest -PunitTest --no-daemon "-PreleaseVersion=${{ steps.release.outputs.version }}"
+          if ($LASTEXITCODE -ne 0) { throw 'Contract and unit GameTests failed.' }
+          .\gradlew.bat runGameTest -PintegrationTest --no-daemon "-PreleaseVersion=${{ steps.release.outputs.version }}"
+          if ($LASTEXITCODE -ne 0) { throw 'Cross-process integration GameTests failed.' }
+
       - name: Verify and stage artifacts
         shell: pwsh
         run: |

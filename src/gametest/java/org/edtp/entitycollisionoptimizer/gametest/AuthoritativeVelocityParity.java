@@ -23,7 +23,7 @@ final class AuthoritativeVelocityParity {
     }
 
     private static void compare(GameTestHelper helper, int count) {
-        try (var scene = new InteractionScene(helper, true)) {
+        try (var scene = new InteractionScene(helper)) {
             List<LivingEntity> entities = new ArrayList<>();
             for (int i = 0; i < count; i++) entities.add((LivingEntity) scene.spawn(EntityTypes.ZOMBIE,
                     new Vec3(4.5 + i % 5 * .03, 1, 4.5 + i / 5 * .04)));

@@ -31,7 +31,7 @@ final class SyncStateParity {
     }
 
     private static List<State> run(GameTestHelper helper, int count, boolean enabled) {
-        try (var scene = new InteractionScene(helper, enabled)) {
+        try (var scene = new InteractionScene(helper)) {
             List<LivingEntity> entities = new ArrayList<>();
             List<ServerEntity> trackers = new ArrayList<>();
             List<Sink> sinks = new ArrayList<>();

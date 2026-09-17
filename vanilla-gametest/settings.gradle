@@ -1,0 +1,22 @@
+pluginManagement {
+    repositories {
+        maven {
+            name = 'Fabric'
+            url = 'https://maven.fabricmc.net/'
+        }
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+
+def sharedProperties = new Properties()
+file('../gradle.properties').withInputStream(sharedProperties::load)
+gradle.beforeProject { project ->
+    sharedProperties.each { key, value ->
+        if (!project.hasProperty(key.toString())) {
+            project.ext.set(key.toString(), value)
+        }
+    }
+}
+
+rootProject.name = 'EntityCollisionOptimizerVanillaIntegrationTest'

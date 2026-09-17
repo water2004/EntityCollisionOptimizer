@@ -46,7 +46,7 @@ final class PistonInteractionParity {
 
     private static Outcome run(GameTestHelper helper, boolean enabled, Direction facing, boolean extending,
                                Block block, EntityType<?> type, boolean ridingHoney) {
-        try (var scene = new InteractionScene(helper, enabled)) {
+        try (var scene = new InteractionScene(helper)) {
             var moving = Blocks.MOVING_PISTON.defaultBlockState().setValue(BlockStateProperties.FACING, facing);
             scene.block(7, 4, 4, moving);
             BlockPos pos = helper.absolutePos(new BlockPos(7, 4, 4));

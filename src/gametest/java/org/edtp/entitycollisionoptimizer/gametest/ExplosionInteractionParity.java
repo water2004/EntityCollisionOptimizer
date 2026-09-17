@@ -39,7 +39,7 @@ final class ExplosionInteractionParity {
 
     private static List<InteractionScene.State> run(GameTestHelper helper, boolean enabled,
                                                      int kind, boolean shielded, int count) {
-        try (var scene = new InteractionScene(helper, enabled)) {
+        try (var scene = new InteractionScene(helper)) {
             scene.floor(Blocks.OBSIDIAN);
             for (int y = 1; y <= 4; y++) for (int z = 1; z <= 8; z++) {
                 scene.block(11, y, z, Blocks.OBSIDIAN);

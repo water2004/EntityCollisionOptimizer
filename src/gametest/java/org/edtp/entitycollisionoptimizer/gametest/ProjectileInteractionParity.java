@@ -37,7 +37,7 @@ final class ProjectileInteractionParity {
     }
 
     private static Outcome run(GameTestHelper helper, boolean enabled, Item item, int fixture) {
-        try (var scene = new InteractionScene(helper, enabled)) {
+        try (var scene = new InteractionScene(helper)) {
             scene.floor(Blocks.STONE);
             for (int y = 1; y <= 5; y++) for (int z = 2; z <= 6; z++) scene.block(10, y, z, Blocks.OBSIDIAN);
             for (int y = 1; y <= 3; y++) {

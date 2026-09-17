@@ -44,6 +44,17 @@ repositories {
     mavenCentral()
 }
 
+def unitTestsEnabled = providers.gradleProperty("unitTest").isPresent()
+def integrationTestsEnabled = providers.gradleProperty("integrationTest").isPresent()
+def benchmarksEnabled = providers.gradleProperty("benchmark").isPresent()
+def enabledTestSuites = ((unitTestsEnabled ? 1 : 0)
+        + (integrationTestsEnabled ? 1 : 0)
+        + (benchmarksEnabled ? 1 : 0))
+
+if (enabledTestSuites > 1) {
+    throw new GradleException("Choose exactly one GameTest suite: unitTest, integrationTest, or benchmark")
+}
+
 loom {
     runs {
         configureEach {
@@ -51,7 +62,7 @@ loom {
             if (providers.gradleProperty("gameTestFilter").isPresent()) {
                 vmArg "-Dfabric-api.gametest.filter=${providers.gradleProperty('gameTestFilter').get()}"
             }
-            if (providers.gradleProperty("benchmark").isPresent()) {
+            if (benchmarksEnabled) {
                 vmArg "-Dentity_collision_optimizer.runBenchmark=true"
             }
             if (providers.gradleProperty("jfrOutput").isPresent()) {
@@ -67,9 +78,8 @@ loom {
     }
 }
 
-// The 200-tick falling-zombie benchmark is opt-in; normal builds do not start a game server.
-if (providers.gradleProperty("benchmark").isPresent()
-        || providers.gradleProperty("parity").isPresent()) {
+// Correctness suites and performance benchmarks are explicit; normal builds do not start a server.
+if (enabledTestSuites == 1) {
     fabricApi {
         configureTests {
             createSourceSet = true
@@ -79,17 +89,28 @@ if (providers.gradleProperty("benchmark").isPresent()
         }
     }
 
-    if (providers.gradleProperty("parity").isPresent()) {
-        def crammingTrace = layout.buildDirectory.file("gametest-baselines/zombie-cramming.bin")
+    if (integrationTestsEnabled) {
+        def integrationTraceDir = layout.buildDirectory.dir("gametest-baselines")
+        def recordVanillaIntegrationTrace = tasks.register("recordVanillaIntegrationTrace", GradleBuild) {
+            dir = file("vanilla-gametest")
+            tasks = ["runGameTest"]
+        }
 
-        sourceSets.gametest.java.srcDir("src/crammingTest/java")
+        sourceSets.gametest.java.setSrcDirs(["src/integrationTest/java"])
+        sourceSets.gametest.resources.setSrcDirs(["src/integrationTest/resources"])
         loom.runs.named("gameTest") {
-            property "entity_collision_optimizer.cramming.mode", "compare"
-            property "entity_collision_optimizer.cramming.trace", crammingTrace.get().asFile.absolutePath
+            property "entity_collision_optimizer.integration.mode", "compare"
+            property "entity_collision_optimizer.integration.trace_dir", integrationTraceDir.get().asFile.absolutePath
         }
         tasks.named("runGameTest") {
-            dependsOn project(":vanilla-gametest").tasks.named("runGameTest")
+            dependsOn recordVanillaIntegrationTrace
         }
+    } else {
+        sourceSets.gametest.java.setSrcDirs(["src/gametest/java"])
+        sourceSets.gametest.resources.setSrcDirs([
+                "src/gametest/resources",
+                unitTestsEnabled ? "src/unitTest/resources" : "src/benchmarkTest/resources"
+        ])
     }
 }
 

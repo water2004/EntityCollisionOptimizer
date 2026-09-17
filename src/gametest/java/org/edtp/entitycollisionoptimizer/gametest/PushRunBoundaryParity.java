@@ -33,7 +33,7 @@ public final class PushRunBoundaryParity {
     }
 
     private static List<State> run(GameTestHelper helper, boolean enabled) {
-        try (var scene = new InteractionScene(helper, enabled)) {
+        try (var scene = new InteractionScene(helper)) {
             List<Entity> entities = new ArrayList<>();
             entities.add(scene.spawn(EntityTypes.ZOMBIE, new Vec3(4.5, 1, 4.5)));
             entities.add(scene.spawn(EntityTypes.ZOMBIE, new Vec3(4.6, 1, 4.6)));

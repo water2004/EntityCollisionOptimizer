@@ -40,7 +40,7 @@ final class PlayerInteractionParity {
     }
 
     private static List<InteractionScene.State> attack(GameTestHelper helper, boolean enabled, int kind, boolean sprinting) {
-        try (var scene = new InteractionScene(helper, enabled)) {
+        try (var scene = new InteractionScene(helper)) {
             scene.floor(Blocks.BLUE_ICE);
             for (int y = 1; y <= 4; y++) for (int z = 2; z <= 6; z++) scene.block(7, y, z, Blocks.STONE);
             var player = (ServerPlayer) scene.spawn(EntityTypes.PLAYER, new Vec3(4.5, 1, 4.5));
@@ -77,7 +77,7 @@ final class PlayerInteractionParity {
     }
 
     private static List<Integer> pickup(GameTestHelper helper, boolean enabled) {
-        try (var scene = new InteractionScene(helper, enabled)) {
+        try (var scene = new InteractionScene(helper)) {
             scene.floor(Blocks.STONE);
             var player = (ServerPlayer) scene.spawn(EntityTypes.PLAYER, new Vec3(4.5, 1, 4.5));
             player.setGameMode(GameType.SURVIVAL);

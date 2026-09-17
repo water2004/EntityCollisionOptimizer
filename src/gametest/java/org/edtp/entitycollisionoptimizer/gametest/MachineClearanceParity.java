@@ -85,7 +85,7 @@ final class MachineClearanceParity {
 
     private static List<InteractionScene.State> trace(GameTestHelper helper, boolean enabled, EntityType<?> type,
                                                        BlockState obstacle, Vec3 start, Vec3 motion, int wall) {
-        try (var scene = new InteractionScene(helper, enabled)) {
+        try (var scene = new InteractionScene(helper)) {
             scene.floor(Blocks.STONE);
             scene.block(5, 1, 4, obstacle);
             if (wall != 0) for (int y = 2; y <= 4; y++) scene.block(5, y, 4, obstacle);

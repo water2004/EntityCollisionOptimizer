@@ -112,10 +112,11 @@ Use Java 25 and the included Gradle Wrapper:
 
 ```powershell
 ./gradlew.bat build
-./gradlew.bat runGameTest -Pparity
+./gradlew.bat runGameTest -PunitTest
+./gradlew.bat runGameTest -PintegrationTest
 ```
 
-The differential GameTest suite compares vanilla and optimized results across entity pushing, players, vehicles, projectiles, explosions, pistons, slime and honey blocks, fluids, bubble columns, ice, irregular block shapes, chunk-loading boundaries, and dimension transfers.
+Unit GameTests cover focused collision contracts and deterministic edge cases. Integration GameTests run real scenarios first without the mod and then with it, requiring byte-for-byte identical traces. See [TESTING.md](TESTING.md) for the suite boundaries and commands.
 
 Benchmarks are opt-in through `-Pbenchmark`; a normal build does not start a benchmark server. Use `-PcompatModsDir=<directory>` to add extra mods to a test run.
 

@@ -29,11 +29,11 @@ final class InteractionScene implements AutoCloseable {
     private final List<Entity> entities = new ArrayList<>();
     private final Map<GameRule<Boolean>, Boolean> rules = new LinkedHashMap<>();
 
-    InteractionScene(GameTestHelper helper, boolean optimized) {
-        this(helper, optimized, 12, 8, 8);
+    InteractionScene(GameTestHelper helper) {
+        this(helper, 12, 8, 8);
     }
 
-    InteractionScene(GameTestHelper helper, boolean optimized, int maxX, int maxY, int maxZ) {
+    InteractionScene(GameTestHelper helper, int maxX, int maxY, int maxZ) {
         this.helper = helper;
         this.maxX = maxX;
         this.maxY = maxY;

@@ -12,7 +12,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 
-/** Serial workload timing; normal parity runs never start benchmark scenarios. */
+/** Serial workload timing; correctness suites never start benchmark scenarios. */
 public final class CollisionBenchmarkRunner {
     static final int DURATION_TICKS = 200;
     private static BenchmarkRun activeRun;

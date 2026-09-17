@@ -1,16 +1,14 @@
 {
   "schemaVersion": 1,
-  "id": "entity_collision_optimizer-gametest",
+  "id": "entity_collision_optimizer-benchmark-gametest",
   "version": "1.0.0",
-  "name": "Entity Collision Optimizer GameTest",
+  "name": "Entity Collision Optimizer Benchmarks",
   "environment": "server",
   "entrypoints": {
     "fabric-gametest": [
       "org.edtp.entitycollisionoptimizer.gametest.ZombieCollisionBenchmark",
       "org.edtp.entitycollisionoptimizer.gametest.ElderGuardianBenchmark",
-      "org.edtp.entitycollisionoptimizer.gametest.ClimbingCollisionBenchmark",
-      "org.edtp.entitycollisionoptimizer.gametest.VanillaCollisionParityGameTests",
-      "org.edtp.entitycollisionoptimizer.cramming.ZombieCrammingParityGameTests"
+      "org.edtp.entitycollisionoptimizer.gametest.ClimbingCollisionBenchmark"
     ]
   },
   "mixins": ["entity_collision_optimizer-gametest.mixins.json"],

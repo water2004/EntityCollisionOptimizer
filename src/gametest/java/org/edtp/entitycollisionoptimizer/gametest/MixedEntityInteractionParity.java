@@ -44,7 +44,7 @@ final class MixedEntityInteractionParity {
     }
 
     private static List<InteractionScene.State> run(GameTestHelper helper, boolean enabled, List<? extends EntityType<?>> types) {
-        try (var scene = new InteractionScene(helper, enabled)) {
+        try (var scene = new InteractionScene(helper)) {
             scene.floor(Blocks.STONE);
             List<Entity> entities = new ArrayList<>();
             for (int i = 0; i < types.size(); i++) {
