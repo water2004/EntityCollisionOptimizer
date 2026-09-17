@@ -43,7 +43,6 @@ public final class PositionMirrorChecks {
             check(helper, table, slot, entity, "independent bounding box");
             table.borrow();
             try {
-                table.prune(ignored -> false);
                 int capacity = table.capacity();
                 for (int i = 0; i <= capacity; i++) table.slot(new Zombie(helper.getLevel()));
                 helper.assertTrue(table.capacity() > capacity && table.entity(slot) == entity, "borrowed row survives growth");
@@ -59,7 +58,7 @@ public final class PositionMirrorChecks {
             table.clear();
             entity.setPosRaw(13, 14, 15);
             check(helper, next, nextSlot, entity, "former clear cannot detach current owner");
-            next.prune(ignored -> false);
+            next.retire(entity);
             entity.setPosRaw(16, 17, 18);
             helper.assertTrue(!next.bound(nextSlot), "retired entity stays detached");
             int reused = next.slot(entity);

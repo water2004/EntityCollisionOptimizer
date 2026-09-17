@@ -10,7 +10,6 @@ import java.lang.foreign.MemorySegment;
 import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.IdentityHashMap;
-import java.util.function.Predicate;
 
 import static java.lang.foreign.ValueLayout.JAVA_DOUBLE;
 import static java.lang.foreign.ValueLayout.JAVA_INT;
@@ -83,23 +82,6 @@ public final class CollisionStateTable implements AutoCloseable {
         positions[slot] = null;
         bounds.forget(slot);
         free.addLast(slot);
-    }
-
-    void prune(Predicate<Entity> live) {
-        // A reentrant query/frame change must not recycle an outer batch's candidate IDs.
-        if (borrowers != 0) return;
-        for (int slot = 0; slot < size; slot++) {
-            Entity entity = entities[slot];
-            if (entity != null && !live.test(entity)) {
-                ((CollisionBodyAccess) entity).eco$detachBody(this, slot);
-                slots.remove(entity);
-                entities[slot] = null;
-                velocities[slot] = null;
-                positions[slot] = null;
-                bounds.forget(slot);
-                free.addLast(slot);
-            }
-        }
     }
 
     /** Position publication boundary, also used by teleports and raw vanilla stores. */

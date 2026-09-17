@@ -34,10 +34,12 @@ public final class CollisionStateTableChecks {
             first.setDeltaMovement(new Vec3(.125, -.0, -.25));
             ((CollisionBodyAccess) first).eco$bindBody(table, firstSlot);
             helper.assertTrue(table.memory().get(JAVA_DOUBLE, velocityOffset) == .125, "new reference refreshes body");
+            Entity deferred = new Zombie(helper.getLevel());
+            int deferredSlot = table.slot(deferred);
             table.borrow();
             try {
-                table.prune(entity -> entity == second);
-                helper.assertTrue(table.entity(firstSlot) == first, "borrowed candidate survives retirement");
+                table.retire(deferred);
+                helper.assertTrue(table.entity(deferredSlot) == deferred, "borrowed slot is not released or reused");
                 int oldCapacity = table.capacity();
                 for (int i = 0; i <= oldCapacity; i++) table.slot(new Zombie(helper.getLevel()));
                 helper.assertTrue(table.capacity() > oldCapacity, "table actually grows");
@@ -45,15 +47,16 @@ public final class CollisionStateTableChecks {
                 helper.assertTrue(table.slot(first) == firstSlot, "growth preserves IDs");
                 helper.assertTrue(!first.needsSync, "growth preserves consumed sync");
             } finally { table.release(); }
+            helper.assertTrue(!table.bound(deferredSlot), "release applies the deferred retirement");
             table.memory().set(JAVA_DOUBLE, velocityOffset, 19.0);
             nativeVersion(table, firstSlot);
-            table.prune(entity -> entity == second);
-            helper.assertTrue(first.getDeltaMovement().x == 19, "prune preserves an unobserved native velocity");
-            helper.assertTrue(first.needsSync, "prune preserves pending native sync");
+            table.retire(first);
+            helper.assertTrue(first.getDeltaMovement().x == 19, "retire preserves an unobserved native velocity");
+            helper.assertTrue(first.needsSync, "retire preserves pending native sync");
             int replacement = table.slot(first);
             ((CollisionBodyAccess) first).eco$bindBody(table, replacement);
             helper.assertTrue(table.memory().get(JAVA_DOUBLE, (long) replacement * STRIDE_BYTES) == first.getX(), "reused slot refreshed");
-            helper.assertTrue(table.entity(secondSlot) == second, "prune preserves surviving IDs");
+            helper.assertTrue(table.entity(secondSlot) == second, "retire leaves other slots untouched");
         }
         verifyOwnershipTransfer(helper);
     }
@@ -72,7 +75,7 @@ public final class CollisionStateTableChecks {
             current.memory().set(JAVA_DOUBLE, (long) slot * STRIDE_BYTES + 16, 29.0);
             nativeVersion(current, slot);
             entity.needsSync = false;
-            former.prune(candidate -> false);
+            former.retire(entity);
             helper.assertTrue(entity.getDeltaMovement().x == 29, "former owner cannot detach current owner");
             helper.assertTrue(!entity.needsSync, "former owner cannot republish consumed sync");
             current.memory().set(JAVA_DOUBLE, (long) slot * STRIDE_BYTES + 16, 31.0);
