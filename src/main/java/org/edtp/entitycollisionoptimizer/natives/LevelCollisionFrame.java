@@ -26,10 +26,13 @@ import java.util.List;
 
 /** One level's persistent spatial index and semantic metadata; no cross-level scratch state. */
 final class LevelCollisionFrame {
+    // revisions are started at 0, using Long.MIN_VALUE as a sentinel to indicate that the value is uncached.
     private static final long UNCACHED = Long.MIN_VALUE;
+    // 2 bits mask for FFMBackend.invalidatePushEligibilityFields(), which is a bitfield of the fields to invalidate.
     private static final int INVALIDATE_SELECTABLE = 1;
     private static final int INVALIDATE_TEAM = 2;
-    private static final int[] NO_HARD_COLLISIONS = new int[0];
+    // Empty list, used as preallocated objects, prevent unnecessary allocations. Shared across levels and threads: callers must never modify it
+    private static final int[] EMPTY_IDS = new int[0];
 
     private final PersistentEntityIds ids = new PersistentEntityIds();
     private final FFMBackend.Context nativeContext = FFMBackend.createContext();
@@ -141,7 +144,7 @@ final class LevelCollisionFrame {
     synchronized int[] hardCollision(Entity source, AABB scan) {
         addEntity(source);
         if (scan.getSize() < 1.0E-7) {
-            return NO_HARD_COLLISIONS;
+            return EMPTY_IDS;
         }
         FFMBackend.QueryResult result = FFMBackend.queryHard(
                 nativeContext,
@@ -150,6 +153,9 @@ final class LevelCollisionFrame {
                 VanillaMethodDetector.usesVanillaCanCollideWith(source),
                 ids.size()
         );
+        if (result.size() == 0) {
+            return EMPTY_IDS;
+        }
         int[] matches = new int[result.size()];
         int count = 0;
         for (int index = 0; index < result.size(); index++) {
@@ -163,7 +169,9 @@ final class LevelCollisionFrame {
             }
             matches[count++] = nativeId;
         }
-        return count == matches.length ? matches : Arrays.copyOf(matches, count);
+        return count == 0
+                ? EMPTY_IDS
+                : (count == matches.length ? matches : Arrays.copyOf(matches, count));
     }
 
     synchronized void addHardCubes(int[] hardIds, NativeShapeBatch shapes) {
