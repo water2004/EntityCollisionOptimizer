@@ -16,6 +16,7 @@ dependencies {
 }
 
 sourceSets.main.java.srcDir(file('../src/integrationTest/java'))
+sourceSets.main.resources.srcDir(file('../src/integrationTestShared/resources'))
 
 fabricApi {
     configureTests {
@@ -41,6 +42,7 @@ loom {
 tasks.named('runGameTest') {
     doFirst {
         delete integrationTraceDir
+        delete layout.buildDirectory.dir('run/gameTest/world')
     }
 }
 

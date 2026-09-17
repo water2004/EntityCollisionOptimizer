@@ -15,12 +15,11 @@ final class ZombieTrace {
     private ZombieTrace() {
     }
 
-    static void normalize(Zombie zombie, Vec3 position, long seed) {
-        zombie.setPos(position);
+    static void normalize(Zombie zombie, long seed) {
         zombie.setOldPosAndRot();
         zombie.setDeltaMovement(Vec3.ZERO);
         zombie.setOnGround(true);
-        zombie.setNoAi(false);
+        zombie.setNoAi(true);
         zombie.setNoGravity(false);
         zombie.setSilent(false);
         zombie.setInvulnerable(false);

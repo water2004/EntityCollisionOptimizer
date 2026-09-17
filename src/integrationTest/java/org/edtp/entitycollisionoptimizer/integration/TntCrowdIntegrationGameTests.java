@@ -25,70 +25,55 @@ public final class TntCrowdIntegrationGameTests {
     private static final int ROOM_SIZE = 9;
     private static final int ROOM_HEIGHT = 4;
     private static final int TNT_FUSE = 20;
+    private static final int POSITION_SCALE = 4096;
     private static final long LEVEL_SEED = 0x5EED_EC02_7AL;
     private static final long ENTITY_SEED_STEP = 0x9E37_79B9_7F4A_7C15L;
     private static final long SPAWN_SEED = 0xEC02007AL;
-    private static final Vec3 SCENE_ORIGIN = new Vec3(1089.0, 80.0, 1025.0);
+    private static final int ENTITY_ID_BASE = 2_000_000;
+    private static final long DAY_TIME = 18_000L;
+    private static final long GAME_TIME = 1_000L;
+    private static final Vec3 SCENE_ORIGIN = new Vec3(-5_909_900.0, -57.0, -9_908_000.0);
 
-    @GameTest(maxTicks = 240, padding = 48)
+    @GameTest(
+            maxTicks = 1000,
+            padding = 48,
+            environment = "entity_collision_optimizer:integration"
+    )
     public void tntExplosionInZombieCrowdMatchesVanilla(GameTestHelper helper) {
         ScenarioRun run = new ScenarioRun(helper);
-        run.start();
         helper.onEachTick(run::captureTick);
     }
 
     private static final class ScenarioRun {
         private final GameTestHelper helper;
         private final ServerLevel level;
+        private final Vec3 sceneOrigin;
         private final IntegrationArena arena;
+        private final long previousDayTime;
+        private final long previousGameTime;
         private final List<Zombie> zombies = new ArrayList<>(ENTITY_COUNT);
         private final ByteArrayOutputStream bytes = new ByteArrayOutputStream(3 * 1024 * 1024);
         private final DataOutputStream output = new DataOutputStream(bytes);
         private PrimedTnt tnt;
         private int tick;
+        private boolean prepared;
+        private boolean started;
         private boolean finished;
         private boolean cleanedUp;
 
         private ScenarioRun(GameTestHelper helper) {
             this.helper = helper;
             level = helper.getLevel();
-            arena = new IntegrationArena(level);
+            sceneOrigin = SCENE_ORIGIN;
+            arena = new IntegrationArena(level, ENTITY_ID_BASE, LEVEL_SEED);
+            previousDayTime = arena.defaultClockTime();
+            previousGameTime = arena.gameTime();
         }
 
         private void start() {
             try {
-                level.getRandom().setSeed(LEVEL_SEED);
-                arena.buildStoneRoom(SCENE_ORIGIN, ROOM_SIZE, ROOM_HEIGHT, ROOM_SIZE);
-
-                Random spawnRandom = new Random(SPAWN_SEED);
-                for (int index = 0; index < ENTITY_COUNT; index++) {
-                    Zombie zombie = arena.track(helper.spawn(EntityTypes.ZOMBIE, new Vec3(1.5, 2.0, 1.5)));
-                    ZombieTrace.normalize(
-                            zombie,
-                            spawnPosition(spawnRandom),
-                            LEVEL_SEED + ENTITY_SEED_STEP * index
-                    );
-                    zombies.add(zombie);
-                }
-
-                tnt = arena.track((PrimedTnt) helper.spawn(EntityTypes.TNT, new Vec3(1.5, 2.0, 1.5)));
-                tnt.setPos(roomCenter());
-                tnt.setOldPosAndRot();
-                tnt.setDeltaMovement(Vec3.ZERO);
-                tnt.setOnGround(true);
-                tnt.setFuse(TNT_FUSE);
-                tnt.tickCount = 0;
-                tnt.getRandom().setSeed(LEVEL_SEED ^ 0x544E54L);
-                level.getRandom().setSeed(LEVEL_SEED);
-
-                output.writeInt(TRACE_MAGIC);
-                output.writeInt(TRACE_VERSION);
-                output.writeInt(ENTITY_COUNT);
-                output.writeInt(TICKS);
-                writeFrame(0);
-            } catch (IOException failure) {
-                cleanup();
-                throw new IllegalStateException("Cannot initialize TNT crowd trace", failure);
+                arena.buildStoneRoom(sceneOrigin, ROOM_SIZE, ROOM_HEIGHT, ROOM_SIZE);
+                prepared = true;
             } catch (RuntimeException | Error failure) {
                 cleanup();
                 throw failure;
@@ -97,7 +82,19 @@ public final class TntCrowdIntegrationGameTests {
 
         private void captureTick() {
             if (finished) return;
+            if (!IntegrationSequence.isCrammingComplete()) return;
             try {
+                if (!prepared) {
+                    start();
+                    return;
+                }
+                if (!started) {
+                    if (!arena.isReadyForEntityTicks()
+                            || !arena.isDarkRoom(sceneOrigin, ROOM_SIZE, ROOM_HEIGHT, ROOM_SIZE)) return;
+                    initializeTrace();
+                    started = true;
+                    return;
+                }
                 tick++;
                 writeFrame(tick);
                 if (tick == TICKS) finish();
@@ -112,11 +109,41 @@ public final class TntCrowdIntegrationGameTests {
             }
         }
 
+        private void initializeTrace() throws IOException {
+            arena.setDefaultClockTime(DAY_TIME);
+            arena.setGameTime(GAME_TIME);
+            level.getRandom().setSeed(LEVEL_SEED);
+            Random spawnRandom = new Random(SPAWN_SEED);
+            for (int index = 0; index < ENTITY_COUNT; index++) {
+                Zombie zombie = arena.spawn(EntityTypes.ZOMBIE, spawnPosition(sceneOrigin, spawnRandom));
+                ZombieTrace.normalize(
+                        zombie,
+                        LEVEL_SEED + ENTITY_SEED_STEP * index
+                );
+                zombies.add(zombie);
+            }
+
+            tnt = arena.spawn(EntityTypes.TNT, roomCenter(sceneOrigin));
+            tnt.setOldPosAndRot();
+            tnt.setDeltaMovement(Vec3.ZERO);
+            tnt.setOnGround(true);
+            tnt.setFuse(TNT_FUSE);
+            tnt.tickCount = 0;
+            tnt.getRandom().setSeed(LEVEL_SEED ^ 0x544E54L);
+            level.getRandom().setSeed(LEVEL_SEED);
+
+            output.writeInt(TRACE_MAGIC);
+            output.writeInt(TRACE_VERSION);
+            output.writeInt(ENTITY_COUNT);
+            output.writeInt(TICKS);
+            writeFrame(0);
+        }
+
         private void writeFrame(int frameTick) throws IOException {
             output.writeInt(frameTick);
-            writeTntState(output, tnt, SCENE_ORIGIN);
+            writeTntState(output, tnt, sceneOrigin);
             for (int index = 0; index < zombies.size(); index++) {
-                ZombieTrace.writeState(output, zombies.get(index), SCENE_ORIGIN, index);
+                ZombieTrace.writeState(output, zombies.get(index), sceneOrigin, index);
             }
         }
 
@@ -140,20 +167,22 @@ public final class TntCrowdIntegrationGameTests {
             if (cleanedUp) return;
             cleanedUp = true;
             arena.close();
+            arena.setDefaultClockTime(previousDayTime);
+            arena.setGameTime(previousGameTime);
         }
     }
 
-    private static Vec3 roomCenter() {
-        return SCENE_ORIGIN.add(ROOM_SIZE / 2.0, 0.0, ROOM_SIZE / 2.0);
+    private static Vec3 roomCenter(Vec3 sceneOrigin) {
+        return sceneOrigin.add(ROOM_SIZE / 2.0, 0.0, ROOM_SIZE / 2.0);
     }
 
-    private static Vec3 spawnPosition(Random random) {
-        double margin = 0.4;
-        double usable = ROOM_SIZE - margin * 2.0;
-        return SCENE_ORIGIN.add(
-                margin + random.nextDouble() * usable,
+    private static Vec3 spawnPosition(Vec3 sceneOrigin, Random random) {
+        int margin = POSITION_SCALE / 2;
+        int usable = (ROOM_SIZE - 1) * POSITION_SCALE;
+        return sceneOrigin.add(
+                (margin + random.nextInt(usable + 1)) / (double) POSITION_SCALE,
                 0.0,
-                margin + random.nextDouble() * usable
+                (margin + random.nextInt(usable + 1)) / (double) POSITION_SCALE
         );
     }
 

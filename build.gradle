@@ -97,7 +97,10 @@ if (enabledTestSuites == 1) {
         }
 
         sourceSets.gametest.java.setSrcDirs(["src/integrationTest/java"])
-        sourceSets.gametest.resources.setSrcDirs(["src/integrationTest/resources"])
+        sourceSets.gametest.resources.setSrcDirs([
+                "src/integrationTest/resources",
+                "src/integrationTestShared/resources"
+        ])
         loom.runs.named("gameTest") {
             property "entity_collision_optimizer.integration.mode", "compare"
             property "entity_collision_optimizer.integration.trace_dir", integrationTraceDir.get().asFile.absolutePath

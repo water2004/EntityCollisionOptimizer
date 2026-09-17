@@ -34,7 +34,11 @@ final class CrossProcessTrace {
             }
 
             byte[] expected = Files.readAllBytes(tracePath);
-            helper.assertTrue(Arrays.equals(actual, expected), mismatchMessage(scenario, expected, actual));
+            boolean matches = Arrays.equals(actual, expected);
+            if (!matches) {
+                Files.write(tracePath.resolveSibling(scenario + "-actual.bin"), actual);
+            }
+            helper.assertTrue(matches, mismatchMessage(scenario, expected, actual));
         } catch (IOException failure) {
             throw new IllegalStateException("Cannot access integration trace " + tracePath, failure);
         }

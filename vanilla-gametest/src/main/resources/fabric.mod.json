@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "id": "entity_collision_optimizer-vanilla-integration-test",
+  "id": "entity_collision_optimizer-integration-gametest",
   "version": "1.0.0",
-  "name": "Entity Collision Optimizer Vanilla Integration Tests",
+  "name": "Entity Collision Optimizer Integration GameTests",
   "environment": "server",
   "entrypoints": {
     "fabric-gametest": [
