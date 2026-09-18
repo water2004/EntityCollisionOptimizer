@@ -101,7 +101,7 @@ final class LevelCollisionFrame {
         selectableEntityRevisions[nativeId] = UNCACHED;
         teamRevisions[nativeId] = UNCACHED;
         if (!VanillaMethodDetector.usesVanillaCanBeCollidedWith(entity)) {
-            refreshNativeMetadata(nativeId, entity);
+            refreshNativeMetadata(nativeId, entity, MemorySegment.NULL);
         }
     }
 
@@ -283,7 +283,7 @@ final class LevelCollisionFrame {
         invalidateStalePushEligibility();
         // Derived teams can change without any scoreboard mutation (taming, owner resolution).
         // This is a semantic dependency, not an entity/mod whitelist or a density-dependent path.
-        for (Entity target : derivedTeams) refreshNativeMetadata(ids.getId(target), target);
+        for (Entity target : derivedTeams) refreshNativeMetadata(ids.getId(target), target, MemorySegment.NULL);
 
         int sourceId = ids.getId(source);
         if (sourceId >= 0) bodies.bindBody(source);
@@ -314,7 +314,7 @@ final class LevelCollisionFrame {
                             "Native collision metadata requested an unknown entity " + targetId
                     );
                 }
-                refreshNativeMetadata(targetId, target);
+                refreshNativeMetadata(targetId, target, MemorySegment.NULL);
             }
             refreshPasses++;
         } while (refreshPasses <= 2);
@@ -395,16 +395,12 @@ final class LevelCollisionFrame {
         }
     }
 
-    private void refreshNativeMetadata(int nativeId, Entity entity) {
-        refreshNativeMetadata(nativeId, entity, MemorySegment.NULL);
-    }
-
-    private void refreshNativeMetadata(int nativeId, Entity entity, MemorySegment bounds) {
+    private void refreshNativeMetadata(int nativeId, Entity entity, MemorySegment boundsOrNull) {
         PlayerTeam targetTeam = teamCached(nativeId, entity);
         FFMBackend.updateEntity(
                 nativeContext,
                 nativeId,
-                bounds,
+                boundsOrNull,
                 isSelectableCached(nativeId, entity),
                 entity.isPassenger(),
                 entity.isVehicle(),
