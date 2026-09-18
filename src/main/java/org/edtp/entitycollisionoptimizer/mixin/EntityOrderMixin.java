@@ -6,7 +6,7 @@ import org.edtp.entitycollisionoptimizer.collision.CollisionOrderState;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 
-/** Installed only when vanilla candidate ordering was selected at startup. */
+/** Carries the vanilla section insertion order that native queries sort by. */
 @Mixin(Entity.class)
 public abstract class EntityOrderMixin implements CollisionOrderState {
     @Unique private long eco$sectionOrder;

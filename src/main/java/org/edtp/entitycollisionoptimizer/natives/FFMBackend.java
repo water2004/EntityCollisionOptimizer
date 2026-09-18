@@ -391,7 +391,7 @@ public final class FFMBackend {
         }
     }
 
-    /** Whole-level box scan, ordered when the startup configuration requires it. */
+    /** Whole-level box scan in vanilla candidate order. */
     public static QueryResult queryEntities(
             Context nativeContext,
             AABB scan,
