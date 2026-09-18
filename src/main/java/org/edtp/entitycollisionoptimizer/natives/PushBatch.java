@@ -19,7 +19,7 @@ public final class PushBatch implements AutoCloseable {
             Double.BYTES
     );
     private int[] bodySlots = new int[0];
-    private int[] nativeFlags = new int[0];
+    private int[] nativePushFlags = new int[0];
     private int size;
     private int pushableCount;
     private int nonPassengerCount;
@@ -40,16 +40,16 @@ public final class PushBatch implements AutoCloseable {
         if (size > bodySlots.length) {
             int capacity = Math.max(size, bodySlots.length + (bodySlots.length >> 1) + 16);
             bodySlots = new int[capacity];
-            nativeFlags = new int[capacity];
+            nativePushFlags = new int[capacity];
         }
-        result.copyBodiesTo(bodySlots, nativeFlags);
+        result.copyBodiesTo(bodySlots, nativePushFlags);
     }
 
     public Entity target(int index) { return bodies.entity(bodySlots[index]); }
     public int size() { return size; }
     public int pushableCount() { return pushableCount; }
     public int nonPassengerCount() { return nonPassengerCount; }
-    public boolean usesNativePush(int index) { return nativeFlags[index] != 0; }
+    public boolean usesNativePush(int index) { return nativePushFlags[index] != 0; }
 
     /** Positions/velocities are live before entry; only changed semantic guards need refreshing. */
     public void applyNativeRun(LivingEntity source, int from, int to) {

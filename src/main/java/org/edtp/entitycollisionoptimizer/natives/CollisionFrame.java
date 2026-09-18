@@ -141,13 +141,13 @@ public final class CollisionFrame {
             LivingEntity source,
             PlayerTeam sourceTeam,
             Team.CollisionRule sourceRule,
-            boolean sourceUsesVanillaPush
+            boolean sourceUsesVanillaDoPush
     ) {
         return frameFor(source).queryPushable(
                 source,
                 sourceTeam,
                 sourceRule,
-                sourceUsesVanillaPush
+                sourceUsesVanillaDoPush
         );
     }
 
@@ -159,9 +159,9 @@ public final class CollisionFrame {
         return frame == null ? null : frame.entity(nativeId);
     }
 
-    public static PushBatch collectPushable(LivingEntity source, PlayerTeam team,
-                                            Team.CollisionRule rule, boolean vanillaPush) {
-        return frameFor(source).collectPushable(source, team, rule, vanillaPush);
+    public static PushBatch collectPushable(LivingEntity source, PlayerTeam sourceTeam,
+                                            Team.CollisionRule sourceRule, boolean sourceUsesVanillaDoPush) {
+        return frameFor(source).collectPushable(source, sourceTeam, sourceRule, sourceUsesVanillaDoPush);
     }
 
     public static boolean contains(Entity entity) {

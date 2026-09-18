@@ -43,7 +43,7 @@ ECO_EXPORT int updateCollisionEntity(
         int vehicle,
         int noPhysics,
         int vanillaEntityPush,
-        int vanillaVectorPush,
+        int allowsDeferredVelocityWrites,
         int teamId,
         int collisionRule,
         int bodySlot,
@@ -86,7 +86,7 @@ ECO_EXPORT int queryPushableEntities(
         int excludedEntityId,
         int sourceTeamId,
         int sourceCollisionRule,
-        int sourceUsesNativePush,
+        int sourceNativePushEligible,
         int* output,
         int* nativePushOutput,
         int outputCapacity

@@ -22,7 +22,7 @@ public final class NativeQueryChecks {
                     for (int id = 0; id < count; id++) {
                         Body b = bodies[id];
                         IndexUpdateFixture.update(context, id, b.box, b.x, b.y, b.z,
-                                b.selectable, b.passenger, b.entityPush, b.vectorPush,
+                                b.selectable, b.passenger, b.vanillaEntityPush, b.allowsDeferredVelocityWrites,
                                 b.team, b.rule, 900 - id, false, b.order);
                     }
                     // Grow reusable output storage without changing the low/medium entity count.
@@ -37,7 +37,7 @@ public final class NativeQueryChecks {
                 // Empty geometry after a populated query must not expose stale counts or slots.
                 Body source = bodies(count, 89)[0];
                 IndexUpdateFixture.update(context, 0, new AABB(0, 0, 0, 0, 0, 0), 0, 0, 0,
-                        source.selectable, source.passenger, source.entityPush, source.vectorPush,
+                        source.selectable, source.passenger, source.vanillaEntityPush, source.allowsDeferredVelocityWrites,
                         source.team, source.rule, 900, false, source.order);
                 var empty = FFMBackend.queryPushable(
                         context, new AABB(0, 0, 0, 0, 0, 0), 0, -1, 0, true, count);
@@ -85,13 +85,13 @@ public final class NativeQueryChecks {
 
     private static void compare(GameTestHelper helper, FFMBackend.Context context, Body[] bodies,
                                 int rule, boolean sourceNative, int capacityHint, int phase) {
-        boolean nativeSource = sourceNative && bodies[0].vectorPush;
+        boolean sourceNativePushEligible = sourceNative && bodies[0].allowsDeferredVelocityWrites;
         var result = FFMBackend.queryPushable(
-                context, bodies[0].box, 0, bodies[0].team, rule, nativeSource, capacityHint);
+                context, bodies[0].box, 0, bodies[0].team, rule, sourceNativePushEligible, capacityHint);
         if (result.metadataRequired()) {
             for (int i = 0; i < result.size(); i++) metadata(context, result.get(i), bodies[result.get(i)]);
             result = FFMBackend.queryPushable(
-                    context, bodies[0].box, 0, bodies[0].team, rule, nativeSource, capacityHint);
+                    context, bodies[0].box, 0, bodies[0].team, rule, sourceNativePushEligible, capacityHint);
         }
         helper.assertTrue(!result.metadataRequired(), "query metadata converged");
         Body source = bodies[0];
@@ -120,7 +120,8 @@ public final class NativeQueryChecks {
         for (int i = 0; i < slots.length; i++) {
             int id = expected.get(i);
             helper.assertValueEqual(slots[i], 900 - id, "fixed-offset body slot " + label);
-            boolean nativePush = sourceNative && source.vectorPush && bodies[id].entityPush && bodies[id].vectorPush;
+            boolean nativePush = sourceNative && source.allowsDeferredVelocityWrites
+                    && bodies[id].vanillaEntityPush && bodies[id].allowsDeferredVelocityWrites;
             helper.assertValueEqual(flags[i], nativePush ? 1 : 0, "dispatch flag " + label);
             helper.assertValueEqual(result.usesNativePush(i), nativePush, "public dispatch flag " + label);
         }
@@ -130,9 +131,9 @@ public final class NativeQueryChecks {
 
     private static void metadata(FFMBackend.Context context, int id, Body b) {
         FFMBackend.updateEntityMetadata(context, id, b.selectable, b.passenger, false, false,
-                b.entityPush, b.vectorPush, b.team, b.rule, 900 - id, false, b.order);
+                b.vanillaEntityPush, b.allowsDeferredVelocityWrites, b.team, b.rule, 900 - id, false, b.order);
     }
 
     private record Body(AABB box, int x, int y, int z, int team, int rule, boolean selectable,
-                        boolean passenger, boolean entityPush, boolean vectorPush, long order) {}
+                        boolean passenger, boolean vanillaEntityPush, boolean allowsDeferredVelocityWrites, long order) {}
 }

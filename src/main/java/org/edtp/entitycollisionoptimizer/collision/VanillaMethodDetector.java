@@ -82,8 +82,8 @@ public final class VanillaMethodDetector {
     }
 
     /** Entity.canCollideWith only keeps hard targets; boats also keep pushable entities. */
-    public static boolean usesVanillaCanCollideWith(Entity source) {
-        return USE_VANILLA_CAN_COLLIDE_WITH.get(source.getClass());
+    public static boolean usesVanillaCanCollideWith(Entity entity) {
+        return USE_VANILLA_CAN_COLLIDE_WITH.get(entity.getClass());
     }
 
     public static boolean usesVanillaDoPush(LivingEntity source) {
@@ -94,7 +94,7 @@ public final class VanillaMethodDetector {
         return USE_VANILLA_ENTITY_PUSH.get(entity.getClass());
     }
 
-    public static boolean usesVanillaVectorPush(Entity entity) {
+    public static boolean allowsDeferredVelocityWrites(Entity entity) {
         Class<?> type = entity.getClass();
         // A native run may defer writes only across ordinary, non-observing velocity accessors.
         return USE_VANILLA_VECTOR_PUSH.get(type) && USE_VANILLA_VELOCITY_GETTER.get(type)

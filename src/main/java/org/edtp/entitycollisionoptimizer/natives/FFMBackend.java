@@ -196,7 +196,7 @@ public final class FFMBackend {
             boolean vehicle,
             boolean noPhysics,
             boolean vanillaEntityPush,
-            boolean vanillaVectorPush,
+            boolean allowsDeferredVelocityWrites,
             int teamId,
             int collisionRule,
             int bodySlot,
@@ -215,7 +215,7 @@ public final class FFMBackend {
                         vehicle ? 1 : 0,
                         noPhysics ? 1 : 0,
                         vanillaEntityPush ? 1 : 0,
-                        vanillaVectorPush ? 1 : 0,
+                        allowsDeferredVelocityWrites ? 1 : 0,
                         teamId,
                         collisionRule,
                         bodySlot,
@@ -285,7 +285,7 @@ public final class FFMBackend {
             boolean vehicle,
             boolean noPhysics,
             boolean vanillaEntityPush,
-            boolean vanillaVectorPush,
+            boolean allowsDeferredVelocityWrites,
             int teamId,
             int collisionRule,
             int bodySlot,
@@ -293,7 +293,7 @@ public final class FFMBackend {
             long sectionOrder
     ) {
         updateEntity(nativeContext, nativeId, MemorySegment.NULL, selectable, passenger, vehicle,
-                noPhysics, vanillaEntityPush, vanillaVectorPush, teamId, collisionRule, bodySlot,
+                noPhysics, vanillaEntityPush, allowsDeferredVelocityWrites, teamId, collisionRule, bodySlot,
                 hardCollidable, sectionOrder);
     }
 
@@ -419,7 +419,7 @@ public final class FFMBackend {
                 result.offset = 0;
                 result.size = resultSize;
                 result.output = nativeContext.outputBuffer;
-                result.nativePush = nativeContext.nativePushBuffer;
+                result.nativePushFlags = nativeContext.nativePushBuffer;
                 result.metadataRequired = false;
                 result.pushableCount = 0;
                 result.nonPassengerCount = 0;
@@ -436,7 +436,7 @@ public final class FFMBackend {
             int excludedEntityId,
             int sourceTeamId,
             int sourceCollisionRule,
-            boolean sourceUsesNativePush,
+            boolean sourceNativePushEligible,
             int entityCount
     ) {
         synchronized (nativeContext) {
@@ -450,7 +450,7 @@ public final class FFMBackend {
                         excludedEntityId,
                         sourceTeamId,
                         sourceCollisionRule,
-                        sourceUsesNativePush ? 1 : 0,
+                        sourceNativePushEligible ? 1 : 0,
                         nativeContext.outputBuffer,
                         nativeContext.nativePushBuffer,
                         nativeContext.outputCapacity
@@ -792,7 +792,7 @@ public final class FFMBackend {
             runIdBuffer = outputArena.allocate((long) newCapacity * Integer.BYTES, Integer.BYTES);
             outputCapacity = newCapacity;
             queryResult.output = outputBuffer;
-            queryResult.nativePush = nativePushBuffer;
+            queryResult.nativePushFlags = nativePushBuffer;
         }
 
         @Override
@@ -817,7 +817,7 @@ public final class FFMBackend {
                 boundsBuffer = MemorySegment.NULL;
                 outputCapacity = 0;
                 queryResult.output = MemorySegment.NULL;
-                queryResult.nativePush = MemorySegment.NULL;
+                queryResult.nativePushFlags = MemorySegment.NULL;
                 CONTEXTS.remove(this);
             }
         }
@@ -825,7 +825,7 @@ public final class FFMBackend {
 
     public static final class QueryResult {
         private MemorySegment output = MemorySegment.NULL;
-        private MemorySegment nativePush = MemorySegment.NULL;
+        private MemorySegment nativePushFlags = MemorySegment.NULL;
         private int offset;
         private int bodyOffset;
         private int size;
@@ -863,15 +863,15 @@ public final class FFMBackend {
             if (index < 0 || index >= size) {
                 throw new IndexOutOfBoundsException(index);
             }
-            return nativePush.get(JAVA_INT, (long) index * Integer.BYTES) != 0;
+            return nativePushFlags.get(JAVA_INT, (long) index * Integer.BYTES) != 0;
         }
 
-        void copyBodiesTo(int[] bodySlots, int[] nativeFlags) {
+        void copyBodiesTo(int[] bodySlots, int[] nativePushFlags) {
             if (metadataRequired || offset != 3) throw new IllegalStateException("No resolved push batch");
             if (size == 0) return;
             // Fixed-capacity regions let native fill IDs/slots/flags together, without a second traversal.
             MemorySegment.copy(output, JAVA_INT, (long) bodyOffset * Integer.BYTES, bodySlots, 0, size);
-            MemorySegment.copy(nativePush, JAVA_INT, 0, nativeFlags, 0, size);
+            MemorySegment.copy(this.nativePushFlags, JAVA_INT, 0, nativePushFlags, 0, size);
         }
     }
 }

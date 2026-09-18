@@ -180,7 +180,7 @@ int queryPushableEntities(
         int excludedEntityId,
         int sourceTeamId,
         int sourceCollisionRule,
-        int sourceUsesNativePush,
+        int sourceNativePushEligible,
         int* output,
         int* nativePushOutput,
         int outputCapacity
@@ -204,7 +204,7 @@ int queryPushableEntities(
 
         const eco::LookupSections sections(source);
         const eco::TeamFilter teamFilter(sourceTeamId, sourceCollisionRule);
-        const bool nativeSource = sourceUsesNativePush != 0;
+        const bool nativePushSource = sourceNativePushEligible != 0;
         int* const bodySlots = output + 3 + outputCapacity;
         context.metadataMisses.clear();
         int nonPassengerCount = 0;
@@ -221,9 +221,9 @@ int queryPushableEntities(
             if (actionableCount >= outputCapacity) return -2;
             output[3 + actionableCount] = candidateId;
             bodySlots[actionableCount] = target.bodySlot;
-            nativePushOutput[actionableCount] = nativeSource
+            nativePushOutput[actionableCount] = nativePushSource
                     && target.vanillaEntityPush
-                    && target.vanillaVectorPush;
+                    && target.allowsDeferredVelocityWrites;
             ++actionableCount;
             return 0;
         };

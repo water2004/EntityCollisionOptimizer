@@ -16,7 +16,7 @@ struct alignas(32) EntityMetadata {
     std::uint32_t vehicle : 1 = false;
     std::uint32_t noPhysics : 1 = false;
     std::uint32_t vanillaEntityPush : 1 = false;
-    std::uint32_t vanillaVectorPush : 1 = false;
+    std::uint32_t allowsDeferredVelocityWrites : 1 = false;
     std::uint32_t hardCollidable : 1 = false;
     std::uint32_t selectableValid : 1 = false;
     std::uint32_t teamValid : 1 = false;

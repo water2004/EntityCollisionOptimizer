@@ -278,7 +278,7 @@ final class LevelCollisionFrame {
             LivingEntity source,
             PlayerTeam sourceTeam,
             Team.CollisionRule sourceRule,
-            boolean sourceUsesVanillaPush
+            boolean sourceUsesVanillaDoPush
     ) {
         synchronizePushEligibilityRevisions();
         // Derived teams can change without any scoreboard mutation (taming, owner resolution).
@@ -289,8 +289,8 @@ final class LevelCollisionFrame {
         if (sourceId >= 0) bodies.bindBody(source);
         int sourceTeamId = assignTeamId(sourceTeam);
         int sourceRuleCode = collisionRuleCode(sourceRule);
-        boolean sourceUsesNativePush = sourceUsesVanillaPush
-                && VanillaMethodDetector.usesVanillaVectorPush(source);
+        boolean sourceNativePushEligible = sourceUsesVanillaDoPush
+                && VanillaMethodDetector.allowsDeferredVelocityWrites(source);
         FFMBackend.QueryResult result;
         int refreshPasses = 0;
         do {
@@ -300,7 +300,7 @@ final class LevelCollisionFrame {
                     sourceId,
                     sourceTeamId,
                     sourceRuleCode,
-                    sourceUsesNativePush,
+                    sourceNativePushEligible,
                     ids.size()
             );
             if (!result.metadataRequired()) {
@@ -325,9 +325,9 @@ final class LevelCollisionFrame {
         return ids.getEntity(nativeId);
     }
 
-    synchronized PushBatch collectPushable(LivingEntity source, PlayerTeam team,
-                                            Team.CollisionRule rule, boolean vanillaPush) {
-        FFMBackend.QueryResult result = queryPushable(source, team, rule, vanillaPush);
+    synchronized PushBatch collectPushable(LivingEntity source, PlayerTeam sourceTeam,
+                                            Team.CollisionRule sourceRule, boolean sourceUsesVanillaDoPush) {
+        FFMBackend.QueryResult result = queryPushable(source, sourceTeam, sourceRule, sourceUsesVanillaDoPush);
         PushBatch batch = batchPool.pollFirst();
         if (batch == null) {
             batch = new PushBatch(nativeContext, bodies, this::recycle);
@@ -410,7 +410,7 @@ final class LevelCollisionFrame {
                 entity.isVehicle(),
                 entity.noPhysics,
                 VanillaMethodDetector.usesVanillaEntityPush(entity),
-                VanillaMethodDetector.usesVanillaVectorPush(entity),
+                VanillaMethodDetector.allowsDeferredVelocityWrites(entity),
                 assignTeamId(targetTeam),
                 collisionRuleCode(targetTeam == null
                         ? Team.CollisionRule.ALWAYS : targetTeam.getCollisionRule()),

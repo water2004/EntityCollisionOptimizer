@@ -15,7 +15,7 @@ int updateCollisionEntity(
         int vehicle,
         int noPhysics,
         int vanillaEntityPush,
-        int vanillaVectorPush,
+        int allowsDeferredVelocityWrites,
         int teamId,
         int collisionRule,
         int bodySlot,
@@ -46,7 +46,7 @@ int updateCollisionEntity(
         metadata.vehicle = vehicle != 0;
         metadata.noPhysics = noPhysics != 0;
         metadata.vanillaEntityPush = vanillaEntityPush != 0;
-        metadata.vanillaVectorPush = vanillaVectorPush != 0;
+        metadata.allowsDeferredVelocityWrites = allowsDeferredVelocityWrites != 0;
         const bool hard = hardCollidable != 0;
         if (metadata.hardCollidable != hard) {
             if (hard) ++context.hardEntityCount; else --context.hardEntityCount;
