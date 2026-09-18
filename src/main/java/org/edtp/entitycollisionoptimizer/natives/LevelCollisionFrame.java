@@ -64,7 +64,7 @@ final class LevelCollisionFrame {
                 if (!entity.isRemoved()) addEntity(entity);
             }
         }
-        synchronizePushEligibilityRevisions();
+        invalidateStalePushEligibility();
         active = true;
     }
 
@@ -280,7 +280,7 @@ final class LevelCollisionFrame {
             Team.CollisionRule sourceRule,
             boolean sourceUsesVanillaDoPush
     ) {
-        synchronizePushEligibilityRevisions();
+        invalidateStalePushEligibility();
         // Derived teams can change without any scoreboard mutation (taming, owner resolution).
         // This is a semantic dependency, not an entity/mod whitelist or a density-dependent path.
         for (Entity target : derivedTeams) refreshNativeMetadata(ids.getId(target), target);
@@ -378,7 +378,7 @@ final class LevelCollisionFrame {
     }
 
     /* setblock() will increment the block revision, causing the selectable values to be invalidated. Team values the same */
-    private void synchronizePushEligibilityRevisions() {
+    private void invalidateStalePushEligibility() {
         long blockRevision = CollisionCacheEpochs.blockRevision();
         long teamRevision = CollisionCacheEpochs.teamRevision();
         int fieldsToInvalidate = 0;
