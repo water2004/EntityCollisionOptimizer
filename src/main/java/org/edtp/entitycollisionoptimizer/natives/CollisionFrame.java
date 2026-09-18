@@ -125,16 +125,16 @@ public final class CollisionFrame {
         return frameFor(source).query(source);
     }
 
-    public static int[] hardCollision(Entity source, AABB scan) {
-        return frameFor(source).hardCollision(source, scan);
+    public static int[] hardCollisionIds(Entity source, AABB scan) {
+        return frameFor(source).hardCollisionIds(source, scan);
     }
 
     public static void addHardCubes(Entity source, int[] hardIds, NativeShapeBatch shapes) {
         frameFor(source).addHardCubes(hardIds, shapes);
     }
 
-    public static List<VoxelShape> entityCollisions(ServerLevel level, Entity source, AABB scan) {
-        return frameFor(level).entityCollisions(source, scan);
+    public static List<VoxelShape> getEntityCollisions(ServerLevel level, Entity entity, AABB box) {
+        return frameFor(level).getEntityCollisions(entity, box);
     }
 
     public static FFMBackend.QueryResult queryPushable(

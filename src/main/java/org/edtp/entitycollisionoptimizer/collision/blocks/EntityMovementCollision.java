@@ -26,7 +26,7 @@ public final class EntityMovementCollision {
         NativeMovement movement = new NativeMovement(entity, requested, null, true);
         try {
             AABB scan = movement.stepScan();
-            int[] hardIds = CollisionFrame.hardCollision(entity, scan);
+            int[] hardIds = CollisionFrame.hardCollisionIds(entity, scan);
             movement.steppingState();
             try (NativeShapeBatch shapes = new NativeShapeBatch()) {
                 if (requested.lengthSqr() != 0.0) {

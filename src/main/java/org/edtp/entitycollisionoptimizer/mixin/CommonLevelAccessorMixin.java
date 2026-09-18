@@ -26,7 +26,7 @@ public interface CommonLevelAccessorMixin {
             CallbackInfoReturnable<List<VoxelShape>> cir
     ) {
         if ((Object) this instanceof ServerLevel level) {
-            cir.setReturnValue(CollisionFrame.entityCollisions(level, entity, box));
+            cir.setReturnValue(CollisionFrame.getEntityCollisions(level, entity, box));
         }
     }
 }

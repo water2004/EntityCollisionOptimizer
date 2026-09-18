@@ -33,13 +33,18 @@ final class LevelCollisionFrame {
     private static final int INVALIDATE_TEAM = 2;
     // Empty list, used as preallocated objects, prevent unnecessary allocations. Shared across levels and threads: callers must never modify it
     private static final int[] EMPTY_IDS = new int[0];
-
+    // Transformer for the native index and the Java entity objects. 
     private final PersistentEntityIds ids = new PersistentEntityIds();
     private final FFMBackend.Context nativeContext = FFMBackend.createContext();
+    // 80*N bytes cache for the native index, storing the entity's bounding box, pushability, team, and other metadata. 
     private final CollisionStateTable bodies = new CollisionStateTable();
+    // Transformer for the native index and the Java team objects. 
     private final IdentityHashMap<PlayerTeam, Integer> teamIds = new IdentityHashMap<>();
+    // Preallocated objects for pushable entity queries, to avoid allocating a new PushBatch for every query. The PushBatch is recycled after use.
     private final ArrayDeque<PushBatch> batchPool = new ArrayDeque<>();
+    // Reusable int[] copies of the native box-query result; the native output buffer is reused by the next query, so ids are copied out before iterating and the array is returned to the pool afterwards.
     private final ArrayDeque<int[]> entityQuerySnapshots = new ArrayDeque<>();
+    // Tracked entities whose getTeam() is overridden (tamed/owner-derived): their team can change without a scoreboard revision, so queryPushable refreshes their metadata before every push query.
     private final List<Entity> derivedTeams = new ArrayList<>();
     private long[] selectableEntityRevisions = new long[0];
     private long[] selectableBlockRevisions = new long[0];
@@ -141,7 +146,7 @@ final class LevelCollisionFrame {
         return FFMBackend.query(nativeContext, ids.getId(source), ids.size());
     }
 
-    synchronized int[] hardCollision(Entity source, AABB scan) {
+    synchronized int[] hardCollisionIds(Entity source, AABB scan) {
         addEntity(source);
         if (scan.getSize() < 1.0E-7) {
             return EMPTY_IDS;
@@ -232,19 +237,19 @@ final class LevelCollisionFrame {
         return entity;
     }
 
-    synchronized List<VoxelShape> entityCollisions(Entity source, AABB scan) {
-        if (source != null) {
-            addEntity(source);
+    synchronized List<VoxelShape> getEntityCollisions(Entity entity, AABB box) {
+        if (entity != null) {
+            addEntity(entity);
         }
-        if (scan.getSize() < 1.0E-7) {
+        if (box.getSize() < 1.0E-7) {
             return List.of();
         }
-        int excludeId = source == null ? -1 : ids.getId(source);
+        int excludeId = entity == null ? -1 : ids.getId(entity);
         FFMBackend.QueryResult result = FFMBackend.queryHard(
                 nativeContext,
-                scan.inflate(1.0E-7),
+                box.inflate(1.0E-7),
                 excludeId,
-                source == null || VanillaMethodDetector.usesVanillaCanCollideWith(source),
+                entity == null || VanillaMethodDetector.usesVanillaCanCollideWith(entity),
                 ids.size()
         );
         if (result.size() == 0) {
@@ -260,7 +265,7 @@ final class LevelCollisionFrame {
             if (target.isRemoved() || target.isSpectator()) {
                 continue;
             }
-            if (source == null ? !target.canBeCollidedWith(null) : !source.canCollideWith(target)) {
+            if (entity == null ? !target.canBeCollidedWith(null) : !entity.canCollideWith(target)) {
                 continue;
             }
             shapes.add(Shapes.create(target.getBoundingBox()));
