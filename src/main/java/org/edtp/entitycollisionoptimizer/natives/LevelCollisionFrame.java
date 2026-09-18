@@ -110,7 +110,7 @@ final class LevelCollisionFrame {
             return;
         }
         int nativeId = ids.getId(entity);
-        int slot = bodies.slot(entity);
+        int slot = bodies.bindBody(entity);
         refreshNativeMetadata(nativeId, entity, bodies.movementRow(slot));
     }
 
@@ -185,7 +185,7 @@ final class LevelCollisionFrame {
             if (target == null) {
                 throw new IllegalStateException("Native hard collision cube requested unknown entity " + nativeId);
             }
-            shapes.addCube(bodies.movementRow(bodies.slot(target)));
+            shapes.addCube(bodies.movementRow(bodies.bindBody(target)));
         }
     }
 
@@ -237,6 +237,7 @@ final class LevelCollisionFrame {
         return entity;
     }
 
+    // EntityMovementMixin already owns vanilla's caller (Entity.collide), so nothing in this repository reaches this; it stays as the entry for code that still calls Level.getEntityCollisions directly.
     synchronized List<VoxelShape> getEntityCollisions(Entity entity, AABB box) {
         if (entity != null) {
             addEntity(entity);
@@ -285,7 +286,7 @@ final class LevelCollisionFrame {
         for (Entity target : derivedTeams) refreshNativeMetadata(ids.getId(target), target);
 
         int sourceId = ids.getId(source);
-        if (sourceId >= 0) bodies.slot(source);
+        if (sourceId >= 0) bodies.bindBody(source);
         int sourceTeamId = teamId(sourceTeam);
         int sourceRuleId = collisionRuleId(sourceRule);
         boolean sourceUsesNativePush = sourceUsesVanillaPush
@@ -413,7 +414,7 @@ final class LevelCollisionFrame {
                 teamId(targetTeam),
                 collisionRuleId(targetTeam == null
                         ? Team.CollisionRule.ALWAYS : targetTeam.getCollisionRule()),
-                bodies.slot(entity),
+                bodies.bindBody(entity),
                 !entity.isRemoved() && !entity.isSpectator()
                         && !VanillaMethodDetector.usesVanillaCanBeCollidedWith(entity),
                 ((CollisionOrderState) entity).eco$sectionOrder()

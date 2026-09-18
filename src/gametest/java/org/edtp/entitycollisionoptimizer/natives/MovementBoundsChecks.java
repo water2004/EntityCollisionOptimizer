@@ -13,7 +13,7 @@ public final class MovementBoundsChecks {
         var box = new AABB(-.25, -0.0, -.25, .25, 1.8, .25);
         entity.setBoundingBox(box);
         try (var table = new CollisionStateTable(); var next = new CollisionStateTable()) {
-            int slot = table.slot(entity);
+            int slot = table.bindBody(entity);
             helper.assertTrue(entity.getBoundingBox() == box, "binding preserves bounds reference");
             var row = table.movementRow(slot);
             row.set(JAVA_DOUBLE, 0, -.5);
@@ -26,7 +26,7 @@ public final class MovementBoundsChecks {
                     helper.assertTrue(movement.stepScan().equals(captured.expandTowards(request)), "native swept bounds");
                     // Movement keeps its original geometry despite callbacks changing the persistent row.
                     entity.setBoundingBox(captured.move(4, 0, 0));
-                    for (int i = 0; i < 300; i++) table.slot(new Zombie(helper.getLevel()));
+                    for (int i = 0; i < 300; i++) table.bindBody(new Zombie(helper.getLevel()));
                     try (var shapes = new NativeShapeBatch()) {
                         shapes.add(net.minecraft.world.phys.shapes.Shapes.block());
                         movement.solve(shapes, false);
@@ -39,7 +39,7 @@ public final class MovementBoundsChecks {
                 }
             }
             AABB current = entity.getBoundingBox();
-            next.slot(entity);
+            next.bindBody(entity);
             table.clear();
             helper.assertTrue(entity.getBoundingBox() == current, "bounds transfer retains latest value");
             next.clear();

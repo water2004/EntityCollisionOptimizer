@@ -18,8 +18,8 @@ public final class CollisionStateTableChecks {
             first.setPos(1, 2, 3);
             second.setPos(4, 5, 6);
             first.setDeltaMovement(new Vec3(.125, -.0, -.25));
-            int firstSlot = table.slot(first), secondSlot = table.slot(second);
-            helper.assertTrue(firstSlot != secondSlot && table.slot(first) == firstSlot, "persistent entity slots");
+            int firstSlot = table.bindBody(first), secondSlot = table.bindBody(second);
+            helper.assertTrue(firstSlot != secondSlot && table.bindBody(first) == firstSlot, "persistent entity slots");
             ((CollisionBodyAccess) first).eco$bindBody(table, firstSlot);
             long velocityOffset = (long) firstSlot * STRIDE_BYTES + 16;
             // Native is authoritative: synchronizing an already-bound body must not overwrite it.
@@ -35,16 +35,16 @@ public final class CollisionStateTableChecks {
             ((CollisionBodyAccess) first).eco$bindBody(table, firstSlot);
             helper.assertTrue(table.memory().get(JAVA_DOUBLE, velocityOffset) == .125, "new reference refreshes body");
             Entity deferred = new Zombie(helper.getLevel());
-            int deferredSlot = table.slot(deferred);
+            int deferredSlot = table.bindBody(deferred);
             table.borrow();
             try {
                 table.retire(deferred);
                 helper.assertTrue(table.entity(deferredSlot) == deferred, "borrowed slot is not released or reused");
                 int oldCapacity = table.capacity();
-                for (int i = 0; i <= oldCapacity; i++) table.slot(new Zombie(helper.getLevel()));
+                for (int i = 0; i <= oldCapacity; i++) table.bindBody(new Zombie(helper.getLevel()));
                 helper.assertTrue(table.capacity() > oldCapacity, "table actually grows");
                 helper.assertTrue(table.memory().get(JAVA_DOUBLE, velocityOffset) == .125, "growth preserves body contents");
-                helper.assertTrue(table.slot(first) == firstSlot, "growth preserves IDs");
+                helper.assertTrue(table.bindBody(first) == firstSlot, "growth preserves IDs");
                 helper.assertTrue(!first.needsSync, "growth preserves consumed sync");
             } finally { table.release(); }
             helper.assertTrue(!table.bound(deferredSlot), "release applies the deferred retirement");
@@ -53,7 +53,7 @@ public final class CollisionStateTableChecks {
             table.retire(first);
             helper.assertTrue(first.getDeltaMovement().x == 19, "retire preserves an unobserved native velocity");
             helper.assertTrue(first.needsSync, "retire preserves pending native sync");
-            int replacement = table.slot(first);
+            int replacement = table.bindBody(first);
             ((CollisionBodyAccess) first).eco$bindBody(table, replacement);
             helper.assertTrue(table.memory().get(JAVA_DOUBLE, (long) replacement * STRIDE_BYTES) == first.getX(), "reused slot refreshed");
             helper.assertTrue(table.entity(secondSlot) == second, "retire leaves other slots untouched");
@@ -65,7 +65,7 @@ public final class CollisionStateTableChecks {
         Entity entity = new Zombie(helper.getLevel());
         var access = (CollisionBodyAccess) entity;
         try (var former = new CollisionStateTable(); var current = new CollisionStateTable()) {
-            int oldSlot = former.slot(entity), slot = current.slot(entity);
+            int oldSlot = former.bindBody(entity), slot = current.bindBody(entity);
             access.eco$bindBody(former, oldSlot);
             former.memory().set(JAVA_DOUBLE, (long) oldSlot * STRIDE_BYTES + 16, 23.0);
             nativeVersion(former, oldSlot);

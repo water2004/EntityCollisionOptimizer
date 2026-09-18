@@ -18,7 +18,7 @@ public final class PositionMirrorChecks {
         EntityBodyTestAccess fields = (EntityBodyTestAccess) entity;
         entity.setPos(1, 2, 3);
         try (var table = new CollisionStateTable(); var next = new CollisionStateTable()) {
-            int slot = table.slot(entity);
+            int slot = table.bindBody(entity);
             check(helper, table, slot, entity, "initial binding");
             var memory = table.row(slot);
             memory.set(JAVA_DOUBLE, 0, -0.0);
@@ -44,12 +44,12 @@ public final class PositionMirrorChecks {
             table.borrow();
             try {
                 int capacity = table.capacity();
-                for (int i = 0; i <= capacity; i++) table.slot(new Zombie(helper.getLevel()));
+                for (int i = 0; i <= capacity; i++) table.bindBody(new Zombie(helper.getLevel()));
                 helper.assertTrue(table.capacity() > capacity && table.entity(slot) == entity, "borrowed row survives growth");
                 entity.setPosRaw(7, 8, 9);
                 check(helper, table, slot, entity, "write after arena replacement");
             } finally { table.release(); }
-            int nextSlot = next.slot(entity); // Transfers ownership, including its current position.
+            int nextSlot = next.bindBody(entity); // Transfers ownership, including its current position.
             helper.assertTrue(!table.bound(slot) && next.bound(nextSlot), "one table owns the binding");
             entity.setPosRaw(10, 11, 12);
             check(helper, next, nextSlot, entity, "write after table transfer");
@@ -61,12 +61,12 @@ public final class PositionMirrorChecks {
             next.retire(entity);
             entity.setPosRaw(16, 17, 18);
             helper.assertTrue(!next.bound(nextSlot), "retired entity stays detached");
-            int reused = next.slot(entity);
+            int reused = next.bindBody(entity);
             helper.assertValueEqual(reused, nextSlot, "fixture reuses retired row");
             check(helper, next, reused, entity, "reused slot initializes latest position");
             next.clear();
             entity.setPosRaw(19, 20, 21);
-            check(helper, next, next.slot(entity), entity, "disable/re-enable binding");
+            check(helper, next, next.bindBody(entity), entity, "disable/re-enable binding");
         }
         entity.setPosRaw(22, 23, 24);
         helper.assertTrue(entity.getX() == 22 && entity.getZ() == 24, "closed table receives no writes");

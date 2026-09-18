@@ -39,7 +39,7 @@ public final class MovementLeaseChecks {
             }
         });
         try (var table = new CollisionStateTable()) {
-            if (enabled) table.slot(entity);
+            if (enabled) table.bindBody(entity);
             entity.move(MoverType.SELF, new Vec3(.03, .01, .02));
             int available = enabled ? availablePackets() : 0;
             for (int i = 0; i < 8; i++) {

@@ -43,7 +43,7 @@ final class CollisionPushStates {
             Entity entity = table.entity(slot);
             int flags = ((CollisionCacheState) entity).entityCollisionOptimizer$pushState()
                     | (entity.noPhysics ? CollisionCacheState.NO_PHYSICS : 0);
-            int root = table.slot(entity.getRootVehicle());
+            int root = table.bindBody(entity.getRootVehicle());
             table.memory().set(JAVA_INT, (long) slot * STRIDE_BYTES + STATE_OFFSET, flags);
             table.memory().set(JAVA_INT, (long) slot * STRIDE_BYTES + ROOT_OFFSET, root);
         }

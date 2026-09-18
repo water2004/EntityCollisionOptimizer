@@ -37,7 +37,7 @@ private static List<State> run(GameTestHelper helper, boolean enabled) {
     entity.setOnGround(true);
     List<State> result = new ArrayList<>();
     try (CollisionStateTable table = new CollisionStateTable()) {
-            if (enabled) table.slot(entity);
+            if (enabled) table.bindBody(entity);
             entity.setLevelCallback(new EntityInLevelCallback() {
                 @Override public void onMove() { result.add(state(entity, true)); }
                 @Override public void onRemove(Entity.RemovalReason reason) {}
@@ -52,7 +52,7 @@ private static List<State> run(GameTestHelper helper, boolean enabled) {
             // Ownership release and rebinding must preserve the position used by the next move.
             table.clear();
             result.add(state(entity, false));
-            if (enabled) table.slot(entity);
+            if (enabled) table.bindBody(entity);
             entity.move(MoverType.SELF, new Vec3(-.2, -.1, .05));
             result.add(state(entity, false));
         }

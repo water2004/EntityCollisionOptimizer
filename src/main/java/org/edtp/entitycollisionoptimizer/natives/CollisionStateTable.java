@@ -35,7 +35,7 @@ public final class CollisionStateTable implements AutoCloseable {
     private int size, borrowers;
     private final IdentityHashMap<Entity, Boolean> retired = new IdentityHashMap<>();
 
-    int slot(Entity entity) {
+    int bindBody(Entity entity) {
         retired.remove(entity);
         Integer existing = slots.get(entity);
         int slot;
