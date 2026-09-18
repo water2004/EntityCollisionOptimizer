@@ -366,7 +366,7 @@ final class LevelCollisionFrame {
         return selectableValues[nativeId] != 0;
     }
 
-    private PlayerTeam team(int nativeId, Entity entity) {
+    private PlayerTeam teamCached(int nativeId, Entity entity) {
         if (!VanillaMethodDetector.usesVanillaGetTeam(entity)) return entity.getTeam();
         ensureSemanticCapacity(nativeId + 1);
         long teamRevision = CollisionCacheEpochs.teamRevision();
@@ -400,7 +400,7 @@ final class LevelCollisionFrame {
     }
 
     private void refreshNativeMetadata(int nativeId, Entity entity, MemorySegment bounds) {
-        PlayerTeam targetTeam = team(nativeId, entity);
+        PlayerTeam targetTeam = teamCached(nativeId, entity);
         FFMBackend.updateEntity(
                 nativeContext,
                 nativeId,
