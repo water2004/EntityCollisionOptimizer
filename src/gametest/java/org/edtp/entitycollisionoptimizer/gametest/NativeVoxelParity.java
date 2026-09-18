@@ -5,7 +5,7 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
-import org.edtp.entitycollisionoptimizer.mixin.EntityCollisionInvoker;
+import org.edtp.entitycollisionoptimizer.gametest.mixin.EntityCollisionInvoker;
 import org.edtp.entitycollisionoptimizer.natives.NativeMovement;
 import org.edtp.entitycollisionoptimizer.natives.NativeShapeBatch;
 

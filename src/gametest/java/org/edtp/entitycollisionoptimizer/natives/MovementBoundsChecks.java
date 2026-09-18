@@ -30,7 +30,7 @@ public final class MovementBoundsChecks {
                     try (var shapes = new NativeShapeBatch()) {
                         shapes.add(net.minecraft.world.phys.shapes.Shapes.block());
                         movement.solve(shapes, false);
-                        Vec3 expected = request.lengthSqr() == 0 ? request : org.edtp.entitycollisionoptimizer.mixin.EntityCollisionInvoker
+                        Vec3 expected = request.lengthSqr() == 0 ? request : org.edtp.entitycollisionoptimizer.gametest.mixin.EntityCollisionInvoker
                                 .eco$collideWithShapes(request, captured, java.util.List.of(net.minecraft.world.phys.shapes.Shapes.block()));
                         helper.assertTrue(movement.displacement().equals(expected), "captured geometry request=" + request
                                 + " expected=" + expected + " actual=" + movement.displacement());

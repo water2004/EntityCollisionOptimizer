@@ -10,7 +10,7 @@ import net.minecraft.world.phys.shapes.BitSetDiscreteVoxelShape;
 import net.minecraft.world.phys.shapes.CubeVoxelShape;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import org.edtp.entitycollisionoptimizer.collision.blocks.NativeVoxelAccess;
-import org.edtp.entitycollisionoptimizer.mixin.EntityCollisionInvoker;
+import org.edtp.entitycollisionoptimizer.gametest.mixin.EntityCollisionInvoker;
 import org.edtp.entitycollisionoptimizer.natives.NativeMovement;
 import org.edtp.entitycollisionoptimizer.natives.NativeShapeBatch;
 

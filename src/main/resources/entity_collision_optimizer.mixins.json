@@ -16,7 +16,6 @@
     "EntitySectionStorageMixin",
     "EntityOrderMixin",
     "EntityMovementMixin",
-    "EntityCollisionInvoker",
     "VoxelGeometryMixin",
     "LevelMixin",
     "LivingEntityMixin",
