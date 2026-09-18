@@ -287,8 +287,8 @@ final class LevelCollisionFrame {
 
         int sourceId = ids.getId(source);
         if (sourceId >= 0) bodies.bindBody(source);
-        int sourceTeamId = teamId(sourceTeam);
-        int sourceRuleId = collisionRuleId(sourceRule);
+        int sourceTeamId = assignTeamId(sourceTeam);
+        int sourceRuleCode = collisionRuleCode(sourceRule);
         boolean sourceUsesNativePush = sourceUsesVanillaPush
                 && VanillaMethodDetector.usesVanillaVectorPush(source);
         FFMBackend.QueryResult result;
@@ -299,7 +299,7 @@ final class LevelCollisionFrame {
                     source.getBoundingBox(),
                     sourceId,
                     sourceTeamId,
-                    sourceRuleId,
+                    sourceRuleCode,
                     sourceUsesNativePush,
                     ids.size()
             );
@@ -411,8 +411,8 @@ final class LevelCollisionFrame {
                 entity.noPhysics,
                 VanillaMethodDetector.usesVanillaEntityPush(entity),
                 VanillaMethodDetector.usesVanillaVectorPush(entity),
-                teamId(targetTeam),
-                collisionRuleId(targetTeam == null
+                assignTeamId(targetTeam),
+                collisionRuleCode(targetTeam == null
                         ? Team.CollisionRule.ALWAYS : targetTeam.getCollisionRule()),
                 bodies.bindBody(entity),
                 !entity.isRemoved() && !entity.isSpectator()
@@ -421,7 +421,7 @@ final class LevelCollisionFrame {
         );
     }
 
-    private int teamId(PlayerTeam team) {
+    private int assignTeamId(PlayerTeam team) {
         if (team == null) {
             return -1;
         }
@@ -452,7 +452,7 @@ final class LevelCollisionFrame {
         Arrays.fill(teamRevisions, oldCapacity, newCapacity, UNCACHED);
     }
 
-    private static int collisionRuleId(Team.CollisionRule rule) {
+    private static int collisionRuleCode(Team.CollisionRule rule) {
         if (rule == Team.CollisionRule.ALWAYS) {
             return 0;
         }
