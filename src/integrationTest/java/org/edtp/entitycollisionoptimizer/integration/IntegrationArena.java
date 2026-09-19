@@ -22,6 +22,8 @@ import java.util.UUID;
 
 /** Owns scenario blocks and entities so every scenario restores its world state. */
 final class IntegrationArena implements AutoCloseable {
+    private static final long PREPARATION_TIMEOUT_NANOS = 30_000_000_000L;
+
     private final ServerLevel level;
     private final Map<BlockPos, BlockState> originalBlocks = new LinkedHashMap<>();
     private final List<Entity> entities = new ArrayList<>();
@@ -77,7 +79,30 @@ final class IntegrationArena implements AutoCloseable {
                 .allMatch(level::areEntitiesActuallyLoadedAndTicking);
     }
 
-    boolean isDarkRoom(Vec3 sceneOrigin, int width, int height, int depth) {
+    void awaitReadyRoom(Vec3 sceneOrigin, int width, int height, int depth) {
+        // GameTest ticks are unthrottled, so pump remote chunk work explicitly instead of
+        // spending the test's tick budget while generation and entity I/O wait for CPU time.
+        long deadline = System.nanoTime() + PREPARATION_TIMEOUT_NANOS;
+        level.getServer().managedBlock(() -> chunkTasksAreReady(sceneOrigin, width, height, depth)
+                || System.nanoTime() >= deadline);
+        if (!chunkTasksAreReady(sceneOrigin, width, height, depth)) {
+            throw new IllegalStateException("Integration-test room did not become ready within 30 seconds");
+        }
+        for (long packed : requiredChunks) {
+            level.waitForEntities(ChunkPos.unpack(packed), 0);
+        }
+        if (!isReadyForEntityTicks()) {
+            throw new IllegalStateException("Integration-test entities did not become ready");
+        }
+    }
+
+    private boolean chunkTasksAreReady(Vec3 sceneOrigin, int width, int height, int depth) {
+        return !requiredChunks.isEmpty()
+                && requiredChunks.stream().allMatch(level.getChunkSource()::isPositionTicking)
+                && isDarkRoom(sceneOrigin, width, height, depth);
+    }
+
+    private boolean isDarkRoom(Vec3 sceneOrigin, int width, int height, int depth) {
         BlockPos origin = BlockPos.containing(sceneOrigin);
         for (int y = 0; y < height; y++) {
             for (int x = 0; x < width; x++) {

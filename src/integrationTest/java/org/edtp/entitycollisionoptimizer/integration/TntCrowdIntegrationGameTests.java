@@ -73,6 +73,7 @@ public final class TntCrowdIntegrationGameTests {
         private void start() {
             try {
                 arena.buildStoneRoom(sceneOrigin, ROOM_SIZE, ROOM_HEIGHT, ROOM_SIZE);
+                arena.awaitReadyRoom(sceneOrigin, ROOM_SIZE, ROOM_HEIGHT, ROOM_SIZE);
                 prepared = true;
             } catch (RuntimeException | Error failure) {
                 cleanup();
@@ -89,8 +90,7 @@ public final class TntCrowdIntegrationGameTests {
                     return;
                 }
                 if (!started) {
-                    if (!arena.isReadyForEntityTicks()
-                            || !arena.isDarkRoom(sceneOrigin, ROOM_SIZE, ROOM_HEIGHT, ROOM_SIZE)) return;
+                    if (!arena.isReadyForEntityTicks()) return;
                     initializeTrace();
                     started = true;
                     return;

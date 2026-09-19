@@ -82,6 +82,7 @@ public final class ZombieCrammingIntegrationGameTests {
                         level.getServer()
                 );
                 arena.buildStoneRoom(sceneOrigin, CHAMBER_SIZE, CHAMBER_HEIGHT, CHAMBER_SIZE);
+                arena.awaitReadyRoom(sceneOrigin, CHAMBER_SIZE, CHAMBER_HEIGHT, CHAMBER_SIZE);
                 prepared = true;
             } catch (RuntimeException | Error failure) {
                 cleanup();
@@ -97,8 +98,7 @@ public final class ZombieCrammingIntegrationGameTests {
                     return;
                 }
                 if (!started) {
-                    if (!arena.isReadyForEntityTicks()
-                            || !arena.isDarkRoom(sceneOrigin, CHAMBER_SIZE, CHAMBER_HEIGHT, CHAMBER_SIZE)) return;
+                    if (!arena.isReadyForEntityTicks()) return;
                     initializeTrace();
                     started = true;
                     return;
