@@ -17,7 +17,6 @@ import net.minecraft.world.scores.Scoreboard;
 import net.minecraft.world.scores.Team;
 import org.edtp.entitycollisionoptimizer.collision.VanillaMethodDetector;
 import org.edtp.entitycollisionoptimizer.natives.CollisionFrame;
-import org.edtp.entitycollisionoptimizer.natives.FFMBackend;
 import org.edtp.entitycollisionoptimizer.natives.PushBatch;
 
 import java.util.ArrayList;
@@ -133,28 +132,23 @@ final class CollisionPredicateParity {
             String scenario
     ) {
         Set<Entity> observedSet = identitySet(observed);
-        Set<Entity> vanilla = identitySet(source.level().getEntities(
+        AABB query = source.getBoundingBox();
+        Set<Entity> expected = identitySet(observed.stream()
+                .filter(candidate -> candidate != source
+                        && !candidate.isRemoved()
+                        && query.intersects(candidate.getBoundingBox())
+                        && isInVanillaLookupSections(query, candidate.blockPosition()))
+                .toList());
+        Set<Entity> actual = identitySet(source.level().getEntities(
                 source,
-                source.getBoundingBox(),
+                query,
                 observedSet::contains
         ));
-
-        FFMBackend.QueryResult result = CollisionFrame.query(source);
-        Set<Entity> accelerated = identitySet(List.of());
-        for (int index = 0; index < result.size(); index++) {
-            Entity candidate = CollisionFrame.entity(source, result.get(index));
-            if (observedSet.contains(candidate)
-                    && isInVanillaLookupSections(source.getBoundingBox(), candidate.blockPosition())) {
-                accelerated.add(candidate);
-            }
-        }
-        long trackedEntities = observed.stream().filter(CollisionFrame::contains).count();
         helper.assertTrue(
-                accelerated.equals(vanilla),
+                actual.equals(expected),
                 "spatial query parity: " + scenario
-                        + ", vanilla=" + vanilla.size()
-                        + ", accelerated=" + accelerated.size()
-                        + ", nativeTracked=" + trackedEntities + "/" + observed.size()
+                        + ", expected=" + expected.size()
+                        + ", actual=" + actual.size()
         );
     }
 

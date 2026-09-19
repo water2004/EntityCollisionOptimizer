@@ -141,11 +141,6 @@ final class LevelCollisionFrame {
         bodies.retire(entity);
     }
 
-    synchronized FFMBackend.QueryResult query(Entity source) {
-        addEntity(source);
-        return FFMBackend.query(nativeContext, ids.getId(source), ids.size());
-    }
-
     synchronized int[] hardCollisionIds(Entity source, AABB scan) {
         addEntity(source);
         if (scan.getSize() < 1.0E-7) {
@@ -321,10 +316,6 @@ final class LevelCollisionFrame {
         throw new IllegalStateException("Native collision metadata did not converge");
     }
 
-    synchronized Entity entity(int nativeId) {
-        return ids.getEntity(nativeId);
-    }
-
     synchronized PushBatch collectPushable(LivingEntity source, PlayerTeam sourceTeam,
                                             Team.CollisionRule sourceRule, boolean sourceUsesVanillaDoPush) {
         FFMBackend.QueryResult result = queryPushable(source, sourceTeam, sourceRule, sourceUsesVanillaDoPush);
@@ -343,10 +334,6 @@ final class LevelCollisionFrame {
 
     private synchronized void recycle(PushBatch batch) {
         batchPool.addFirst(batch);
-    }
-
-    synchronized boolean contains(Entity entity) {
-        return active && ids.contains(entity);
     }
 
     private boolean isSelectableCached(int nativeId, Entity entity) {
@@ -403,8 +390,6 @@ final class LevelCollisionFrame {
                 boundsOrNull,
                 isSelectableCached(nativeId, entity),
                 entity.isPassenger(),
-                entity.isVehicle(),
-                entity.noPhysics,
                 VanillaMethodDetector.usesVanillaEntityPush(entity),
                 VanillaMethodDetector.allowsDeferredVelocityWrites(entity),
                 assignTeamId(targetTeam),

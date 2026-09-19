@@ -6,7 +6,6 @@
 
 namespace eco {
 
-void rebuildSectionIndex(CollisionContext& context);
 void insertSectionEntity(CollisionContext& context, int entityId);
 void removeSectionEntity(CollisionContext& context, int entityId);
 void updateSectionEntity(

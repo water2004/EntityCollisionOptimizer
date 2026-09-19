@@ -12,8 +12,6 @@ int updateCollisionEntity(
         const double* bounds,
         int selectable,
         int passenger,
-        int vehicle,
-        int noPhysics,
         int vanillaEntityPush,
         int allowsDeferredVelocityWrites,
         int teamId,
@@ -43,8 +41,6 @@ int updateCollisionEntity(
         const bool wasQueryable = !metadata.selectableValid || metadata.selectable;
         metadata.selectable = selectable != 0;
         metadata.passenger = passenger != 0;
-        metadata.vehicle = vehicle != 0;
-        metadata.noPhysics = noPhysics != 0;
         metadata.vanillaEntityPush = vanillaEntityPush != 0;
         metadata.allowsDeferredVelocityWrites = allowsDeferredVelocityWrites != 0;
         const bool hard = hardCollidable != 0;

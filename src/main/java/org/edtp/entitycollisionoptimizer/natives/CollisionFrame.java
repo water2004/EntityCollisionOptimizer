@@ -76,16 +76,6 @@ public final class CollisionFrame {
         frameFor(level).getEntities(box, consumer);
     }
 
-    public static void addEntity(Entity entity) {
-        if (!(entity.level() instanceof ServerLevel level)) {
-            return;
-        }
-        LevelCollisionFrame frame = LEVEL_FRAMES.get(level);
-        if (frame != null) {
-            frame.addEntity(entity);
-        }
-    }
-
     public static void trackingStarted(ServerLevel level, Entity entity) {
         LevelCollisionFrame frame = LEVEL_FRAMES.get(level);
         if (frame != null) frame.addEntity(entity);
@@ -121,10 +111,6 @@ public final class CollisionFrame {
         }
     }
 
-    public static FFMBackend.QueryResult query(Entity source) {
-        return frameFor(source).query(source);
-    }
-
     public static int[] hardCollisionIds(Entity source, AABB scan) {
         return frameFor(source).hardCollisionIds(source, scan);
     }
@@ -137,44 +123,9 @@ public final class CollisionFrame {
         return frameFor(level).getEntityCollisions(entity, box);
     }
 
-    public static FFMBackend.QueryResult queryPushable(
-            LivingEntity source,
-            PlayerTeam sourceTeam,
-            Team.CollisionRule sourceRule,
-            boolean sourceUsesVanillaDoPush
-    ) {
-        return frameFor(source).queryPushable(
-                source,
-                sourceTeam,
-                sourceRule,
-                sourceUsesVanillaDoPush
-        );
-    }
-
-    public static Entity entity(Entity source, int nativeId) {
-        if (!(source.level() instanceof ServerLevel level)) {
-            return null;
-        }
-        LevelCollisionFrame frame = LEVEL_FRAMES.get(level);
-        return frame == null ? null : frame.entity(nativeId);
-    }
-
     public static PushBatch collectPushable(LivingEntity source, PlayerTeam sourceTeam,
                                             Team.CollisionRule sourceRule, boolean sourceUsesVanillaDoPush) {
         return frameFor(source).collectPushable(source, sourceTeam, sourceRule, sourceUsesVanillaDoPush);
-    }
-
-    public static boolean contains(Entity entity) {
-        if (!(entity.level() instanceof ServerLevel level)) {
-            return false;
-        }
-        LevelCollisionFrame frame = LEVEL_FRAMES.get(level);
-        return frame != null && frame.contains(entity);
-    }
-
-    public static boolean isActive(ServerLevel level) {
-        LevelCollisionFrame frame = LEVEL_FRAMES.get(level);
-        return frame != null && frame.isActive();
     }
 
     private static LevelCollisionFrame frameFor(Entity entity) {

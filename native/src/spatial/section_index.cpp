@@ -88,14 +88,6 @@ void updateSectionEntity(
     if (moved) insertSectionEntity(context, entityId);
 }
 
-void rebuildSectionIndex(CollisionContext& context) {
-    context.clearSectionsAndPool();
-    context.sectionSlots.resize(context.boxes.size(), {nullptr, 0});
-    for (std::size_t entityId = 0; entityId < context.boxes.size(); ++entityId) {
-        insertSectionEntity(context, static_cast<int>(entityId));
-    }
-}
-
 const CellMembers* sectionEntities(CollisionContext& context, const Cell& section) {
     CellMembers* members = context.sections.find(section);
     if (members == nullptr) return nullptr;

@@ -37,8 +37,4 @@ final class PersistentEntityIds {
     int getId(Entity entity) { return ids.getInt(entity); }
     boolean contains(Entity entity) { return ids.containsKey(entity); }
     int size() { return size; }
-    void clear() {
-        Arrays.fill(entities, 0, size, null);
-        size = 0; ids.clear(); free.clear();
-    }
 }

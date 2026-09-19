@@ -13,8 +13,6 @@ struct alignas(32) EntityMetadata {
     std::uint32_t collisionRule : 2 = 0;
     std::uint32_t selectable : 1 = false;
     std::uint32_t passenger : 1 = false;
-    std::uint32_t vehicle : 1 = false;
-    std::uint32_t noPhysics : 1 = false;
     std::uint32_t vanillaEntityPush : 1 = false;
     std::uint32_t allowsDeferredVelocityWrites : 1 = false;
     std::uint32_t hardCollidable : 1 = false;

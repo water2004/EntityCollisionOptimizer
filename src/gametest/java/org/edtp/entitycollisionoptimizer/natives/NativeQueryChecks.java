@@ -15,8 +15,7 @@ public final class NativeQueryChecks {
         int queries = 0;
         for (int count : new int[]{2, 8, 20}) {
             try (var context = FFMBackend.createContext()) {
-                FFMBackend.beginFrame(context, new double[count * 6],
-                        new int[count * 3], count);
+                IndexUpdateFixture.initialize(context, count);
                 for (int phase = 0; phase < 90; phase++) {
                     Body[] bodies = bodies(count, phase);
                     for (int id = 0; id < count; id++) {
@@ -123,15 +122,15 @@ public final class NativeQueryChecks {
             boolean nativePush = sourceNative && source.allowsDeferredVelocityWrites
                     && bodies[id].vanillaEntityPush && bodies[id].allowsDeferredVelocityWrites;
             helper.assertValueEqual(flags[i], nativePush ? 1 : 0, "dispatch flag " + label);
-            helper.assertValueEqual(result.usesNativePush(i), nativePush, "public dispatch flag " + label);
         }
     }
 
     private static int section(double coordinate) { return SectionPos.posToSectionCoord(coordinate); }
 
     private static void metadata(FFMBackend.Context context, int id, Body b) {
-        FFMBackend.updateEntityMetadata(context, id, b.selectable, b.passenger, false, false,
-                b.vanillaEntityPush, b.allowsDeferredVelocityWrites, b.team, b.rule, 900 - id, false, b.order);
+        IndexUpdateFixture.metadata(context, id, b.selectable, b.passenger,
+                b.vanillaEntityPush, b.allowsDeferredVelocityWrites,
+                b.team, b.rule, 900 - id, false, b.order);
     }
 
     private record Body(AABB box, int x, int y, int z, int team, int rule, boolean selectable,

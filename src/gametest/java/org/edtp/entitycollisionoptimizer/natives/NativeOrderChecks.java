@@ -22,7 +22,7 @@ public final class NativeOrderChecks {
         Body[] bodies = new Body[count];
         for (int i = 0; i < count; i++) bodies[i] = new Body(i, count);
         try (var context = FFMBackend.createContext()) {
-            begin(context, bodies);
+            insertAll(context, bodies);
             for (int step = 0; step < 96; step++) {
                 int id = (step * 7 + 1) % count;
                 Body body = bodies[id];
@@ -33,7 +33,7 @@ public final class NativeOrderChecks {
                     case 3 -> body.order = 1000L + step; // Key change without changing cell membership.
                     case 4 -> { body.selectable = !body.selectable; body.passenger = !body.passenger; }
                     case 5 -> FFMBackend.invalidatePushEligibilityFields(context, 3);
-                    case 6, 7 -> begin(context, bodies);
+                    case 6, 7 -> resetAll(context, bodies);
                 }
                 IndexUpdateFixture.update(context, id, body.box, body.x, body.y, body.z,
                         body.selectable, body.passenger, true, true,
@@ -86,19 +86,20 @@ public final class NativeOrderChecks {
         }
     }
 
-    private static void begin(FFMBackend.Context context, Body[] bodies) {
-        double[] boxes = new double[bodies.length * 6];
-        int[] sections = new int[bodies.length * 3];
-        for (int i = 0; i < bodies.length; i++) {
-            AABB b = bodies[i].box;
-            System.arraycopy(new double[]{b.minX, b.minY, b.minZ, b.maxX, b.maxY, b.maxZ}, 0, boxes, i * 6, 6);
-            System.arraycopy(new int[]{bodies[i].x, bodies[i].y, bodies[i].z}, 0, sections, i * 3, 3);
+    private static void insertAll(FFMBackend.Context context, Body[] bodies) {
+        for (int id = 0; id < bodies.length; id++) {
+            Body body = bodies[id];
+            IndexUpdateFixture.put(context, id, body.box, body.x, body.y, body.z, body.order);
         }
-        FFMBackend.beginFrame(context, boxes, sections, bodies.length);
+    }
+
+    private static void resetAll(FFMBackend.Context context, Body[] bodies) {
+        for (int id = 0; id < bodies.length; id++) FFMBackend.removeEntity(context, id);
+        insertAll(context, bodies);
     }
 
     private static void metadata(FFMBackend.Context context, int id, Body body) {
-        FFMBackend.updateEntityMetadata(context, id, body.selectable, body.passenger, false, false,
+        IndexUpdateFixture.metadata(context, id, body.selectable, body.passenger,
                 true, true, -1, 0, 100 + id, false, body.order);
     }
 

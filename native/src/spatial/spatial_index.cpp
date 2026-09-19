@@ -71,13 +71,4 @@ void updateEntityQueryability(CollisionContext& context, int entityId, bool quer
     }
 }
 
-bool intersects(const Aabb& first, const Aabb& second) noexcept {
-    return first.minX < second.maxX
-            && first.maxX > second.minX
-            && first.minY < second.maxY
-            && first.maxY > second.minY
-            && first.minZ < second.maxZ
-            && first.maxZ > second.minZ;
-}
-
 } // namespace eco

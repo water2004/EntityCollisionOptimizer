@@ -3,7 +3,6 @@
 #include "geometry/aabb.h"
 
 #include <cstddef>
-#include <utility>
 #include <vector>
 
 namespace eco {
@@ -30,39 +29,6 @@ struct CellBoundsSoa {
         maxX[index] = box.maxX;
         maxY[index] = box.maxY;
         maxZ[index] = box.maxZ;
-    }
-
-    void swap(std::size_t first, std::size_t second) noexcept {
-        using std::swap;
-        swap(minX[first], minX[second]);
-        swap(minY[first], minY[second]);
-        swap(minZ[first], minZ[second]);
-        swap(maxX[first], maxX[second]);
-        swap(maxY[first], maxY[second]);
-        swap(maxZ[first], maxZ[second]);
-    }
-
-    void popBack() {
-        minX.pop_back(); minY.pop_back(); minZ.pop_back();
-        maxX.pop_back(); maxY.pop_back(); maxZ.pop_back();
-    }
-
-    void swapErase(std::size_t index) {
-        const std::size_t last = minX.size() - 1;
-        if (index != last) {
-            minX[index] = minX[last];
-            minY[index] = minY[last];
-            minZ[index] = minZ[last];
-            maxX[index] = maxX[last];
-            maxY[index] = maxY[last];
-            maxZ[index] = maxZ[last];
-        }
-        minX.pop_back();
-        minY.pop_back();
-        minZ.pop_back();
-        maxX.pop_back();
-        maxY.pop_back();
-        maxZ.pop_back();
     }
 
     void erase(std::size_t index) {

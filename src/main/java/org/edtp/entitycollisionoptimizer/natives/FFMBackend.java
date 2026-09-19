@@ -1,7 +1,6 @@
 package org.edtp.entitycollisionoptimizer.natives;
 
 import org.edtp.entitycollisionoptimizer.EntityCollisionOptimizer;
-import org.edtp.entitycollisionoptimizer.ffm.FFM;
 import net.minecraft.world.phys.AABB;
 
 import java.io.File;
@@ -33,13 +32,10 @@ public final class FFMBackend {
     private static Arena nativeArena;
     private static MethodHandle createContextHandle;
     private static MethodHandle destroyContextHandle;
-    private static MethodHandle beginFrame;
-    private static MethodHandle addEntity;
     private static MethodHandle putEntity, removeEntity, updateLocation;
     private static MethodHandle updateEntity;
     private static MethodHandle invalidateEntityPushabilityCache;
     private static MethodHandle invalidatePushEligibilityFields;
-    private static MethodHandle query;
     private static MethodHandle queryHard;
     private static MethodHandle queryEntities;
     private static MethodHandle queryPushable;
@@ -126,75 +122,12 @@ public final class FFMBackend {
         }
     }
 
-    public static void beginFrame(
-            Context nativeContext,
-            double[] aabbs,
-            int[] sections,
-            int entityCount
-    ) {
-        synchronized (nativeContext) {
-            nativeContext.ensureOpen();
-            nativeContext.ensureOutputCapacity(entityCount);
-            try (Arena arena = Arena.ofConfined()) {
-                MemorySegment aabbMemory = FFM.allocateArray(arena, aabbs);
-                MemorySegment sectionMemory = FFM.allocateArray(arena, sections);
-                final int status;
-                try {
-                    status = (int) beginFrame.invokeExact(
-                            nativeContext.address,
-                            aabbMemory,
-                            sectionMemory,
-                            entityCount
-                    );
-                } catch (Throwable failure) {
-                    throw new IllegalStateException("FFM beginFrame call failed", failure);
-                }
-                checkStatus("build native collision frame", status);
-            }
-        }
-    }
-
-    public static int addEntity(
-            Context nativeContext,
-            AABB box,
-            int sectionX,
-            int sectionY,
-            int sectionZ
-    ) {
-        synchronized (nativeContext) {
-            nativeContext.ensureOpen();
-            try {
-                int nativeId = (int) addEntity.invokeExact(
-                        nativeContext.address,
-                        box.minX,
-                        box.minY,
-                        box.minZ,
-                        box.maxX,
-                        box.maxY,
-                        box.maxZ,
-                        sectionX,
-                        sectionY,
-                        sectionZ
-                );
-                if (nativeId < 0) {
-                    throw new IllegalStateException("Native collision index rejected an entity");
-                }
-                nativeContext.ensureOutputCapacity(nativeId + 1);
-                return nativeId;
-            } catch (Throwable failure) {
-                throw new IllegalStateException("FFM addEntity call failed", failure);
-            }
-        }
-    }
-
     public static void updateEntity(
             Context nativeContext,
             int nativeId,
             MemorySegment bounds,
             boolean selectable,
             boolean passenger,
-            boolean vehicle,
-            boolean noPhysics,
             boolean vanillaEntityPush,
             boolean allowsDeferredVelocityWrites,
             int teamId,
@@ -212,8 +145,6 @@ public final class FFMBackend {
                         bounds,
                         selectable ? 1 : 0,
                         passenger ? 1 : 0,
-                        vehicle ? 1 : 0,
-                        noPhysics ? 1 : 0,
                         vanillaEntityPush ? 1 : 0,
                         allowsDeferredVelocityWrites ? 1 : 0,
                         teamId,
@@ -277,26 +208,6 @@ public final class FFMBackend {
         }
     }
 
-    public static void updateEntityMetadata(
-            Context nativeContext,
-            int nativeId,
-            boolean selectable,
-            boolean passenger,
-            boolean vehicle,
-            boolean noPhysics,
-            boolean vanillaEntityPush,
-            boolean allowsDeferredVelocityWrites,
-            int teamId,
-            int collisionRule,
-            int bodySlot,
-            boolean hardCollidable,
-            long sectionOrder
-    ) {
-        updateEntity(nativeContext, nativeId, MemorySegment.NULL, selectable, passenger, vehicle,
-                noPhysics, vanillaEntityPush, allowsDeferredVelocityWrites, teamId, collisionRule, bodySlot,
-                hardCollidable, sectionOrder);
-    }
-
     public static void invalidateEntityPushabilityCache(Context nativeContext, int nativeId) {
         synchronized (nativeContext) {
             nativeContext.ensureOpen();
@@ -318,33 +229,6 @@ public final class FFMBackend {
                 checkStatus("invalidate native push eligibility fields", status);
             } catch (Throwable failure) {
                 throw new IllegalStateException("FFM invalidatePushEligibilityFields call failed", failure);
-            }
-        }
-    }
-
-    public static QueryResult query(Context nativeContext, int sourceId, int entityCount) {
-        synchronized (nativeContext) {
-            nativeContext.ensureOpen();
-            nativeContext.ensureOutputCapacity(entityCount);
-            try {
-                int resultSize = (int) query.invokeExact(
-                        nativeContext.address,
-                        sourceId,
-                        nativeContext.outputBuffer,
-                        nativeContext.outputCapacity
-                );
-                if (resultSize < 0 || resultSize > nativeContext.outputCapacity) {
-                    throw new IllegalStateException("Native collision query returned invalid size " + resultSize);
-                }
-                QueryResult result = nativeContext.queryResult;
-                result.offset = 0;
-                result.size = resultSize;
-                result.metadataRequired = false;
-                result.pushableCount = 0;
-                result.nonPassengerCount = 0;
-                return result;
-            } catch (Throwable failure) {
-                throw new IllegalStateException("FFM collision query failed", failure);
             }
         }
     }
@@ -563,16 +447,6 @@ public final class FFMBackend {
                 library.find("destroyCollisionContext").orElseThrow(() -> missingSymbol("destroyCollisionContext")),
                 FunctionDescriptor.ofVoid(ADDRESS)
         );
-        beginFrame = linker.downcallHandle(
-                library.find("beginCollisionFrame").orElseThrow(() -> missingSymbol("beginCollisionFrame")),
-                FunctionDescriptor.of(
-                        JAVA_INT,
-                        ADDRESS,
-                        ADDRESS,
-                        ADDRESS,
-                        JAVA_INT
-                )
-        );
         putEntity = linker.downcallHandle(
                 library.find("putCollisionEntity").orElseThrow(),
                 FunctionDescriptor.of(JAVA_INT, ADDRESS, JAVA_INT, ADDRESS,
@@ -585,29 +459,11 @@ public final class FFMBackend {
                 FunctionDescriptor.of(JAVA_INT, ADDRESS, JAVA_INT,
                         JAVA_INT, JAVA_INT, JAVA_INT, JAVA_LONG)
         );
-        addEntity = linker.downcallHandle(
-                library.find("addCollisionEntity").orElseThrow(() -> missingSymbol("addCollisionEntity")),
-                FunctionDescriptor.of(
-                        JAVA_INT,
-                        ADDRESS,
-                        JAVA_DOUBLE,
-                        JAVA_DOUBLE,
-                        JAVA_DOUBLE,
-                        JAVA_DOUBLE,
-                        JAVA_DOUBLE,
-                        JAVA_DOUBLE,
-                        JAVA_INT,
-                        JAVA_INT,
-                        JAVA_INT
-                )
-        );
         FunctionDescriptor updateEntityDescriptor = FunctionDescriptor.of(
                         JAVA_INT,
                         ADDRESS,
                         JAVA_INT,
                         ADDRESS,
-                        JAVA_INT,
-                        JAVA_INT,
                         JAVA_INT,
                         JAVA_INT,
                         JAVA_INT,
@@ -630,10 +486,6 @@ public final class FFMBackend {
                 library.find("invalidatePushEligibilityFields")
                         .orElseThrow(() -> missingSymbol("invalidatePushEligibilityFields")),
                 FunctionDescriptor.of(JAVA_INT, ADDRESS, JAVA_INT)
-        );
-        query = linker.downcallHandle(
-                library.find("queryCollisionEntities").orElseThrow(() -> missingSymbol("queryCollisionEntities")),
-                FunctionDescriptor.of(JAVA_INT, ADDRESS, JAVA_INT, ADDRESS, JAVA_INT)
         );
         queryHard = linker.downcallHandle(
                 library.find("queryHardCollisionEntities")
@@ -737,13 +589,10 @@ public final class FFMBackend {
         nativeArena = null;
         createContextHandle = null;
         destroyContextHandle = null;
-        beginFrame = null;
-        addEntity = null;
         putEntity = removeEntity = updateLocation = null;
         updateEntity = null;
         invalidateEntityPushabilityCache = null;
         invalidatePushEligibilityFields = null;
-        query = null;
         queryHard = null;
         queryEntities = null;
         queryPushable = null;
@@ -857,13 +706,6 @@ public final class FFMBackend {
                 throw new IndexOutOfBoundsException(index);
             }
             return output.get(JAVA_INT, (long) (offset + index) * Integer.BYTES);
-        }
-
-        public boolean usesNativePush(int index) {
-            if (index < 0 || index >= size) {
-                throw new IndexOutOfBoundsException(index);
-            }
-            return nativePushFlags.get(JAVA_INT, (long) index * Integer.BYTES) != 0;
         }
 
         void copyBodiesTo(int[] bodySlots, int[] nativePushFlags) {

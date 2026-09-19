@@ -11,7 +11,6 @@ import net.minecraft.world.scores.Team;
 import org.edtp.entitycollisionoptimizer.collision.VanillaMethodDetector;
 import org.edtp.entitycollisionoptimizer.natives.CollisionFrame;
 import org.edtp.entitycollisionoptimizer.natives.TestFrameAccess;
-import org.edtp.entitycollisionoptimizer.natives.FFMBackend;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -84,7 +83,7 @@ final class CollisionIsolationParity {
         for (int index = 0; index < entityCount; index++) {
             Zombie zombie = new WorldlessPushableZombie(level);
             zombie.setPos(position.add(index * 0.03, 0, index * 0.02));
-            CollisionFrame.addEntity(zombie);
+            CollisionFrame.trackingStarted(level, zombie);
             entities.add(zombie);
         }
         return new LevelQueryGroup(level, List.copyOf(entities));
@@ -92,43 +91,37 @@ final class CollisionIsolationParity {
 
     private static void verifyGroup(LevelQueryGroup group, int iterations) {
         List<Zombie> entities = group.entities();
-        Set<Entity> expected = identitySet(new ArrayList<>(entities));
         for (int iteration = 0; iteration < iterations; iteration++) {
             for (Zombie source : entities) {
-                FFMBackend.QueryResult spatial = CollisionFrame.query(source);
-                if (spatial.size() != entities.size() - 1) {
+                Set<Entity> expected = identitySet(new ArrayList<>(entities));
+                expected.remove(source);
+                List<Entity> spatial = group.level().getEntities(
+                        source, source.getBoundingBox(), expected::contains);
+                Set<Entity> observed = identitySet(spatial);
+                if (spatial.size() != expected.size() || !observed.equals(expected)) {
                     throw new AssertionError(
                             group.level().dimension().identifier()
-                                    + " spatial result size was " + spatial.size()
+                                    + " returned a foreign, duplicate, or missing entity"
                     );
-                }
-                Set<Entity> observed = identitySet(List.of());
-                for (int index = 0; index < spatial.size(); index++) {
-                    Entity candidate = CollisionFrame.entity(source, spatial.get(index));
-                    if (candidate == source || !expected.contains(candidate) || !observed.add(candidate)) {
-                        throw new AssertionError(
-                                group.level().dimension().identifier()
-                                        + " returned a foreign or duplicate entity"
-                        );
-                    }
                 }
 
                 PlayerTeam sourceTeam = source.getTeam();
-                FFMBackend.QueryResult pushable = CollisionFrame.queryPushable(
+                try (var pushable = CollisionFrame.collectPushable(
                         source,
                         sourceTeam,
                         sourceTeam == null
                                 ? Team.CollisionRule.ALWAYS : sourceTeam.getCollisionRule(),
                         VanillaMethodDetector.usesVanillaDoPush(source)
-                );
-                int expectedPushable = entities.size() - 1;
-                if (pushable.pushableCount() != expectedPushable
-                        || pushable.nonPassengerCount() != expectedPushable) {
-                    throw new AssertionError(
-                            group.level().dimension().identifier()
-                                    + " pushable counts were " + pushable.pushableCount()
-                                    + "/" + pushable.nonPassengerCount()
-                    );
+                )) {
+                    int expectedPushable = entities.size() - 1;
+                    if (pushable.pushableCount() != expectedPushable
+                            || pushable.nonPassengerCount() != expectedPushable) {
+                        throw new AssertionError(
+                                group.level().dimension().identifier()
+                                        + " pushable counts were " + pushable.pushableCount()
+                                        + "/" + pushable.nonPassengerCount()
+                        );
+                    }
                 }
                 verifyNativeBatch(group, source);
             }

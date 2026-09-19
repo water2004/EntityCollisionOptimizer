@@ -15,6 +15,5 @@ Aabb makeAabb(
 bool isIndexable(const Aabb& box) noexcept;
 void updateEntityBounds(CollisionContext& context, int entityId, const Aabb& box) noexcept;
 void updateEntityQueryability(CollisionContext& context, int entityId, bool queryable) noexcept;
-bool intersects(const Aabb& first, const Aabb& second) noexcept;
 
 } // namespace eco

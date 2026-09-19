@@ -16,32 +16,12 @@ ECO_EXPORT int scanCollisionBlocks(const std::uint16_t* const* rows, int* query,
 
 ECO_EXPORT void* createCollisionContext();
 ECO_EXPORT void destroyCollisionContext(void* context);
-ECO_EXPORT int beginCollisionFrame(
-        void* context,
-        const double* aabbs,
-        const int* sections,
-        int entityCount
-);
-ECO_EXPORT int addCollisionEntity(
-        void* context,
-        double minX,
-        double minY,
-        double minZ,
-        double maxX,
-        double maxY,
-        double maxZ,
-        int sectionX,
-        int sectionY,
-        int sectionZ
-);
 ECO_EXPORT int updateCollisionEntity(
         void* context,
         int entityId,
         const double* bounds,
         int selectable,
         int passenger,
-        int vehicle,
-        int noPhysics,
         int vanillaEntityPush,
         int allowsDeferredVelocityWrites,
         int teamId,
@@ -52,7 +32,6 @@ ECO_EXPORT int updateCollisionEntity(
 );
 ECO_EXPORT int invalidateEntityPushabilityCache(void* context, int entityId);
 ECO_EXPORT int invalidatePushEligibilityFields(void* context, int fieldsToInvalidate);
-ECO_EXPORT int queryCollisionEntities(void* context, int sourceId, int* output, int outputCapacity);
 ECO_EXPORT int queryHardCollisionEntities(
         void* context,
         double minX,

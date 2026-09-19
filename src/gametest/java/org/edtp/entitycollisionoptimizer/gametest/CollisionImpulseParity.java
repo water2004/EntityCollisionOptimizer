@@ -48,12 +48,13 @@ final class CollisionImpulseParity {
             }
             if (enabled) {
                 CollisionFrame.begin(level);
-                var result = CollisionFrame.queryPushable(source, source.getTeam(),
-                        source.getTeam() == null
-                                ? Team.CollisionRule.ALWAYS : source.getTeam().getCollisionRule(), true);
                 boolean covered = false;
-                for (int i = 0; i < result.size(); i++) {
-                    if (CollisionFrame.entity(source, result.get(i)) == target) covered = result.usesNativePush(i);
+                try (var batch = CollisionFrame.collectPushable(source, source.getTeam(),
+                        source.getTeam() == null
+                                ? Team.CollisionRule.ALWAYS : source.getTeam().getCollisionRule(), true)) {
+                    for (int i = 0; i < batch.size(); i++) {
+                        if (batch.target(i) == target) covered = batch.usesNativePush(i);
+                    }
                 }
                 helper.assertTrue(covered, "ordinary zombie pair must use native impulse calculation");
             }

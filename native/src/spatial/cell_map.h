@@ -87,13 +87,6 @@ public:
         --used;
     }
 
-    void clear() noexcept {
-        for (Entry& entry : entries) {
-            entry.value = nullptr;
-        }
-        used = 0;
-    }
-
 private:
     struct Entry {
         Cell key{};

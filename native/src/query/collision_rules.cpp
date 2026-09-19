@@ -19,12 +19,6 @@ LookupSections::LookupSections(const Aabb& source) noexcept
       maxY(sectionCoordinate(source.maxY)),
       maxZ(sectionCoordinate(source.maxZ + 2.0)) {}
 
-bool LookupSections::contains(const EntityMetadata& target) const noexcept {
-    return target.sectionX >= minX && target.sectionX <= maxX
-            && target.sectionY >= minY && target.sectionY <= maxY
-            && target.sectionZ >= minZ && target.sectionZ <= maxZ;
-}
-
 TeamFilter::TeamFilter(int sourceTeamId, int sourceRule) noexcept : sourceTeam(sourceTeamId) {
     otherRules = sourceRule == COLLISION_NEVER || sourceRule == COLLISION_PUSH_OTHER_TEAMS
             ? 0u : (1u << COLLISION_ALWAYS) | (1u << COLLISION_PUSH_OWN_TEAM);

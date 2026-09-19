@@ -76,31 +76,6 @@ bool visitIntersecting(
 
 } // namespace
 
-int queryCollisionEntities(void* contextPointer, int sourceId, int* output, int outputCapacity) {
-    if (contextPointer == nullptr || sourceId < 0 || output == nullptr || outputCapacity < 0) return -1;
-    try {
-        auto& context = *static_cast<eco::CollisionContext*>(contextPointer);
-        if (static_cast<std::size_t>(sourceId) >= context.boxes.size()) return -1;
-        const eco::Aabb& source = context.boxes[sourceId];
-        const eco::LookupSections sections(source);
-        int resultSize = 0;
-        const bool complete = visitOrderedSections(sections, [&](std::int64_t x, std::int64_t y, std::int64_t z) {
-            const eco::CellMembers* members = eco::sectionEntities(context, {x, y, z});
-            if (members == nullptr) return true;
-            return visitIntersecting(source, *members, [&](std::size_t index) {
-                const int id = members->ids[index];
-                if (id == sourceId) return true;
-                if (resultSize >= outputCapacity) return false;
-                output[resultSize++] = id;
-                return true;
-            });
-        });
-        return complete ? resultSize : -2;
-    } catch (...) {
-        return -3;
-    }
-}
-
 int queryHardCollisionEntities(
         void* contextPointer,
         double minX,

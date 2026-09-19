@@ -14,13 +14,10 @@ import java.util.Set;
 public final class NativeHardQueryChecks {
     public static void emptyWorld(GameTestHelper helper) {
         AABB player = new AABB(-0.3, 64, -0.3, 0.3, 65.8, 0.3);
-        for (boolean snapshot : new boolean[]{false, true}) {
-            try (var context = FFMBackend.createContext()) {
-                if (snapshot) FFMBackend.beginFrame(context, new double[0], new int[0], 0);
-                for (boolean hardOnly : new boolean[]{true, false}) {
-                    helper.assertValueEqual(FFMBackend.queryHard(context, player, -1, hardOnly, 0).size(),
-                            0, "spawn query in empty world, snapshot=" + snapshot);
-                }
+        try (var context = FFMBackend.createContext()) {
+            for (boolean hardOnly : new boolean[]{true, false}) {
+                helper.assertValueEqual(FFMBackend.queryHard(context, player, -1, hardOnly, 0).size(),
+                        0, "spawn query in empty world");
             }
         }
     }
@@ -29,7 +26,7 @@ public final class NativeHardQueryChecks {
         int queries = 0;
         for (int count : new int[]{2, 8, 20}) {
             try (var context = FFMBackend.createContext()) {
-                FFMBackend.beginFrame(context, new double[count * 6], new int[count * 3], count);
+                IndexUpdateFixture.initialize(context, count);
                 for (int phase = 0; phase < 36; phase++) {
                     Body[] bodies = bodies(count, phase);
                     for (int id = 0; id < count; id++) {

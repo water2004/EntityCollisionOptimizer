@@ -6,12 +6,9 @@
         scanCollisionBlocks;
         createCollisionContext;
         destroyCollisionContext;
-        beginCollisionFrame;
-        addCollisionEntity;
         updateCollisionEntity;
         invalidateEntityPushabilityCache;
         invalidatePushEligibilityFields;
-        queryCollisionEntities;
         queryHardCollisionEntities;
         queryEntitiesInBox;
         queryPushableEntities;

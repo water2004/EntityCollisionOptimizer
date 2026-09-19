@@ -50,13 +50,6 @@ struct CollisionContext {
         members->poolNext = freeSectionMembers;
         freeSectionMembers = members;
     }
-
-    void clearSectionsAndPool() {
-        sections.clear();
-        sectionMembersPool.clear();
-        freeSectionMembers = nullptr;
-        sectionSlots.clear();
-    }
 };
 
 } // namespace eco

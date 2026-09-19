@@ -9,7 +9,6 @@ namespace eco {
 struct LookupSections {
     std::int64_t minX, minY, minZ, maxX, maxY, maxZ;
     explicit LookupSections(const Aabb& source) noexcept;
-    bool contains(const EntityMetadata& target) const noexcept;
 };
 /** Source-dependent rule decisions are fixed for the entire query. */
 struct TeamFilter {
