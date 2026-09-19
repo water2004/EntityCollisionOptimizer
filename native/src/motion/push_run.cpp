@@ -1,10 +1,30 @@
 #include "eco/collision_api.h"
 #include "motion/collision_body.h"
-#include "motion/push_math.h"
 
+#include <algorithm>
 #include <cmath>
 
 namespace {
+
+constexpr double PUSH_EPSILON = 0.009999999776482582;
+
+// Entity.push(Entity), retaining each vanilla division/multiplication in its original order.
+inline bool pushImpulse(double sourceX, double sourceZ, double targetX, double targetZ,
+                        double& x, double& z) noexcept {
+    x = sourceX - targetX;
+    z = sourceZ - targetZ;
+    const double maximum = std::max(std::abs(x), std::abs(z));
+    if (!(maximum >= PUSH_EPSILON)) return false;
+    const double root = std::sqrt(maximum);
+    x /= root;
+    z /= root;
+    const double inverse = std::min(1.0, 1.0 / root);
+    x *= inverse;
+    z *= inverse;
+    x *= 0.05000000074505806;
+    z *= 0.05000000074505806;
+    return true;
+}
 
 void push(eco::CollisionBody& body, double x, double z) noexcept {
     // Entity.push first rejects non-finite input, then setDeltaMovement rejects non-finite sums.
@@ -52,7 +72,7 @@ int executePushRun(
         const bool pushTarget = acceptsImpulse(target);
         if (!pushSource && !pushTarget) continue;
         double x, z;
-        if (!eco::pushImpulse(source.x, source.z, target.x, target.z, x, z)) continue;
+        if (!pushImpulse(source.x, source.z, target.x, target.z, x, z)) continue;
         if (pushTarget) push(target, -x, -z);
         // Source accumulation is strictly sequential: never reduce a sum of impulses first.
         if (pushSource) push(source, x, z);
