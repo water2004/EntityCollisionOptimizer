@@ -6,7 +6,7 @@
 
 #include <cstddef>
 
-int updateCollisionEntity(
+int updateCollisionEntityState(
         void* contextPointer,
         int entityId,
         const double* bounds,
@@ -72,7 +72,7 @@ int updateCollisionEntity(
     }
 }
 
-int invalidateEntityPushabilityCache(void* contextPointer, int entityId) {
+int invalidateEntityPushEligibilityCache(void* contextPointer, int entityId) {
     if (contextPointer == nullptr || entityId < 0) {
         return -1;
     }
@@ -92,7 +92,7 @@ int invalidateEntityPushabilityCache(void* contextPointer, int entityId) {
     }
 }
 
-int invalidatePushEligibilityFields(void* contextPointer, int fieldsToInvalidate) {
+int invalidatePushEligibilityCacheFields(void* contextPointer, int fieldsToInvalidate) {
     if (contextPointer == nullptr
             || (fieldsToInvalidate & ~(eco::METADATA_SELECTABLE | eco::METADATA_TEAM)) != 0) {
         return -1;

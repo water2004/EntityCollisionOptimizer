@@ -32,7 +32,7 @@ public final class NativeOrderChecks {
                     case 2 -> { body.x ^= -1; body.y ^= -1; body.z ^= -1; }
                     case 3 -> body.order = 1000L + step; // Key change without changing cell membership.
                     case 4 -> { body.selectable = !body.selectable; body.passenger = !body.passenger; }
-                    case 5 -> FFMBackend.invalidatePushEligibilityFields(context, 3);
+                    case 5 -> FFMBackend.invalidatePushEligibilityCacheFields(context, 3);
                     case 6, 7 -> resetAll(context, bodies);
                 }
                 IndexUpdateFixture.update(context, id, body.box, body.x, body.y, body.z,
@@ -89,7 +89,7 @@ public final class NativeOrderChecks {
     private static void insertAll(FFMBackend.Context context, Body[] bodies) {
         for (int id = 0; id < bodies.length; id++) {
             Body body = bodies[id];
-            IndexUpdateFixture.put(context, id, body.box, body.x, body.y, body.z, body.order);
+            IndexUpdateFixture.insert(context, id, body.box, body.x, body.y, body.z, body.order);
         }
     }
 

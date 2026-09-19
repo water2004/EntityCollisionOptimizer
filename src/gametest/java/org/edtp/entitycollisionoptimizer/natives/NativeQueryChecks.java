@@ -27,7 +27,7 @@ public final class NativeQueryChecks {
                     // Grow reusable output storage without changing the low/medium entity count.
                     int capacityHint = phase >= 30 ? 513 : count;
                     for (int rule = 0; rule < 4; rule++) for (boolean sourceNative : new boolean[]{false, true}) {
-                        if ((phase & 1) == 0) FFMBackend.invalidatePushEligibilityFields(context, 3);
+                        if ((phase & 1) == 0) FFMBackend.invalidatePushEligibilityCacheFields(context, 3);
                         metadata(context, 0, bodies[0]);
                         compare(helper, context, bodies, rule, sourceNative, capacityHint, phase);
                         queries++;

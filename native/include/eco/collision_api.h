@@ -16,18 +16,12 @@ extern "C" {
 ECO_EXPORT void* createCollisionContext();
 ECO_EXPORT void destroyCollisionContext(void* context);
 
-// Persistent entity index updates.
-ECO_EXPORT int putCollisionEntity(
+// Persistent entity state and index updates.
+ECO_EXPORT int insertCollisionEntity(
         void* context, int id, const double* bounds, int x, int y, int z,
         std::int64_t sectionOrder
 );
-ECO_EXPORT int removeCollisionEntity(void* context, int id);
-ECO_EXPORT int updateCollisionLocation(
-        void* context, int id, int x, int y, int z, std::int64_t sectionOrder
-);
-
-// Entity metadata and push-eligibility cache updates.
-ECO_EXPORT int updateCollisionEntity(
+ECO_EXPORT int updateCollisionEntityState(
         void* context,
         int entityId,
         const double* bounds,
@@ -41,8 +35,14 @@ ECO_EXPORT int updateCollisionEntity(
         int hardCollidable,
         std::int64_t sectionOrder
 );
-ECO_EXPORT int invalidateEntityPushabilityCache(void* context, int entityId);
-ECO_EXPORT int invalidatePushEligibilityFields(void* context, int fieldsToInvalidate);
+ECO_EXPORT int updateCollisionEntitySection(
+        void* context, int id, int x, int y, int z, std::int64_t sectionOrder
+);
+ECO_EXPORT int removeCollisionEntity(void* context, int id);
+
+// Push-eligibility cache invalidation.
+ECO_EXPORT int invalidateEntityPushEligibilityCache(void* context, int entityId);
+ECO_EXPORT int invalidatePushEligibilityCacheFields(void* context, int fieldsToInvalidate);
 
 // Spatial entity queries.
 ECO_EXPORT int queryHardCollisionEntities(

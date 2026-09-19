@@ -28,7 +28,7 @@ import java.util.List;
 final class LevelCollisionFrame {
     // revisions are started at 0, using Long.MIN_VALUE as a sentinel to indicate that the value is uncached.
     private static final long UNCACHED = Long.MIN_VALUE;
-    // 2 bits mask for FFMBackend.invalidatePushEligibilityFields(), which is a bitfield of the fields to invalidate.
+    // 2 bits mask for FFMBackend.invalidatePushEligibilityCacheFields(), which is a bitfield of the fields to invalidate.
     private static final int INVALIDATE_SELECTABLE = 1;
     private static final int INVALIDATE_TEAM = 2;
     // Empty list, used as preallocated objects, prevent unnecessary allocations. Shared across levels and threads: callers must never modify it
@@ -95,7 +95,7 @@ final class LevelCollisionFrame {
         int sectionX = SectionPos.blockToSectionCoord(position.getX());
         int sectionY = SectionPos.blockToSectionCoord(position.getY());
         int sectionZ = SectionPos.blockToSectionCoord(position.getZ());
-        FFMBackend.putEntity(nativeContext, nativeId, entity.getBoundingBox(),
+        FFMBackend.insertEntity(nativeContext, nativeId, entity.getBoundingBox(),
                 sectionX, sectionY, sectionZ, ((CollisionOrderState) entity).eco$sectionOrder());
         ensureSemanticCapacity(nativeId + 1);
         selectableEntityRevisions[nativeId] = UNCACHED;
@@ -117,7 +117,7 @@ final class LevelCollisionFrame {
     synchronized void invalidateEntity(Entity entity) {
         if (!initialized) return;
         int id = ids.getId(entity);
-        if (id >= 0) FFMBackend.invalidateEntityPushabilityCache(nativeContext, id);
+        if (id >= 0) FFMBackend.invalidateEntityPushEligibilityCache(nativeContext, id);
     }
 
     synchronized void updateSection(Entity entity) {
@@ -127,7 +127,7 @@ final class LevelCollisionFrame {
         int sectionX = SectionPos.blockToSectionCoord(position.getX());
         int sectionY = SectionPos.blockToSectionCoord(position.getY());
         int sectionZ = SectionPos.blockToSectionCoord(position.getZ());
-        FFMBackend.updateLocation(nativeContext, id, sectionX, sectionY, sectionZ,
+        FFMBackend.updateEntitySection(nativeContext, id, sectionX, sectionY, sectionZ,
                 ((CollisionOrderState) entity).eco$sectionOrder());
     }
 
@@ -378,13 +378,13 @@ final class LevelCollisionFrame {
             fieldsToInvalidate |= INVALIDATE_TEAM;
         }
         if (fieldsToInvalidate != 0) {
-            FFMBackend.invalidatePushEligibilityFields(nativeContext, fieldsToInvalidate);
+            FFMBackend.invalidatePushEligibilityCacheFields(nativeContext, fieldsToInvalidate);
         }
     }
 
     private void refreshNativeMetadata(int nativeId, Entity entity, MemorySegment boundsOrNull) {
         PlayerTeam targetTeam = teamCached(nativeId, entity);
-        FFMBackend.updateEntity(
+        FFMBackend.updateEntityState(
                 nativeContext,
                 nativeId,
                 boundsOrNull,

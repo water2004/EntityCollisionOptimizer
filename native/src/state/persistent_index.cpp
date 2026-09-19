@@ -3,7 +3,7 @@
 #include "spatial/spatial_index.h"
 #include "spatial/section_index.h"
 
-int putCollisionEntity(
+int insertCollisionEntity(
         void* pointer, int id, const double* bounds, int x, int y, int z,
         std::int64_t sectionOrder
 ) {
@@ -37,7 +37,7 @@ int removeCollisionEntity(void* pointer, int id) {
     } catch (...) { return -2; }
 }
 
-int updateCollisionLocation(
+int updateCollisionEntitySection(
         void* pointer, int id, int x, int y, int z, std::int64_t sectionOrder
 ) {
     if (!pointer || id < 0) return -1;

@@ -1,14 +1,14 @@
 {
     global:
-        putCollisionEntity;
+        insertCollisionEntity;
         removeCollisionEntity;
-        updateCollisionLocation;
+        updateCollisionEntitySection;
         scanCollisionBlocks;
         createCollisionContext;
         destroyCollisionContext;
-        updateCollisionEntity;
-        invalidateEntityPushabilityCache;
-        invalidatePushEligibilityFields;
+        updateCollisionEntityState;
+        invalidateEntityPushEligibilityCache;
+        invalidatePushEligibilityCacheFields;
         queryHardCollisionEntities;
         queryEntitiesInBox;
         queryPushableEntities;
