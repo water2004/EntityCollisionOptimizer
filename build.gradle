@@ -86,6 +86,7 @@ if (enabledTestSuites == 1) {
             modId = "entity_collision_optimizer-gametest"
             enableGameTests = true
             eula = true
+            clearRunDirectory = true
         }
     }
 
@@ -107,6 +108,12 @@ if (enabledTestSuites == 1) {
         }
         tasks.named("runGameTest") {
             dependsOn recordVanillaIntegrationTrace
+            doFirst {
+                // The generated cleanup task runs before the vanilla-recording dependency.
+                // Delete again at the actual optimized-process boundary so unit-test worlds
+                // cannot leak persistent chunks into the integration comparison.
+                delete layout.buildDirectory.dir("run/gameTest/world")
+            }
         }
     } else {
         sourceSets.gametest.java.setSrcDirs(["src/gametest/java"])
