@@ -6,7 +6,6 @@ namespace eco {
 // Every section coordinate enters through an int32 ABI parameter. Keep the
 // complete query record in one half cache line; no per-cell metadata copies.
 struct alignas(32) EntityMetadata {
-    std::int64_t sectionOrder = 0;
     std::int32_t sectionX = 0, sectionY = 0, sectionZ = 0;
     int teamId = -1;
     int bodySlot = -1;

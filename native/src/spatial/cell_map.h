@@ -28,7 +28,6 @@ struct CellMembers {
     std::size_t queryableCount = 0;
     // Hard members resident in this section; hard-only scans skip empty sections.
     std::size_t hardCount = 0;
-    bool orderDirty = true;
     CellMembers* poolNext = nullptr;
 };
 

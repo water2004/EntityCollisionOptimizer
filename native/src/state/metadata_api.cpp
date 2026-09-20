@@ -17,8 +17,7 @@ int updateCollisionEntityState(
         int teamId,
         int collisionRule,
         int bodySlot,
-        int hardCollidable,
-        std::int64_t sectionOrder
+        int hardCollidable
 ) {
     if (contextPointer == nullptr || nativeId < 0 || bodySlot < 0
             || collisionRule < eco::COLLISION_ALWAYS || collisionRule > eco::COLLISION_PUSH_OTHER_TEAMS) {
@@ -60,10 +59,6 @@ int updateCollisionEntityState(
         metadata.teamId = teamId;
         metadata.collisionRule = collisionRule;
         metadata.bodySlot = bodySlot;
-        if (metadata.sectionOrder != sectionOrder) {
-            metadata.sectionOrder = sectionOrder;
-            eco::invalidateSectionOrder(context, nativeId);
-        }
         metadata.selectableValid = true;
         metadata.teamValid = true;
         if (wasQueryable != metadata.selectable) {

@@ -32,7 +32,7 @@ public final class NativeHardQueryChecks {
                     for (int id = 0; id < count; id++) {
                         Body b = bodies[id];
                         IndexUpdateFixture.update(context, id, b.box, b.x, b.y, b.z,
-                                true, false, true, true, -1, 0, id, b.hard, id);
+                                true, false, true, true, -1, 0, id, b.hard);
                     }
                     AABB scan = scan(bodies[0].box, phase);
                     compare(helper, context, bodies, scan, true, count, phase);

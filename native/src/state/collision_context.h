@@ -44,7 +44,6 @@ struct CollisionContext {
         members->ids.clear();
         members->queryable.clear();
         members->bounds.clear();
-        members->orderDirty = true;
         members->queryableCount = 0;
         members->hardCount = 0;
         members->poolNext = freeSectionMembers;

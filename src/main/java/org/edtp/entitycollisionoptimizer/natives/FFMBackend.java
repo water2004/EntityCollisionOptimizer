@@ -22,7 +22,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import static java.lang.foreign.ValueLayout.ADDRESS;
 import static java.lang.foreign.ValueLayout.JAVA_DOUBLE;
 import static java.lang.foreign.ValueLayout.JAVA_INT;
-import static java.lang.foreign.ValueLayout.JAVA_LONG;
 
 /**
  * FFM bindings for the live native spatial index. There is deliberately no
@@ -151,8 +150,7 @@ public final class FFMBackend {
             int teamId,
             int collisionRule,
             int bodySlot,
-            boolean hardCollidable,
-            long sectionOrder
+            boolean hardCollidable
     ) {
         synchronized (nativeContext) {
             nativeContext.ensureOpen();
@@ -168,8 +166,7 @@ public final class FFMBackend {
                         teamId,
                         collisionRule,
                         bodySlot,
-                        hardCollidable ? 1 : 0,
-                        sectionOrder
+                        hardCollidable ? 1 : 0
                 );
                 checkStatus("update native entity", status);
             } catch (Throwable failure) {
@@ -184,8 +181,7 @@ public final class FFMBackend {
             AABB entityBounds,
             int sectionX,
             int sectionY,
-            int sectionZ,
-            long sectionOrder
+            int sectionZ
     ) {
         synchronized (nativeContext) {
             MemorySegment boundsBuffer = prepareEntityBounds(nativeContext, nativeId, entityBounds);
@@ -195,8 +191,7 @@ public final class FFMBackend {
                     boundsBuffer,
                     sectionX,
                     sectionY,
-                    sectionZ,
-                    sectionOrder
+                    sectionZ
             )); }
             catch (Throwable failure) { throw new IllegalStateException("Persistent entity insertion failed", failure); }
         }
@@ -235,8 +230,7 @@ public final class FFMBackend {
             int nativeId,
             int sectionX,
             int sectionY,
-            int sectionZ,
-            long sectionOrder
+            int sectionZ
     ) {
         synchronized (nativeContext) {
             nativeContext.ensureOpen();
@@ -245,8 +239,7 @@ public final class FFMBackend {
                     nativeId,
                     sectionX,
                     sectionY,
-                    sectionZ,
-                    sectionOrder
+                    sectionZ
             )); }
             catch (Throwable failure) { throw new IllegalStateException("Persistent entity section update failed", failure); }
         }
@@ -507,14 +500,14 @@ public final class FFMBackend {
         insertEntity = linker.downcallHandle(
                 library.find("insertCollisionEntity").orElseThrow(),
                 FunctionDescriptor.of(JAVA_INT, ADDRESS, JAVA_INT, ADDRESS,
-                        JAVA_INT, JAVA_INT, JAVA_INT, JAVA_LONG)
+                        JAVA_INT, JAVA_INT, JAVA_INT)
         );
         removeEntity = linker.downcallHandle(library.find("removeCollisionEntity").orElseThrow(),
                 FunctionDescriptor.of(JAVA_INT, ADDRESS, JAVA_INT));
         updateEntitySection = linker.downcallHandle(
                 library.find("updateCollisionEntitySection").orElseThrow(),
                 FunctionDescriptor.of(JAVA_INT, ADDRESS, JAVA_INT,
-                        JAVA_INT, JAVA_INT, JAVA_INT, JAVA_LONG)
+                        JAVA_INT, JAVA_INT, JAVA_INT)
         );
         FunctionDescriptor updateEntityDescriptor = FunctionDescriptor.of(
                         JAVA_INT,
@@ -528,8 +521,7 @@ public final class FFMBackend {
                         JAVA_INT,
                         JAVA_INT,
                         JAVA_INT,
-                        JAVA_INT,
-                        JAVA_LONG
+                        JAVA_INT
                 );
         updateEntityState = linker.downcallHandle(
                 library.find("updateCollisionEntityState")

@@ -16,6 +16,7 @@ import org.edtp.entitycollisionoptimizer.mixin.ServerLevelAccessor;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.function.Consumer;
 
 /**
  * Keeps one native spatial index per server level. Level-local state is
@@ -46,6 +47,19 @@ public final class CollisionFrame {
         EntitySectionStorageLevelBinding storageBinding =
                 (EntitySectionStorageLevelBinding) (Object) sectionStorage;
         storageBinding.eco$setQueryLevel(level);
+    }
+
+    /** Bootstrap from the same per-section lists and visibility used by vanilla box queries. */
+    static void forEachSectionEntity(ServerLevel level, Consumer<Entity> consumer) {
+        ServerLevelAccessor levelAccess = (ServerLevelAccessor) (Object) level;
+        PersistentEntitySectionManagerAccessor managerAccess =
+                (PersistentEntitySectionManagerAccessor) (Object) levelAccess.eco$entityManager();
+        var sectionStorage = managerAccess.eco$sectionStorage();
+        for (long chunkKey : sectionStorage.getAllChunksWithExistingSections()) {
+            sectionStorage.getExistingSectionsInChunk(chunkKey)
+                    .filter(section -> section.getStatus().isAccessible())
+                    .forEach(section -> section.getEntities().forEach(entity -> consumer.accept((Entity) entity)));
+        }
     }
 
     public static void end(ServerLevel level) {

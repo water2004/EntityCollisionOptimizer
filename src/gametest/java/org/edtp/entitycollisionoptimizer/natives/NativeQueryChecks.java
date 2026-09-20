@@ -18,12 +18,7 @@ public final class NativeQueryChecks {
                 IndexUpdateFixture.initialize(context, count);
                 for (int phase = 0; phase < 90; phase++) {
                     Body[] bodies = bodies(count, phase);
-                    for (int id = 0; id < count; id++) {
-                        Body b = bodies[id];
-                        IndexUpdateFixture.update(context, id, b.box, b.x, b.y, b.z,
-                                b.selectable, b.passenger, b.vanillaEntityPush, b.allowsDeferredVelocityWrites,
-                                b.team, b.rule, 900 - id, false, b.order);
-                    }
+                    rebuild(context, bodies);
                     // Grow reusable output storage without changing the low/medium entity count.
                     int capacityHint = phase >= 30 ? 513 : count;
                     for (int rule = 0; rule < 4; rule++) for (boolean sourceNative : new boolean[]{false, true}) {
@@ -37,7 +32,7 @@ public final class NativeQueryChecks {
                 Body source = bodies(count, 89)[0];
                 IndexUpdateFixture.update(context, 0, new AABB(0, 0, 0, 0, 0, 0), 0, 0, 0,
                         source.selectable, source.passenger, source.vanillaEntityPush, source.allowsDeferredVelocityWrites,
-                        source.team, source.rule, 900, false, source.order);
+                        source.team, source.rule, 900, false);
                 var empty = FFMBackend.queryPushable(
                         context, new AABB(0, 0, 0, 0, 0, 0), 0, -1, 0, true, count);
                 helper.assertTrue(empty.size() == 0 && empty.pushableCount() == 0
@@ -127,10 +122,24 @@ public final class NativeQueryChecks {
 
     private static int section(double coordinate) { return SectionPos.posToSectionCoord(coordinate); }
 
+    private static void rebuild(FFMBackend.Context context, Body[] bodies) {
+        for (int id = 0; id < bodies.length; id++) FFMBackend.removeEntity(context, id);
+        List<Integer> insertionOrder = new ArrayList<>();
+        for (int id = 0; id < bodies.length; id++) insertionOrder.add(id);
+        insertionOrder.sort(Comparator.comparingLong(id -> bodies[id].order));
+        for (int id : insertionOrder) {
+            Body body = bodies[id];
+            IndexUpdateFixture.insert(context, id, body.box, body.x, body.y, body.z);
+            IndexUpdateFixture.metadata(context, id,
+                    body.selectable, body.passenger, body.vanillaEntityPush, body.allowsDeferredVelocityWrites,
+                    body.team, body.rule, 900 - id, false);
+        }
+    }
+
     private static void metadata(FFMBackend.Context context, int id, Body b) {
         IndexUpdateFixture.metadata(context, id, b.selectable, b.passenger,
                 b.vanillaEntityPush, b.allowsDeferredVelocityWrites,
-                b.team, b.rule, 900 - id, false, b.order);
+                b.team, b.rule, 900 - id, false);
     }
 
     private record Body(AABB box, int x, int y, int z, int team, int rule, boolean selectable,

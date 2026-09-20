@@ -10,7 +10,7 @@ import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 
-/** Differential API probe: vanilla packed section keys, not a copy of the native comparator. */
+/** Differential API probe: vanilla packed section keys and per-section insertion order. */
 public final class NativeOrderChecks {
     public static void verify(GameTestHelper helper) {
         for (int count : new int[]{2, 8, 20}) verify(helper, count);
@@ -20,24 +20,37 @@ public final class NativeOrderChecks {
 
     private static void verify(GameTestHelper helper, int count) {
         Body[] bodies = new Body[count];
-        for (int i = 0; i < count; i++) bodies[i] = new Body(i, count);
+        for (int i = 0; i < count; i++) bodies[i] = new Body(i);
         try (var context = FFMBackend.createContext()) {
-            insertAll(context, bodies);
+            long nextOrder = insertAll(context, bodies, 0);
             for (int step = 0; step < 96; step++) {
                 int id = (step * 7 + 1) % count;
                 Body body = bodies[id];
+                int previousX = body.x, previousY = body.y, previousZ = body.z;
+                boolean reinserted = false;
                 switch (step % 8) {
                     case 0 -> body.box = body.home.move(8, 0, 8);
                     case 1 -> body.box = body.home;
                     case 2 -> { body.x ^= -1; body.y ^= -1; body.z ^= -1; }
-                    case 3 -> body.order = 1000L + step; // Key change without changing cell membership.
+                    case 3 -> {
+                        FFMBackend.removeEntity(context, id);
+                        IndexUpdateFixture.insert(context, id, body.box, body.x, body.y, body.z);
+                        body.order = ++nextOrder;
+                        reinserted = true;
+                    }
                     case 4 -> { body.selectable = !body.selectable; body.passenger = !body.passenger; }
                     case 5 -> FFMBackend.invalidatePushEligibilityCacheFields(context, 3);
-                    case 6, 7 -> resetAll(context, bodies);
+                    case 6, 7 -> {
+                        nextOrder = resetAll(context, bodies, nextOrder);
+                        reinserted = true;
+                    }
+                }
+                if (!reinserted && (body.x != previousX || body.y != previousY || body.z != previousZ)) {
+                    body.order = ++nextOrder;
                 }
                 IndexUpdateFixture.update(context, id, body.box, body.x, body.y, body.z,
                         body.selectable, body.passenger, true, true,
-                        -1, 0, 100 + id, false, body.order);
+                        -1, 0, 100 + id, false);
                 // Repeated queries with different sources share the same ordered cell state.
                 for (int repeat = 0; repeat < 3; repeat++) for (int source = 0; source < count; source++) {
                     compare(helper, context, bodies, source, "step=" + step + " repeat=" + repeat);
@@ -86,21 +99,23 @@ public final class NativeOrderChecks {
         }
     }
 
-    private static void insertAll(FFMBackend.Context context, Body[] bodies) {
+    private static long insertAll(FFMBackend.Context context, Body[] bodies, long nextOrder) {
         for (int id = 0; id < bodies.length; id++) {
             Body body = bodies[id];
-            IndexUpdateFixture.insert(context, id, body.box, body.x, body.y, body.z, body.order);
+            IndexUpdateFixture.insert(context, id, body.box, body.x, body.y, body.z);
+            body.order = ++nextOrder;
         }
+        return nextOrder;
     }
 
-    private static void resetAll(FFMBackend.Context context, Body[] bodies) {
+    private static long resetAll(FFMBackend.Context context, Body[] bodies, long nextOrder) {
         for (int id = 0; id < bodies.length; id++) FFMBackend.removeEntity(context, id);
-        insertAll(context, bodies);
+        return insertAll(context, bodies, nextOrder);
     }
 
     private static void metadata(FFMBackend.Context context, int id, Body body) {
         IndexUpdateFixture.metadata(context, id, body.selectable, body.passenger,
-                true, true, -1, 0, 100 + id, false, body.order);
+                true, true, -1, 0, 100 + id, false);
     }
 
     private static final class Body {
@@ -109,10 +124,9 @@ public final class NativeOrderChecks {
         int x, y, z;
         long order;
         boolean selectable = true, passenger;
-        Body(int id, int count) {
+        Body(int id) {
             home = box = new AABB(-.4 + id % 5 * .03, -.4, -.4 + id / 5 * .03, .4, .4, .4);
             x = -(id & 1); y = -((id >> 1) & 1); z = -((id >> 2) & 1);
-            order = count - id;
         }
     }
 }

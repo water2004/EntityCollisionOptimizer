@@ -13,10 +13,8 @@ void updateSectionEntity(
         int nativeId,
         std::int32_t sectionX,
         std::int32_t sectionY,
-        std::int32_t sectionZ,
-        std::int64_t sectionOrder
+        std::int32_t sectionZ
 );
-const CellMembers* sectionEntities(CollisionContext& context, const Cell& section);
-void invalidateSectionOrder(CollisionContext& context, int nativeId) noexcept;
+const CellMembers* sectionEntities(const CollisionContext& context, const Cell& section) noexcept;
 
 } // namespace eco

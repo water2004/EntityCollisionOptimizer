@@ -23,8 +23,7 @@ ECO_EXPORT int insertCollisionEntity(
         const double* entityBounds,
         int sectionX,
         int sectionY,
-        int sectionZ,
-        std::int64_t sectionOrder
+        int sectionZ
 );
 ECO_EXPORT int updateCollisionEntityState(
         void* contextPointer,
@@ -37,16 +36,14 @@ ECO_EXPORT int updateCollisionEntityState(
         int teamId,
         int collisionRule,
         int bodySlot,
-        int hardCollidable,
-        std::int64_t sectionOrder
+        int hardCollidable
 );
 ECO_EXPORT int updateCollisionEntitySection(
         void* contextPointer,
         int nativeId,
         int sectionX,
         int sectionY,
-        int sectionZ,
-        std::int64_t sectionOrder
+        int sectionZ
 );
 ECO_EXPORT int removeCollisionEntity(void* contextPointer, int nativeId);
 

@@ -9,12 +9,12 @@ int insertCollisionEntity(
         const double* entityBounds,
         int sectionX,
         int sectionY,
-        int sectionZ,
-        std::int64_t sectionOrder
+        int sectionZ
 ) {
     if (!contextPointer || !entityBounds || nativeId < 0) return -1;
     try {
         auto& context = *static_cast<eco::CollisionContext*>(contextPointer);
+        // nativeId is the index into the boxes and metadata vectors, so it must be in [0, boxes.size()].
         if (static_cast<std::size_t>(nativeId) > context.boxes.size()) return -1;
         if (static_cast<std::size_t>(nativeId) == context.boxes.size()) {
             context.boxes.emplace_back(); context.metadata.emplace_back();
@@ -25,7 +25,6 @@ int insertCollisionEntity(
         context.metadata[nativeId].sectionX = sectionX;
         context.metadata[nativeId].sectionY = sectionY;
         context.metadata[nativeId].sectionZ = sectionZ;
-        context.metadata[nativeId].sectionOrder = sectionOrder;
         eco::updateEntityBounds(
                 context,
                 nativeId,
@@ -57,15 +56,14 @@ int updateCollisionEntitySection(
         int nativeId,
         int sectionX,
         int sectionY,
-        int sectionZ,
-        std::int64_t sectionOrder
+        int sectionZ
 ) {
     if (!contextPointer || nativeId < 0) return -1;
     try {
         auto& context = *static_cast<eco::CollisionContext*>(contextPointer);
         if (static_cast<std::size_t>(nativeId) >= context.boxes.size()) return -1;
         auto& metadata = context.metadata[nativeId];
-        eco::updateSectionEntity(context, nativeId, sectionX, sectionY, sectionZ, sectionOrder);
+        eco::updateSectionEntity(context, nativeId, sectionX, sectionY, sectionZ);
         if (metadata.selectableValid && !metadata.selectable) {
             eco::updateEntityQueryability(context, nativeId, true);
         }

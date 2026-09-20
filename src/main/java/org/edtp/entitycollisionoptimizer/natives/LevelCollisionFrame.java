@@ -2,7 +2,6 @@ package org.edtp.entitycollisionoptimizer.natives;
 
 import org.edtp.entitycollisionoptimizer.collision.CollisionCacheEpochs;
 import org.edtp.entitycollisionoptimizer.collision.CollisionCacheState;
-import org.edtp.entitycollisionoptimizer.collision.CollisionOrderState;
 import org.edtp.entitycollisionoptimizer.collision.VanillaMethodDetector;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
@@ -60,9 +59,9 @@ final class LevelCollisionFrame {
         if (!initialized) {
             initialized = true;
             // Bootstrap once. Tracking callbacks own membership after this point.
-            for (Entity entity : level.getAllEntities()) {
+            CollisionFrame.forEachSectionEntity(level, entity -> {
                 if (!entity.isRemoved()) addEntity(entity);
-            }
+            });
         }
         invalidateStalePushEligibility();
         active = true;
@@ -96,7 +95,7 @@ final class LevelCollisionFrame {
         int sectionY = SectionPos.blockToSectionCoord(position.getY());
         int sectionZ = SectionPos.blockToSectionCoord(position.getZ());
         FFMBackend.insertEntity(nativeContext, nativeId, entity.getBoundingBox(),
-                sectionX, sectionY, sectionZ, ((CollisionOrderState) entity).eco$sectionOrder());
+                sectionX, sectionY, sectionZ);
         ensureSemanticCapacity(nativeId + 1);
         selectableEntityRevisions[nativeId] = UNCACHED;
         teamRevisions[nativeId] = UNCACHED;
@@ -127,8 +126,7 @@ final class LevelCollisionFrame {
         int sectionX = SectionPos.blockToSectionCoord(position.getX());
         int sectionY = SectionPos.blockToSectionCoord(position.getY());
         int sectionZ = SectionPos.blockToSectionCoord(position.getZ());
-        FFMBackend.updateEntitySection(nativeContext, nativeId, sectionX, sectionY, sectionZ,
-                ((CollisionOrderState) entity).eco$sectionOrder());
+        FFMBackend.updateEntitySection(nativeContext, nativeId, sectionX, sectionY, sectionZ);
     }
 
     synchronized void removeEntity(Entity entity) {
@@ -399,8 +397,7 @@ final class LevelCollisionFrame {
                         ? Team.CollisionRule.ALWAYS : targetTeam.getCollisionRule()),
                 bodies.bindBody(entity),
                 !entity.isRemoved() && !entity.isSpectator()
-                        && !VanillaMethodDetector.usesVanillaCanBeCollidedWith(entity),
-                ((CollisionOrderState) entity).eco$sectionOrder()
+                        && !VanillaMethodDetector.usesVanillaCanBeCollidedWith(entity)
         );
     }
 

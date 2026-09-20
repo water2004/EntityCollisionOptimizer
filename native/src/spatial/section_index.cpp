@@ -1,7 +1,5 @@
 #include "spatial/section_index.h"
 
-#include <algorithm>
-
 namespace eco {
 namespace {
 
@@ -13,18 +11,6 @@ Cell sectionOf(const EntityMetadata& metadata) noexcept {
     return {metadata.sectionX, metadata.sectionY, metadata.sectionZ};
 }
 
-bool candidateBefore(const CollisionContext& context, int leftNativeId, int rightNativeId) noexcept {
-    const auto& left = context.metadata[leftNativeId];
-    const auto& right = context.metadata[rightNativeId];
-    if (left.sectionX != right.sectionX) return left.sectionX < right.sectionX;
-    const auto leftZ = left.sectionZ & 0x3fffff, rightZ = right.sectionZ & 0x3fffff;
-    if (leftZ != rightZ) return leftZ < rightZ;
-    const auto leftY = left.sectionY & 0xfffff, rightY = right.sectionY & 0xfffff;
-    if (leftY != rightY) return leftY < rightY;
-    if (left.sectionOrder != right.sectionOrder) return left.sectionOrder < right.sectionOrder;
-    return leftNativeId < rightNativeId;
-}
-
 } // namespace
 
 void insertSectionEntity(CollisionContext& context, int nativeId) {
@@ -32,15 +18,12 @@ void insertSectionEntity(CollisionContext& context, int nativeId) {
     const Cell section = sectionOf(context.metadata[nativeId]);
     CellMembers*& entry = context.sections.entry(section);
     if (entry == nullptr) entry = &context.acquireSectionMembers();
-    const bool remainsOrdered = !entry->orderDirty
-            && (entry->ids.empty() || !candidateBefore(context, nativeId, entry->ids.back()));
     entry->ids.push_back(nativeId);
     const bool queryable = metadataIsQueryable(context.metadata[nativeId]);
     entry->queryable.push_back(static_cast<std::uint8_t>(queryable));
     if (queryable) ++entry->queryableCount;
     entry->bounds.push(context.boxes[nativeId]);
     if (context.metadata[nativeId].hardCollidable) ++entry->hardCount;
-    entry->orderDirty = !remainsOrdered;
     context.sectionSlots[nativeId] = {entry, entry->ids.size() - 1};
 }
 
@@ -71,46 +54,21 @@ void updateSectionEntity(
         int nativeId,
         std::int32_t sectionX,
         std::int32_t sectionY,
-        std::int32_t sectionZ,
-        std::int64_t sectionOrder
+        std::int32_t sectionZ
 ) {
     EntityMetadata& metadata = context.metadata[nativeId];
     const bool moved = metadata.sectionX != sectionX
             || metadata.sectionY != sectionY
             || metadata.sectionZ != sectionZ;
-    const bool reordered = metadata.sectionOrder != sectionOrder;
     if (moved) removeSectionEntity(context, nativeId);
     metadata.sectionX = sectionX;
     metadata.sectionY = sectionY;
     metadata.sectionZ = sectionZ;
-    metadata.sectionOrder = sectionOrder;
-    if (!moved && reordered) invalidateSectionOrder(context, nativeId);
     if (moved) insertSectionEntity(context, nativeId);
 }
 
-const CellMembers* sectionEntities(CollisionContext& context, const Cell& section) {
-    CellMembers* members = context.sections.find(section);
-    if (members == nullptr) return nullptr;
-    if (members->orderDirty) {
-        std::sort(members->ids.begin(), members->ids.end(), [&context](int left, int right) {
-            return candidateBefore(context, left, right);
-        });
-        for (std::size_t index = 0; index < members->ids.size(); ++index) {
-            context.sectionSlots[members->ids[index]].index = index;
-            members->bounds.set(index, context.boxes[members->ids[index]]);
-            members->queryable[index] = static_cast<std::uint8_t>(
-                    metadataIsQueryable(context.metadata[members->ids[index]])
-            );
-        }
-        members->orderDirty = false;
-    }
-    return members;
-}
-
-void invalidateSectionOrder(CollisionContext& context, int nativeId) noexcept {
-    if (static_cast<std::size_t>(nativeId) >= context.sectionSlots.size()) return;
-    CellMembers* members = context.sectionSlots[nativeId].members;
-    if (members != nullptr) members->orderDirty = true;
+const CellMembers* sectionEntities(const CollisionContext& context, const Cell& section) noexcept {
+    return context.sections.find(section);
 }
 
 } // namespace eco
