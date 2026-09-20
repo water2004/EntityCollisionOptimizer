@@ -8,8 +8,8 @@
 
 int updateCollisionEntityState(
         void* contextPointer,
-        int entityId,
-        const double* bounds,
+        int nativeId,
+        const double* entityBounds,
         int selectable,
         int passenger,
         int vanillaEntityPush,
@@ -20,24 +20,27 @@ int updateCollisionEntityState(
         int hardCollidable,
         std::int64_t sectionOrder
 ) {
-    if (contextPointer == nullptr || entityId < 0 || bodySlot < 0
+    if (contextPointer == nullptr || nativeId < 0 || bodySlot < 0
             || collisionRule < eco::COLLISION_ALWAYS || collisionRule > eco::COLLISION_PUSH_OTHER_TEAMS) {
         return -1;
     }
     try {
         auto& context = *static_cast<eco::CollisionContext*>(contextPointer);
-        if (static_cast<std::size_t>(entityId) >= context.metadata.size()
-                || static_cast<std::size_t>(entityId) >= context.boxes.size()) {
+        if (static_cast<std::size_t>(nativeId) >= context.metadata.size()
+                || static_cast<std::size_t>(nativeId) >= context.boxes.size()) {
             return -1;
         }
-        if (bounds != nullptr) {
+        if (entityBounds != nullptr) {
             eco::updateEntityBounds(
                     context,
-                    entityId,
-                    eco::makeAabb(bounds[0], bounds[1], bounds[2], bounds[3], bounds[4], bounds[5])
+                    nativeId,
+                    eco::makeAabb(
+                            entityBounds[0], entityBounds[1], entityBounds[2],
+                            entityBounds[3], entityBounds[4], entityBounds[5]
+                    )
             );
         }
-        eco::EntityMetadata& metadata = context.metadata[entityId];
+        eco::EntityMetadata& metadata = context.metadata[nativeId];
         const bool wasQueryable = !metadata.selectableValid || metadata.selectable;
         metadata.selectable = selectable != 0;
         metadata.passenger = passenger != 0;
@@ -46,8 +49,8 @@ int updateCollisionEntityState(
         const bool hard = hardCollidable != 0;
         if (metadata.hardCollidable != hard) {
             if (hard) ++context.hardEntityCount; else --context.hardEntityCount;
-            if (static_cast<std::size_t>(entityId) < context.sectionSlots.size()) {
-                const auto slot = context.sectionSlots[entityId];
+            if (static_cast<std::size_t>(nativeId) < context.sectionSlots.size()) {
+                const auto slot = context.sectionSlots[nativeId];
                 if (slot.members != nullptr) {
                     if (hard) ++slot.members->hardCount; else --slot.members->hardCount;
                 }
@@ -59,12 +62,12 @@ int updateCollisionEntityState(
         metadata.bodySlot = bodySlot;
         if (metadata.sectionOrder != sectionOrder) {
             metadata.sectionOrder = sectionOrder;
-            eco::invalidateSectionOrder(context, entityId);
+            eco::invalidateSectionOrder(context, nativeId);
         }
         metadata.selectableValid = true;
         metadata.teamValid = true;
         if (wasQueryable != metadata.selectable) {
-            eco::updateEntityQueryability(context, entityId, metadata.selectable);
+            eco::updateEntityQueryability(context, nativeId, metadata.selectable);
         }
         return 0;
     } catch (...) {
@@ -72,18 +75,18 @@ int updateCollisionEntityState(
     }
 }
 
-int invalidateEntityPushEligibilityCache(void* contextPointer, int entityId) {
-    if (contextPointer == nullptr || entityId < 0) {
+int invalidateEntityPushEligibilityCache(void* contextPointer, int nativeId) {
+    if (contextPointer == nullptr || nativeId < 0) {
         return -1;
     }
     try {
         auto& context = *static_cast<eco::CollisionContext*>(contextPointer);
-        if (static_cast<std::size_t>(entityId) >= context.metadata.size()) {
+        if (static_cast<std::size_t>(nativeId) >= context.metadata.size()) {
             return -1;
         }
-        eco::EntityMetadata& metadata = context.metadata[entityId];
+        eco::EntityMetadata& metadata = context.metadata[nativeId];
         if (metadata.selectableValid && !metadata.selectable) {
-            eco::updateEntityQueryability(context, entityId, true);
+            eco::updateEntityQueryability(context, nativeId, true);
         }
         metadata.selectableValid = false;
         return 0;
@@ -99,11 +102,11 @@ int invalidatePushEligibilityCacheFields(void* contextPointer, int fieldsToInval
     }
     try {
         auto& context = *static_cast<eco::CollisionContext*>(contextPointer);
-        for (std::size_t entityId = 0; entityId < context.metadata.size(); ++entityId) {
-            eco::EntityMetadata& metadata = context.metadata[entityId];
+        for (std::size_t nativeId = 0; nativeId < context.metadata.size(); ++nativeId) {
+            eco::EntityMetadata& metadata = context.metadata[nativeId];
             if ((fieldsToInvalidate & eco::METADATA_SELECTABLE) != 0) {
                 if (metadata.selectableValid && !metadata.selectable) {
-                    eco::updateEntityQueryability(context, static_cast<int>(entityId), true);
+                    eco::updateEntityQueryability(context, static_cast<int>(nativeId), true);
                 }
                 metadata.selectableValid = false;
             }

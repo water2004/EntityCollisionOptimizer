@@ -4,50 +4,70 @@
 #include "spatial/section_index.h"
 
 int insertCollisionEntity(
-        void* pointer, int id, const double* bounds, int x, int y, int z,
+        void* contextPointer,
+        int nativeId,
+        const double* entityBounds,
+        int sectionX,
+        int sectionY,
+        int sectionZ,
         std::int64_t sectionOrder
 ) {
-    if (!pointer || !bounds || id < 0) return -1;
+    if (!contextPointer || !entityBounds || nativeId < 0) return -1;
     try {
-        auto& context = *static_cast<eco::CollisionContext*>(pointer);
-        if (static_cast<std::size_t>(id) > context.boxes.size()) return -1;
-        if (static_cast<std::size_t>(id) == context.boxes.size()) {
+        auto& context = *static_cast<eco::CollisionContext*>(contextPointer);
+        if (static_cast<std::size_t>(nativeId) > context.boxes.size()) return -1;
+        if (static_cast<std::size_t>(nativeId) == context.boxes.size()) {
             context.boxes.emplace_back(); context.metadata.emplace_back();
             context.sectionSlots.push_back({nullptr, 0});
-        } else if (context.sectionSlots[id].members != nullptr) return -1;
-        if (context.metadata[id].hardCollidable) --context.hardEntityCount;
-        context.metadata[id] = {};
-        context.metadata[id].sectionX = x; context.metadata[id].sectionY = y; context.metadata[id].sectionZ = z;
-        context.metadata[id].sectionOrder = sectionOrder;
-        eco::updateEntityBounds(context, id, eco::makeAabb(bounds[0], bounds[1], bounds[2], bounds[3], bounds[4], bounds[5]));
-        eco::insertSectionEntity(context, id);
+        } else if (context.sectionSlots[nativeId].members != nullptr) return -1;
+        if (context.metadata[nativeId].hardCollidable) --context.hardEntityCount;
+        context.metadata[nativeId] = {};
+        context.metadata[nativeId].sectionX = sectionX;
+        context.metadata[nativeId].sectionY = sectionY;
+        context.metadata[nativeId].sectionZ = sectionZ;
+        context.metadata[nativeId].sectionOrder = sectionOrder;
+        eco::updateEntityBounds(
+                context,
+                nativeId,
+                eco::makeAabb(
+                        entityBounds[0], entityBounds[1], entityBounds[2],
+                        entityBounds[3], entityBounds[4], entityBounds[5]
+                )
+        );
+        eco::insertSectionEntity(context, nativeId);
         return 0;
     } catch (...) { return -2; }
 }
 
-int removeCollisionEntity(void* pointer, int id) {
-    if (!pointer || id < 0) return -1;
+int removeCollisionEntity(void* contextPointer, int nativeId) {
+    if (!contextPointer || nativeId < 0) return -1;
     try {
-        auto& context = *static_cast<eco::CollisionContext*>(pointer);
-        if (static_cast<std::size_t>(id) >= context.boxes.size()) return -1;
-        eco::removeSectionEntity(context, id);
-        if (context.metadata[id].hardCollidable) --context.hardEntityCount;
-        context.boxes[id] = {}; context.metadata[id] = {};
+        auto& context = *static_cast<eco::CollisionContext*>(contextPointer);
+        if (static_cast<std::size_t>(nativeId) >= context.boxes.size()) return -1;
+        eco::removeSectionEntity(context, nativeId);
+        if (context.metadata[nativeId].hardCollidable) --context.hardEntityCount;
+        context.boxes[nativeId] = {};
+        context.metadata[nativeId] = {};
         return 0;
     } catch (...) { return -2; }
 }
 
 int updateCollisionEntitySection(
-        void* pointer, int id, int x, int y, int z, std::int64_t sectionOrder
+        void* contextPointer,
+        int nativeId,
+        int sectionX,
+        int sectionY,
+        int sectionZ,
+        std::int64_t sectionOrder
 ) {
-    if (!pointer || id < 0) return -1;
+    if (!contextPointer || nativeId < 0) return -1;
     try {
-        auto& context = *static_cast<eco::CollisionContext*>(pointer);
-        if (static_cast<std::size_t>(id) >= context.boxes.size()) return -1;
-        auto& metadata = context.metadata[id];
-        eco::updateSectionEntity(context, id, x, y, z, sectionOrder);
+        auto& context = *static_cast<eco::CollisionContext*>(contextPointer);
+        if (static_cast<std::size_t>(nativeId) >= context.boxes.size()) return -1;
+        auto& metadata = context.metadata[nativeId];
+        eco::updateSectionEntity(context, nativeId, sectionX, sectionY, sectionZ, sectionOrder);
         if (metadata.selectableValid && !metadata.selectable) {
-            eco::updateEntityQueryability(context, id, true);
+            eco::updateEntityQueryability(context, nativeId, true);
         }
         metadata.selectableValid = false;
         return 0;

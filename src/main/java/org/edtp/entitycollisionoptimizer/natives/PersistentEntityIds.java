@@ -18,23 +18,25 @@ final class PersistentEntityIds {
     }
 
     int addEntity(Entity entity) {
-        int old = ids.getInt(entity);
-        if (old >= 0) return old;
-        int id = free.isEmpty() ? size++ : free.dequeueInt();
+        int existingNativeId = ids.getInt(entity);
+        if (existingNativeId >= 0) return existingNativeId;
+        int nativeId = free.isEmpty() ? size++ : free.dequeueInt();
         if (size > entities.length) entities = Arrays.copyOf(entities, size + (size >> 1));
-        entities[id] = entity;
-        ids.put(entity, id);
-        return id;
+        entities[nativeId] = entity;
+        ids.put(entity, nativeId);
+        return nativeId;
     }
-    int remove(Entity entity) {
-        int id = ids.removeInt(entity);
-        if (id < 0) return -1;
-        entities[id] = null;
-        free.enqueue(id);
-        return id;
+    int removeEntity(Entity entity) {
+        int nativeId = ids.removeInt(entity);
+        if (nativeId < 0) return -1;
+        entities[nativeId] = null;
+        free.enqueue(nativeId);
+        return nativeId;
     }
-    Entity getEntity(int id) { return id < 0 || id >= size ? null : entities[id]; }
-    int getId(Entity entity) { return ids.getInt(entity); }
+    Entity getEntity(int nativeId) {
+        return nativeId < 0 || nativeId >= size ? null : entities[nativeId];
+    }
+    int getNativeId(Entity entity) { return ids.getInt(entity); }
     boolean contains(Entity entity) { return ids.containsKey(entity); }
-    int size() { return size; }
+    int nativeIdCapacity() { return size; }
 }

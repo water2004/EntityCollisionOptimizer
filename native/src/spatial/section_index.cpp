@@ -13,45 +13,45 @@ Cell sectionOf(const EntityMetadata& metadata) noexcept {
     return {metadata.sectionX, metadata.sectionY, metadata.sectionZ};
 }
 
-bool candidateBefore(const CollisionContext& context, int leftId, int rightId) noexcept {
-    const auto& left = context.metadata[leftId];
-    const auto& right = context.metadata[rightId];
+bool candidateBefore(const CollisionContext& context, int leftNativeId, int rightNativeId) noexcept {
+    const auto& left = context.metadata[leftNativeId];
+    const auto& right = context.metadata[rightNativeId];
     if (left.sectionX != right.sectionX) return left.sectionX < right.sectionX;
     const auto leftZ = left.sectionZ & 0x3fffff, rightZ = right.sectionZ & 0x3fffff;
     if (leftZ != rightZ) return leftZ < rightZ;
     const auto leftY = left.sectionY & 0xfffff, rightY = right.sectionY & 0xfffff;
     if (leftY != rightY) return leftY < rightY;
     if (left.sectionOrder != right.sectionOrder) return left.sectionOrder < right.sectionOrder;
-    return leftId < rightId;
+    return leftNativeId < rightNativeId;
 }
 
 } // namespace
 
-void insertSectionEntity(CollisionContext& context, int entityId) {
+void insertSectionEntity(CollisionContext& context, int nativeId) {
     context.sectionSlots.resize(context.boxes.size(), {nullptr, 0});
-    const Cell section = sectionOf(context.metadata[entityId]);
+    const Cell section = sectionOf(context.metadata[nativeId]);
     CellMembers*& entry = context.sections.entry(section);
     if (entry == nullptr) entry = &context.acquireSectionMembers();
     const bool remainsOrdered = !entry->orderDirty
-            && (entry->ids.empty() || !candidateBefore(context, entityId, entry->ids.back()));
-    entry->ids.push_back(entityId);
-    const bool queryable = metadataIsQueryable(context.metadata[entityId]);
+            && (entry->ids.empty() || !candidateBefore(context, nativeId, entry->ids.back()));
+    entry->ids.push_back(nativeId);
+    const bool queryable = metadataIsQueryable(context.metadata[nativeId]);
     entry->queryable.push_back(static_cast<std::uint8_t>(queryable));
     if (queryable) ++entry->queryableCount;
-    entry->bounds.push(context.boxes[entityId]);
-    if (context.metadata[entityId].hardCollidable) ++entry->hardCount;
+    entry->bounds.push(context.boxes[nativeId]);
+    if (context.metadata[nativeId].hardCollidable) ++entry->hardCount;
     entry->orderDirty = !remainsOrdered;
-    context.sectionSlots[entityId] = {entry, entry->ids.size() - 1};
+    context.sectionSlots[nativeId] = {entry, entry->ids.size() - 1};
 }
 
-void removeSectionEntity(CollisionContext& context, int entityId) {
-    if (static_cast<std::size_t>(entityId) >= context.sectionSlots.size()) return;
-    CellSlot slot = context.sectionSlots[entityId];
+void removeSectionEntity(CollisionContext& context, int nativeId) {
+    if (static_cast<std::size_t>(nativeId) >= context.sectionSlots.size()) return;
+    CellSlot slot = context.sectionSlots[nativeId];
     if (slot.members == nullptr || slot.index >= slot.members->ids.size()) return;
 
     CellMembers& members = *slot.members;
     if (members.queryable[slot.index] != 0) --members.queryableCount;
-    if (context.metadata[entityId].hardCollidable) --members.hardCount;
+    if (context.metadata[nativeId].hardCollidable) --members.hardCount;
     const auto offset = static_cast<std::ptrdiff_t>(slot.index);
     members.ids.erase(members.ids.begin() + offset);
     members.queryable.erase(members.queryable.begin() + offset);
@@ -59,33 +59,33 @@ void removeSectionEntity(CollisionContext& context, int entityId) {
     for (std::size_t index = slot.index; index < members.ids.size(); ++index) {
         context.sectionSlots[members.ids[index]].index = index;
     }
-    context.sectionSlots[entityId] = {nullptr, 0};
+    context.sectionSlots[nativeId] = {nullptr, 0};
     if (members.ids.empty()) {
-        context.sections.erase(sectionOf(context.metadata[entityId]));
+        context.sections.erase(sectionOf(context.metadata[nativeId]));
         context.retireSectionMembers(&members);
     }
 }
 
 void updateSectionEntity(
         CollisionContext& context,
-        int entityId,
+        int nativeId,
         std::int32_t sectionX,
         std::int32_t sectionY,
         std::int32_t sectionZ,
         std::int64_t sectionOrder
 ) {
-    EntityMetadata& metadata = context.metadata[entityId];
+    EntityMetadata& metadata = context.metadata[nativeId];
     const bool moved = metadata.sectionX != sectionX
             || metadata.sectionY != sectionY
             || metadata.sectionZ != sectionZ;
     const bool reordered = metadata.sectionOrder != sectionOrder;
-    if (moved) removeSectionEntity(context, entityId);
+    if (moved) removeSectionEntity(context, nativeId);
     metadata.sectionX = sectionX;
     metadata.sectionY = sectionY;
     metadata.sectionZ = sectionZ;
     metadata.sectionOrder = sectionOrder;
-    if (!moved && reordered) invalidateSectionOrder(context, entityId);
-    if (moved) insertSectionEntity(context, entityId);
+    if (!moved && reordered) invalidateSectionOrder(context, nativeId);
+    if (moved) insertSectionEntity(context, nativeId);
 }
 
 const CellMembers* sectionEntities(CollisionContext& context, const Cell& section) {
@@ -107,9 +107,9 @@ const CellMembers* sectionEntities(CollisionContext& context, const Cell& sectio
     return members;
 }
 
-void invalidateSectionOrder(CollisionContext& context, int entityId) noexcept {
-    if (static_cast<std::size_t>(entityId) >= context.sectionSlots.size()) return;
-    CellMembers* members = context.sectionSlots[entityId].members;
+void invalidateSectionOrder(CollisionContext& context, int nativeId) noexcept {
+    if (static_cast<std::size_t>(nativeId) >= context.sectionSlots.size()) return;
+    CellMembers* members = context.sectionSlots[nativeId].members;
     if (members != nullptr) members->orderDirty = true;
 }
 

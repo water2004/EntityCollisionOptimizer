@@ -109,35 +109,35 @@ final class LevelCollisionFrame {
         if (!initialized || !ids.contains(entity)) {
             return;
         }
-        int nativeId = ids.getId(entity);
+        int nativeId = ids.getNativeId(entity);
         int slot = bodies.bindBody(entity);
         refreshNativeMetadata(nativeId, entity, bodies.movementRow(slot));
     }
 
     synchronized void invalidateEntity(Entity entity) {
         if (!initialized) return;
-        int id = ids.getId(entity);
-        if (id >= 0) FFMBackend.invalidateEntityPushEligibilityCache(nativeContext, id);
+        int nativeId = ids.getNativeId(entity);
+        if (nativeId >= 0) FFMBackend.invalidateEntityPushEligibilityCache(nativeContext, nativeId);
     }
 
     synchronized void updateSection(Entity entity) {
-        int id = ids.getId(entity);
-        if (id < 0) return;
+        int nativeId = ids.getNativeId(entity);
+        if (nativeId < 0) return;
         BlockPos position = entity.blockPosition();
         int sectionX = SectionPos.blockToSectionCoord(position.getX());
         int sectionY = SectionPos.blockToSectionCoord(position.getY());
         int sectionZ = SectionPos.blockToSectionCoord(position.getZ());
-        FFMBackend.updateEntitySection(nativeContext, id, sectionX, sectionY, sectionZ,
+        FFMBackend.updateEntitySection(nativeContext, nativeId, sectionX, sectionY, sectionZ,
                 ((CollisionOrderState) entity).eco$sectionOrder());
     }
 
     synchronized void removeEntity(Entity entity) {
-        int id = ids.getId(entity);
-        if (id < 0) return;
-        FFMBackend.removeEntity(nativeContext, id);
-        ids.remove(entity);
+        int nativeId = ids.getNativeId(entity);
+        if (nativeId < 0) return;
+        FFMBackend.removeEntity(nativeContext, nativeId);
+        ids.removeEntity(entity);
         derivedTeams.remove(entity);
-        teams[id] = null;
+        teams[nativeId] = null;
         bodies.retire(entity);
     }
 
@@ -149,9 +149,9 @@ final class LevelCollisionFrame {
         FFMBackend.QueryResult result = FFMBackend.queryHard(
                 nativeContext,
                 scan.inflate(1.0E-7),
-                ids.getId(source),
+                ids.getNativeId(source),
                 VanillaMethodDetector.usesVanillaCanCollideWith(source),
-                ids.size()
+                ids.nativeIdCapacity()
         );
         if (result.size() == 0) {
             return EMPTY_IDS;
@@ -187,7 +187,7 @@ final class LevelCollisionFrame {
     /** EntitySectionStorage.getEntities via the native index. */
     @SuppressWarnings({"unchecked", "rawtypes"})
     synchronized void getEntities(EntityTypeTest type, AABB box, AbortableIterationConsumer consumer) {
-        FFMBackend.QueryResult result = FFMBackend.queryEntities(nativeContext, box, ids.size());
+        FFMBackend.QueryResult result = FFMBackend.queryEntities(nativeContext, box, ids.nativeIdCapacity());
         int[] snapshot = snapshot(result);
         try {
             for (int index = 0; index < result.size(); index++) {
@@ -204,7 +204,7 @@ final class LevelCollisionFrame {
     /** Untyped EntitySectionStorage.getEntities via the native index. */
     @SuppressWarnings("rawtypes")
     synchronized void getEntities(AABB box, AbortableIterationConsumer consumer) {
-        FFMBackend.QueryResult result = FFMBackend.queryEntities(nativeContext, box, ids.size());
+        FFMBackend.QueryResult result = FFMBackend.queryEntities(nativeContext, box, ids.nativeIdCapacity());
         int[] snapshot = snapshot(result);
         try {
             for (int index = 0; index < result.size(); index++) {
@@ -240,13 +240,13 @@ final class LevelCollisionFrame {
         if (box.getSize() < 1.0E-7) {
             return List.of();
         }
-        int excludeId = entity == null ? -1 : ids.getId(entity);
+        int excludedNativeId = entity == null ? -1 : ids.getNativeId(entity);
         FFMBackend.QueryResult result = FFMBackend.queryHard(
                 nativeContext,
                 box.inflate(1.0E-7),
-                excludeId,
+                excludedNativeId,
                 entity == null || VanillaMethodDetector.usesVanillaCanCollideWith(entity),
-                ids.size()
+                ids.nativeIdCapacity()
         );
         if (result.size() == 0) {
             return List.of();
@@ -278,10 +278,12 @@ final class LevelCollisionFrame {
         invalidateStalePushEligibility();
         // Derived teams can change without any scoreboard mutation (taming, owner resolution).
         // This is a semantic dependency, not an entity/mod whitelist or a density-dependent path.
-        for (Entity target : derivedTeams) refreshNativeMetadata(ids.getId(target), target, MemorySegment.NULL);
+        for (Entity target : derivedTeams) {
+            refreshNativeMetadata(ids.getNativeId(target), target, MemorySegment.NULL);
+        }
 
-        int sourceId = ids.getId(source);
-        if (sourceId >= 0) bodies.bindBody(source);
+        int sourceNativeId = ids.getNativeId(source);
+        if (sourceNativeId >= 0) bodies.bindBody(source);
         int sourceTeamId = assignTeamId(sourceTeam);
         int sourceRuleCode = collisionRuleCode(sourceRule);
         boolean sourceNativePushEligible = sourceUsesVanillaDoPush
@@ -292,24 +294,24 @@ final class LevelCollisionFrame {
             result = FFMBackend.queryPushable(
                     nativeContext,
                     source.getBoundingBox(),
-                    sourceId,
+                    sourceNativeId,
                     sourceTeamId,
                     sourceRuleCode,
                     sourceNativePushEligible,
-                    ids.size()
+                    ids.nativeIdCapacity()
             );
             if (!result.metadataRequired()) {
                 return result;
             }
             for (int index = 0; index < result.size(); index++) {
-                int targetId = result.get(index);
-                Entity target = ids.getEntity(targetId);
+                int targetNativeId = result.get(index);
+                Entity target = ids.getEntity(targetNativeId);
                 if (target == null) {
                     throw new IllegalStateException(
-                            "Native collision metadata requested an unknown entity " + targetId
+                            "Native collision metadata requested an unknown entity " + targetNativeId
                     );
                 }
-                refreshNativeMetadata(targetId, target, MemorySegment.NULL);
+                refreshNativeMetadata(targetNativeId, target, MemorySegment.NULL);
             }
             refreshPasses++;
         } while (refreshPasses <= 2);
@@ -410,9 +412,9 @@ final class LevelCollisionFrame {
         if (existing != null) {
             return existing;
         }
-        int id = teamIds.size();
-        teamIds.put(team, id);
-        return id;
+        int teamId = teamIds.size();
+        teamIds.put(team, teamId);
+        return teamId;
     }
 
     private void ensureSemanticCapacity(int requiredCapacity) {

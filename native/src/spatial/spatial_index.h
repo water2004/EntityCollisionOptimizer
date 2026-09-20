@@ -13,7 +13,7 @@ Aabb makeAabb(
         double maxZ
 ) noexcept;
 bool isIndexable(const Aabb& box) noexcept;
-void updateEntityBounds(CollisionContext& context, int entityId, const Aabb& box) noexcept;
-void updateEntityQueryability(CollisionContext& context, int entityId, bool queryable) noexcept;
+void updateEntityBounds(CollisionContext& context, int nativeId, const Aabb& box) noexcept;
+void updateEntityQueryability(CollisionContext& context, int nativeId, bool queryable) noexcept;
 
 } // namespace eco

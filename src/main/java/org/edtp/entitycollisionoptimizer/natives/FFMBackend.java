@@ -46,32 +46,50 @@ public final class FFMBackend {
     private static final Set<Context> CONTEXTS = ConcurrentHashMap.newKeySet();
     private static volatile boolean initialized;
 
-    public static int scanBlocks(MemorySegment rows, MemorySegment query, MemorySegment output, int capacity) {
+    public static int scanBlocks(
+            MemorySegment collisionRows,
+            MemorySegment queryState,
+            MemorySegment outputRecords,
+            int outputCapacity
+    ) {
         ensureInitialized();
         try {
-            int count = (int) blockScan.invokeExact(rows, query, output, capacity);
-            if (count < 0) throw new IllegalStateException("Invalid native block scan: " + count);
-            return count;
+            int recordCount = (int) blockScan.invokeExact(
+                    collisionRows, queryState, outputRecords, outputCapacity
+            );
+            if (recordCount < 0) throw new IllegalStateException("Invalid native block scan: " + recordCount);
+            return recordCount;
         } catch (Throwable failure) { throw new IllegalStateException("Native block scan failed", failure); }
     }
 
     private FFMBackend() {
     }
 
-    public static void solveMovement(MemorySegment body, MemorySegment packet, MemorySegment shapes, int count, int phase) {
+    public static void solveMovement(
+            MemorySegment body,
+            MemorySegment movementPacket,
+            MemorySegment shapeReferences,
+            int shapeCount,
+            int movementPhase
+    ) {
         ensureInitialized();
         try {
-            int status = (int) movement.invokeExact(body, packet, shapes, count, phase);
+            int status = (int) movement.invokeExact(
+                    body, movementPacket, shapeReferences, shapeCount, movementPhase
+            );
             checkStatus("solve native movement", status);
         } catch (Throwable failure) {
             throw new IllegalStateException("FFM movement call failed", failure);
         }
     }
 
-    public static void prepareMovement(MemorySegment bounds, MemorySegment packet) {
+    public static void prepareMovement(MemorySegment entityBounds, MemorySegment movementPacket) {
         ensureInitialized();
         try {
-            checkStatus("prepare native movement", (int) prepareMovement.invokeExact(bounds, packet));
+            checkStatus(
+                    "prepare native movement",
+                    (int) prepareMovement.invokeExact(entityBounds, movementPacket)
+            );
         } catch (Throwable failure) {
             throw new IllegalStateException("FFM movement preparation failed", failure);
         }
@@ -125,7 +143,7 @@ public final class FFMBackend {
     public static void updateEntityState(
             Context nativeContext,
             int nativeId,
-            MemorySegment bounds,
+            MemorySegment entityBounds,
             boolean selectable,
             boolean passenger,
             boolean vanillaEntityPush,
@@ -142,7 +160,7 @@ public final class FFMBackend {
                 int status = (int) updateEntityState.invokeExact(
                         nativeContext.address,
                         nativeId,
-                        bounds,
+                        entityBounds,
                         selectable ? 1 : 0,
                         passenger ? 1 : 0,
                         vanillaEntityPush ? 1 : 0,
@@ -161,48 +179,74 @@ public final class FFMBackend {
     }
 
     public static void insertEntity(
-            Context context, int id, AABB box, int x, int y, int z, long sectionOrder
+            Context nativeContext,
+            int nativeId,
+            AABB entityBounds,
+            int sectionX,
+            int sectionY,
+            int sectionZ,
+            long sectionOrder
     ) {
-        synchronized (context) {
-            MemorySegment bounds = prepareEntityBounds(context, id, box);
+        synchronized (nativeContext) {
+            MemorySegment boundsBuffer = prepareEntityBounds(nativeContext, nativeId, entityBounds);
             try { checkStatus("insert persistent entity", (int) insertEntity.invokeExact(
-                    context.address, id, bounds, x, y, z, sectionOrder
+                    nativeContext.address,
+                    nativeId,
+                    boundsBuffer,
+                    sectionX,
+                    sectionY,
+                    sectionZ,
+                    sectionOrder
             )); }
             catch (Throwable failure) { throw new IllegalStateException("Persistent entity insertion failed", failure); }
         }
     }
 
-    private static MemorySegment prepareEntityBounds(Context context, int id, AABB box) {
-        context.ensureOpen();
-        context.ensureOutputCapacity(id + 1);
-        return prepareBounds(context.boundsBuffer, box);
+    private static MemorySegment prepareEntityBounds(Context nativeContext, int nativeId, AABB entityBounds) {
+        nativeContext.ensureOpen();
+        nativeContext.ensureOutputCapacity(nativeId + 1);
+        return prepareBounds(nativeContext.boundsBuffer, entityBounds);
     }
 
-    private static MemorySegment prepareBounds(MemorySegment bounds, AABB box) {
-        bounds.set(JAVA_DOUBLE, 0, box.minX);
-        bounds.set(JAVA_DOUBLE, 8, box.minY);
-        bounds.set(JAVA_DOUBLE, 16, box.minZ);
-        bounds.set(JAVA_DOUBLE, 24, box.maxX);
-        bounds.set(JAVA_DOUBLE, 32, box.maxY);
-        bounds.set(JAVA_DOUBLE, 40, box.maxZ);
-        return bounds;
+    private static MemorySegment prepareBounds(MemorySegment boundsBuffer, AABB entityBounds) {
+        boundsBuffer.set(JAVA_DOUBLE, 0, entityBounds.minX);
+        boundsBuffer.set(JAVA_DOUBLE, 8, entityBounds.minY);
+        boundsBuffer.set(JAVA_DOUBLE, 16, entityBounds.minZ);
+        boundsBuffer.set(JAVA_DOUBLE, 24, entityBounds.maxX);
+        boundsBuffer.set(JAVA_DOUBLE, 32, entityBounds.maxY);
+        boundsBuffer.set(JAVA_DOUBLE, 40, entityBounds.maxZ);
+        return boundsBuffer;
     }
 
-    public static void removeEntity(Context context, int id) {
-        synchronized (context) {
-            context.ensureOpen();
-            try { checkStatus("remove persistent entity", (int) removeEntity.invokeExact(context.address, id)); }
+    public static void removeEntity(Context nativeContext, int nativeId) {
+        synchronized (nativeContext) {
+            nativeContext.ensureOpen();
+            try {
+                checkStatus("remove persistent entity", (int) removeEntity.invokeExact(
+                        nativeContext.address, nativeId
+                ));
+            }
             catch (Throwable failure) { throw new IllegalStateException("Persistent entity removal failed", failure); }
         }
     }
 
     public static void updateEntitySection(
-            Context context, int id, int x, int y, int z, long sectionOrder
+            Context nativeContext,
+            int nativeId,
+            int sectionX,
+            int sectionY,
+            int sectionZ,
+            long sectionOrder
     ) {
-        synchronized (context) {
-            context.ensureOpen();
+        synchronized (nativeContext) {
+            nativeContext.ensureOpen();
             try { checkStatus("update persistent entity section", (int) updateEntitySection.invokeExact(
-                    context.address, id, x, y, z, sectionOrder
+                    nativeContext.address,
+                    nativeId,
+                    sectionX,
+                    sectionY,
+                    sectionZ,
+                    sectionOrder
             )); }
             catch (Throwable failure) { throw new IllegalStateException("Persistent entity section update failed", failure); }
         }
@@ -236,13 +280,13 @@ public final class FFMBackend {
     public static QueryResult queryHard(
             Context nativeContext,
             AABB scan,
-            int excludeId,
+            int excludedNativeId,
             boolean hardOnly,
-            int entityCount
+            int nativeIdCapacity
     ) {
         synchronized (nativeContext) {
             nativeContext.ensureOpen();
-            nativeContext.ensureOutputCapacity(entityCount);
+            nativeContext.ensureOutputCapacity(nativeIdCapacity);
             try {
                 int resultSize = (int) queryHard.invokeExact(
                         nativeContext.address,
@@ -252,7 +296,7 @@ public final class FFMBackend {
                         scan.maxX,
                         scan.maxY,
                         scan.maxZ,
-                        excludeId,
+                        excludedNativeId,
                         hardOnly ? 1 : 0,
                         nativeContext.outputBuffer,
                         nativeContext.outputCapacity
@@ -279,11 +323,11 @@ public final class FFMBackend {
     public static QueryResult queryEntities(
             Context nativeContext,
             AABB scan,
-            int entityCount
+            int nativeIdCapacity
     ) {
         synchronized (nativeContext) {
             nativeContext.ensureOpen();
-            nativeContext.ensureOutputCapacity(entityCount);
+            nativeContext.ensureOutputCapacity(nativeIdCapacity);
             try {
                 int resultSize = (int) queryEntities.invokeExact(
                         nativeContext.address,
@@ -317,21 +361,21 @@ public final class FFMBackend {
     public static QueryResult queryPushable(
             Context nativeContext,
             AABB sourceBounds,
-            int excludedEntityId,
+            int excludedNativeId,
             int sourceTeamId,
             int sourceCollisionRule,
             boolean sourceNativePushEligible,
-            int entityCount
+            int nativeIdCapacity
     ) {
         synchronized (nativeContext) {
             nativeContext.ensureOpen();
-            nativeContext.ensureOutputCapacity(entityCount);
-            MemorySegment bounds = prepareBounds(nativeContext.boundsBuffer, sourceBounds);
+            nativeContext.ensureOutputCapacity(nativeIdCapacity);
+            MemorySegment sourceBoundsBuffer = prepareBounds(nativeContext.boundsBuffer, sourceBounds);
             try {
                 int resultSize = (int) queryPushable.invokeExact(
                         nativeContext.address,
-                        bounds,
-                        excludedEntityId,
+                        sourceBoundsBuffer,
+                        excludedNativeId,
                         sourceTeamId,
                         sourceCollisionRule,
                         sourceNativePushEligible ? 1 : 0,
@@ -361,26 +405,39 @@ public final class FFMBackend {
         }
     }
 
-    /** Native owns velocity/version/sync and consumes shared guards. Only target IDs are submitted. */
-    public static void executePushRun(Context context, MemorySegment sourceBody,
-                                      MemorySegment targetBodies, int targetCapacity,
-                                      int[] targetSlots, int from, int count) {
+    /** Native owns velocity/version/sync and consumes shared guards. Only target body slots are submitted. */
+    public static void executePushRun(
+            Context nativeContext,
+            MemorySegment sourceBody,
+            MemorySegment targetBodies,
+            int targetCapacity,
+            int[] targetSlots,
+            int targetStart,
+            int targetCount
+    ) {
         if (!sourceBody.isNative() || sourceBody.isReadOnly()
                 || sourceBody.byteSize() < CollisionStateTable.STRIDE_BYTES
                 || !targetBodies.isNative() || targetBodies.isReadOnly()
                 || targetBodies.byteSize() < (long) targetCapacity * CollisionStateTable.STRIDE_BYTES
-                || from < 0 || count < 0
-                || from > targetSlots.length - count) {
-            throw new IllegalArgumentException("Invalid native push run size " + count);
+                || targetStart < 0 || targetCount < 0
+                || targetStart > targetSlots.length - targetCount) {
+            throw new IllegalArgumentException("Invalid native push run size " + targetCount);
         }
-        synchronized (context) {
-            context.ensureOpen();
-            if (count == 0) return;
-            context.ensureOutputCapacity(count);
-            MemorySegment.copy(targetSlots, from, context.runIdBuffer, JAVA_INT, 0, count);
+        synchronized (nativeContext) {
+            nativeContext.ensureOpen();
+            if (targetCount == 0) return;
+            nativeContext.ensureOutputCapacity(targetCount);
+            MemorySegment.copy(
+                    targetSlots,
+                    targetStart,
+                    nativeContext.runIdBuffer,
+                    JAVA_INT,
+                    0,
+                    targetCount
+            );
             try {
                 int status = (int) executeRun.invokeExact(sourceBody, targetBodies, targetCapacity,
-                        context.runIdBuffer, count);
+                        nativeContext.runIdBuffer, targetCount);
                 checkStatus("execute native push run", status);
             } catch (Throwable failure) {
                 throw new IllegalStateException("FFM push run execution failed", failure);

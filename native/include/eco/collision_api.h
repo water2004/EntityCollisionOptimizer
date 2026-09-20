@@ -18,13 +18,18 @@ ECO_EXPORT void destroyCollisionContext(void* context);
 
 // Persistent entity state and index updates.
 ECO_EXPORT int insertCollisionEntity(
-        void* context, int id, const double* bounds, int x, int y, int z,
+        void* contextPointer,
+        int nativeId,
+        const double* entityBounds,
+        int sectionX,
+        int sectionY,
+        int sectionZ,
         std::int64_t sectionOrder
 );
 ECO_EXPORT int updateCollisionEntityState(
-        void* context,
-        int entityId,
-        const double* bounds,
+        void* contextPointer,
+        int nativeId,
+        const double* entityBounds,
         int selectable,
         int passenger,
         int vanillaEntityPush,
@@ -36,63 +41,73 @@ ECO_EXPORT int updateCollisionEntityState(
         std::int64_t sectionOrder
 );
 ECO_EXPORT int updateCollisionEntitySection(
-        void* context, int id, int x, int y, int z, std::int64_t sectionOrder
+        void* contextPointer,
+        int nativeId,
+        int sectionX,
+        int sectionY,
+        int sectionZ,
+        std::int64_t sectionOrder
 );
-ECO_EXPORT int removeCollisionEntity(void* context, int id);
+ECO_EXPORT int removeCollisionEntity(void* contextPointer, int nativeId);
 
 // Push-eligibility cache invalidation.
-ECO_EXPORT int invalidateEntityPushEligibilityCache(void* context, int entityId);
-ECO_EXPORT int invalidatePushEligibilityCacheFields(void* context, int fieldsToInvalidate);
+ECO_EXPORT int invalidateEntityPushEligibilityCache(void* contextPointer, int nativeId);
+ECO_EXPORT int invalidatePushEligibilityCacheFields(void* contextPointer, int fieldsToInvalidate);
 
 // Spatial entity queries.
 ECO_EXPORT int queryHardCollisionEntities(
-        void* context,
+        void* contextPointer,
         double minX,
         double minY,
         double minZ,
         double maxX,
         double maxY,
         double maxZ,
-        int excludeId,
+        int excludedNativeId,
         int hardOnly,
-        int* output,
+        int* outputNativeIds,
         int outputCapacity
 );
 // Whole-level box scan for EntitySectionStorage.getEntities, in vanilla order.
 ECO_EXPORT int queryEntitiesInBox(
-        void* context,
+        void* contextPointer,
         double minX,
         double minY,
         double minZ,
         double maxX,
         double maxY,
         double maxZ,
-        int* output,
+        int* outputNativeIds,
         int outputCapacity
 );
-// output: [metadataRequired, pushableCount, nonPassengerCount], IDs[capacity],
-// bodySlots[capacity]. nativePushOutput receives one native-push flag per ID.
+// outputBuffer: [metadataRequired, pushableCount, nonPassengerCount],
+// native IDs[capacity], bodySlots[capacity]. nativePushFlags receives one
+// native-push flag per returned native ID.
 // On a metadata miss, only the header and returned IDs are valid.
 ECO_EXPORT int queryPushableEntities(
-        void* context,
+        void* contextPointer,
         const double* sourceBounds,
-        int excludedEntityId,
+        int excludedNativeId,
         int sourceTeamId,
         int sourceCollisionRule,
         int sourceNativePushEligible,
-        int* output,
-        int* nativePushOutput,
+        int* outputBuffer,
+        int* nativePushFlags,
         int outputCapacity
 );
 
 // Execute one batched entity-push run.
-ECO_EXPORT int executePushRun(void* sourceBody, void* targetBodies, int targetCapacity,
-                             const int* targetSlots, int count);
+ECO_EXPORT int executePushRun(void* sourceBodyPointer, void* targetBodiesPointer,
+                             int targetCapacity, const int* targetSlots, int targetCount);
 
 // Movement preparation and collision solving.
-ECO_EXPORT int prepareMovement(const double* bounds, double* data);
-ECO_EXPORT int solveMovement(const void* body, double* data, const void* shapes, int count, int phase);
+ECO_EXPORT int prepareMovement(const double* entityBounds, double* movementData);
+ECO_EXPORT int solveMovement(const void* bodyPointer, double* movementData,
+                             const void* shapeReferencesPointer, int shapeCount,
+                             int movementPhase);
 
 // Scan block collision masks; this API does not use a collision context.
-ECO_EXPORT int scanCollisionBlocks(const std::uint16_t* const* rows, int* query, int* output, int capacity);
+ECO_EXPORT int scanCollisionBlocks(const std::uint16_t* const* collisionRows,
+                                   int* queryState, int* outputRecords,
+                                   int outputCapacity);
 }

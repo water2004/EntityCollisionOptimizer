@@ -52,16 +52,16 @@ bool isIndexable(const Aabb& box) noexcept {
             && box.minZ < box.maxZ;
 }
 
-void updateEntityBounds(CollisionContext& context, int entityId, const Aabb& box) noexcept {
-    context.boxes[entityId] = box;
-    if (static_cast<std::size_t>(entityId) >= context.sectionSlots.size()) return;
-    const CellSlot slot = context.sectionSlots[entityId];
+void updateEntityBounds(CollisionContext& context, int nativeId, const Aabb& box) noexcept {
+    context.boxes[nativeId] = box;
+    if (static_cast<std::size_t>(nativeId) >= context.sectionSlots.size()) return;
+    const CellSlot slot = context.sectionSlots[nativeId];
     if (slot.members != nullptr) slot.members->bounds.set(slot.index, box);
 }
 
-void updateEntityQueryability(CollisionContext& context, int entityId, bool queryable) noexcept {
-    if (static_cast<std::size_t>(entityId) >= context.sectionSlots.size()) return;
-    const CellSlot slot = context.sectionSlots[entityId];
+void updateEntityQueryability(CollisionContext& context, int nativeId, bool queryable) noexcept {
+    if (static_cast<std::size_t>(nativeId) >= context.sectionSlots.size()) return;
+    const CellSlot slot = context.sectionSlots[nativeId];
     if (slot.members != nullptr && slot.index < slot.members->queryable.size()) {
         const bool previous = slot.members->queryable[slot.index] != 0;
         if (previous != queryable) {

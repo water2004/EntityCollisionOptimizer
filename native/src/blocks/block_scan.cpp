@@ -9,8 +9,8 @@ constexpr int ROW_BATCH = 8;
 
 struct Cursor {
     int x, y, z, done;
-    void publish(int* query) const {
-        query[6] = x; query[7] = y; query[8] = z; query[9] = done;
+    void publish(int* queryState) const {
+        queryState[6] = x; queryState[7] = y; queryState[8] = z; queryState[9] = done;
     }
 };
 
@@ -19,9 +19,9 @@ struct Bounds {
     int minSectionX, maxSectionX, minSectionY, minSectionZ, width, height;
     unsigned firstBoundary, lastBoundary, lastRange;
 
-    explicit Bounds(const int* query)
-        : minX(query[0]), minY(query[1]), minZ(query[2]),
-          maxX(query[3]), maxY(query[4]), maxZ(query[5]),
+    explicit Bounds(const int* queryState)
+        : minX(queryState[0]), minY(queryState[1]), minZ(queryState[2]),
+          maxX(queryState[3]), maxY(queryState[4]), maxZ(queryState[5]),
           minSectionX(minX >> 4), maxSectionX(maxX >> 4),
           minSectionY(minY >> 4), minSectionZ(minZ >> 4),
           width(maxSectionX - minSectionX + 1), height((maxY >> 4) - minSectionY + 1),
@@ -56,10 +56,10 @@ struct RowBatch {
     }
 };
 
-int prepare(const std::uint16_t* const* sections, const Bounds& bounds,
+int prepare(const std::uint16_t* const* collisionRows, const Bounds& bounds,
             Cursor& cursor, RowBatch& batch) {
-    int count = 0;
-    while (!cursor.done && count < ROW_BATCH) {
+    int preparedRowCount = 0;
+    while (!cursor.done && preparedRowCount < ROW_BATCH) {
         if (cursor.x > bounds.maxX) {
             bounds.advanceRow(cursor);
             continue;
@@ -74,56 +74,63 @@ int prepare(const std::uint16_t* const* sections, const Bounds& bounds,
         do {
             const int baseX = cursor.x & ~15;
             const int end = std::min(bounds.maxX, baseX + 15);
-            const auto* planes = sections[section];
-            batch.rows[count] = {baseX, cursor.y, cursor.z, section, end};
-            batch.selected[count] = planes ? planes[offset] : 0;
-            batch.outer[count] = planes && edges != 2 ? planes[offset + 1] : 0;
-            batch.boundary[count] = (sectionX == bounds.minSectionX ? bounds.firstBoundary : 0u)
+            const auto* planes = collisionRows[section];
+            batch.rows[preparedRowCount] = {baseX, cursor.y, cursor.z, section, end};
+            batch.selected[preparedRowCount] = planes ? planes[offset] : 0;
+            batch.outer[preparedRowCount] = planes && edges != 2 ? planes[offset + 1] : 0;
+            batch.boundary[preparedRowCount] = (sectionX == bounds.minSectionX ? bounds.firstBoundary : 0u)
                                   | (sectionX == bounds.maxSectionX ? bounds.lastBoundary : 0u);
-            batch.range[count] = (0xffffu << (cursor.x & 15))
+            batch.range[preparedRowCount] = (0xffffu << (cursor.x & 15))
                                & (sectionX == bounds.maxSectionX ? bounds.lastRange : 0xffffu);
             cursor.x = end + 1;
             ++sectionX;
             ++section;
-            ++count;
-        } while (cursor.x <= bounds.maxX && count < ROW_BATCH);
+            ++preparedRowCount;
+        } while (cursor.x <= bounds.maxX && preparedRowCount < ROW_BATCH);
     }
     for (int i = 0; i < ROW_BATCH; ++i)
-        if (i >= count) batch.selected[i] = batch.outer[i] = batch.boundary[i] = batch.range[i] = 0;
+        if (i >= preparedRowCount) {
+            batch.selected[i] = batch.outer[i] = batch.boundary[i] = batch.range[i] = 0;
+        }
     batch.filter();
-    return count;
+    return preparedRowCount;
 }
 }
 
 // Query: minXYZ, maxXYZ, cursorXYZ, done. Descriptor order: section Z/Y/X.
 // Output records: world XYZ and descriptor index. Capacity paginates; it never caps candidates.
-int scanCollisionBlocks(const std::uint16_t* const* rows, int* query, int* output, int capacity) {
-    if (!rows || !query || !output || capacity <= 0) return -1;
-    Cursor cursor{query[6], query[7], query[8], query[9]};
+int scanCollisionBlocks(
+        const std::uint16_t* const* collisionRows,
+        int* queryState,
+        int* outputRecords,
+        int outputCapacity
+) {
+    if (!collisionRows || !queryState || !outputRecords || outputCapacity <= 0) return -1;
+    Cursor cursor{queryState[6], queryState[7], queryState[8], queryState[9]};
     if (cursor.done) return 0;
-    const Bounds bounds(query);
+    const Bounds bounds(queryState);
     RowBatch batch;
-    int count = 0;
+    int recordCount = 0;
     while (!cursor.done) {
-        const int prepared = prepare(rows, bounds, cursor, batch);
+        const int prepared = prepare(collisionRows, bounds, cursor, batch);
         for (int i = 0; i < prepared; ++i) {
             const Row& row = batch.rows[i];
             unsigned mask = batch.masks[i];
             while (mask) {
                 const int selected = row.baseX + std::countr_zero(mask);
                 mask &= mask - 1;
-                int* record = output + count++ * 4;
+                int* record = outputRecords + recordCount++ * 4;
                 record[0] = selected; record[1] = row.y; record[2] = row.z; record[3] = row.section;
-                if (count == capacity) {
+                if (recordCount == outputCapacity) {
                     // Only consumed work is published. A following call rereads shared
-                    // rows, including any palette mutations between output pages.
-                    Cursor{mask ? selected + 1 : row.end + 1, row.y, row.z, 0}.publish(query);
-                    return count;
+                    // collisionRows, including any palette mutations between output pages.
+                    Cursor{mask ? selected + 1 : row.end + 1, row.y, row.z, 0}.publish(queryState);
+                    return recordCount;
                 }
             }
         }
     }
     // No Java callback can observe intermediate progress within this FFM call.
-    cursor.publish(query);
-    return count;
+    cursor.publish(queryState);
+    return recordCount;
 }
