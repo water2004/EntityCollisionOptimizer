@@ -1,12 +1,13 @@
 #pragma once
 
+#include "geometry/aabb.h"
 #include "state/collision_context.h"
 
 #include <cstdint>
 
 namespace eco {
 
-void insertSectionEntity(CollisionContext& context, int nativeId);
+void insertSectionEntity(CollisionContext& context, int nativeId, const Aabb& bounds);
 void removeSectionEntity(CollisionContext& context, int nativeId);
 void updateSectionEntity(
         CollisionContext& context,

@@ -31,6 +31,13 @@ struct CellBoundsSoa {
         maxZ[index] = box.maxZ;
     }
 
+    [[nodiscard]] Aabb get(std::size_t index) const noexcept {
+        return {
+            minX[index], minY[index], minZ[index],
+            maxX[index], maxY[index], maxZ[index]
+        };
+    }
+
     void erase(std::size_t index) {
         const auto offset = static_cast<std::ptrdiff_t>(index);
         minX.erase(minX.begin() + offset);

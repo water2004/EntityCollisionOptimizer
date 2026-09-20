@@ -25,8 +25,7 @@ int updateCollisionEntityState(
     }
     try {
         auto& context = *static_cast<eco::CollisionContext*>(contextPointer);
-        if (static_cast<std::size_t>(nativeId) >= context.metadata.size()
-                || static_cast<std::size_t>(nativeId) >= context.boxes.size()) {
+        if (static_cast<std::size_t>(nativeId) >= context.metadata.size()) {
             return -1;
         }
         if (entityBounds != nullptr) {

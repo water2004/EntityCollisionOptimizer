@@ -53,7 +53,6 @@ bool isIndexable(const Aabb& box) noexcept {
 }
 
 void updateEntityBounds(CollisionContext& context, int nativeId, const Aabb& box) noexcept {
-    context.boxes[nativeId] = box;
     if (static_cast<std::size_t>(nativeId) >= context.sectionSlots.size()) return;
     const CellSlot slot = context.sectionSlots[nativeId];
     if (slot.members != nullptr) slot.members->bounds.set(slot.index, box);

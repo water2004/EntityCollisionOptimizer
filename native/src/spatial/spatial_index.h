@@ -1,5 +1,6 @@
 #pragma once
 
+#include "geometry/aabb.h"
 #include "state/collision_context.h"
 
 namespace eco {

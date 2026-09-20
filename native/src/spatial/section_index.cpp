@@ -13,8 +13,8 @@ Cell sectionOf(const EntityMetadata& metadata) noexcept {
 
 } // namespace
 
-void insertSectionEntity(CollisionContext& context, int nativeId) {
-    context.sectionSlots.resize(context.boxes.size(), {nullptr, 0});
+void insertSectionEntity(CollisionContext& context, int nativeId, const Aabb& bounds) {
+    context.sectionSlots.resize(context.metadata.size(), {nullptr, 0});
     const Cell section = sectionOf(context.metadata[nativeId]);
     CellMembers*& entry = context.sections.entry(section);
     if (entry == nullptr) entry = &context.acquireSectionMembers();
@@ -22,7 +22,7 @@ void insertSectionEntity(CollisionContext& context, int nativeId) {
     const bool queryable = metadataIsQueryable(context.metadata[nativeId]);
     entry->queryable.push_back(static_cast<std::uint8_t>(queryable));
     if (queryable) ++entry->queryableCount;
-    entry->bounds.push(context.boxes[nativeId]);
+    entry->bounds.push(bounds);
     if (context.metadata[nativeId].hardCollidable) ++entry->hardCount;
     context.sectionSlots[nativeId] = {entry, entry->ids.size() - 1};
 }
@@ -60,11 +60,16 @@ void updateSectionEntity(
     const bool moved = metadata.sectionX != sectionX
             || metadata.sectionY != sectionY
             || metadata.sectionZ != sectionZ;
-    if (moved) removeSectionEntity(context, nativeId);
+    Aabb bounds{};
+    if (moved) {
+        const CellSlot slot = context.sectionSlots[nativeId];
+        bounds = slot.members->bounds.get(slot.index);
+        removeSectionEntity(context, nativeId);
+    }
     metadata.sectionX = sectionX;
     metadata.sectionY = sectionY;
     metadata.sectionZ = sectionZ;
-    if (moved) insertSectionEntity(context, nativeId);
+    if (moved) insertSectionEntity(context, nativeId, bounds);
 }
 
 const CellMembers* sectionEntities(const CollisionContext& context, const Cell& section) noexcept {

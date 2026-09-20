@@ -1,6 +1,5 @@
 #pragma once
 
-#include "geometry/aabb.h"
 #include "state/entity_metadata.h"
 #include "spatial/cell_map.h"
 
@@ -19,7 +18,6 @@ struct CellSlot {
 };
 
 struct CollisionContext {
-    std::vector<Aabb> boxes;
     std::vector<EntityMetadata> metadata;
     CellMap sections;
     std::deque<CellMembers> sectionMembersPool;
