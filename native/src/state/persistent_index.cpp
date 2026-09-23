@@ -20,7 +20,6 @@ int insertCollisionEntity(
             context.metadata.emplace_back();
             context.sectionSlots.push_back({nullptr, 0});
         } else if (context.sectionSlots[nativeId].members != nullptr) return -1;
-        if (context.metadata[nativeId].hardCollidable) --context.hardEntityCount;
         context.metadata[nativeId] = {};
         context.metadata[nativeId].sectionX = sectionX;
         context.metadata[nativeId].sectionY = sectionY;
