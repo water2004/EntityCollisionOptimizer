@@ -49,7 +49,8 @@ public:
         }
     }
 
-    // Find or insert the key; a null pointer in the returned slot needs a value.
+    // Returns a reference to the value pointer. For a new key it records the
+    // key but leaves the pointer null; the caller must fill it immediately.
     Value*& findOrInsertValueSlot(const Cell& key) {
         if ((used + 1) * 10 >= entries.size() * 7) rehash(entries.size() * 2);
         std::size_t index = CellHash{}(key) & mask;

@@ -17,6 +17,7 @@ void insertSectionEntity(CollisionContext& context, int nativeId, const Aabb& bo
     context.sectionSlots.resize(context.metadata.size(), {nullptr, 0});
     const Cell section = sectionOf(context.metadata[nativeId]);
     CellMembers*& membersSlot = context.sections.findOrInsertValueSlot(section);
+    // A null slot is a newly recorded section key awaiting its members object.
     if (membersSlot == nullptr) membersSlot = &context.acquireSectionMembers();
     membersSlot->ids.push_back(nativeId);
     const bool queryable = metadataIsQueryable(context.metadata[nativeId]);
