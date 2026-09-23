@@ -10,7 +10,6 @@ import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import org.slf4j.Logger;
 
 public class EntityCollisionOptimizer implements ModInitializer {
-    public static final String MODID = "entity_collision_optimizer";
     public static final Logger LOGGER = LogUtils.getLogger();
 
     @Override

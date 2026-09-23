@@ -9,7 +9,10 @@
       "org.edtp.entitycollisionoptimizer.gametest.CollisionContractGameTests"
     ]
   },
-  "mixins": ["entity_collision_optimizer-gametest.mixins.json"],
+  "mixins": [
+    "entity_collision_optimizer-gametest.mixins.json",
+    "entity_collision_optimizer-unit.mixins.json"
+  ],
   "depends": {
     "fabricloader": ">=0.17.0",
     "fabric-api": "*",

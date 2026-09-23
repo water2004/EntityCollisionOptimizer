@@ -13,30 +13,11 @@ import org.edtp.entitycollisionoptimizer.natives.CollisionFrame;
 import org.edtp.entitycollisionoptimizer.natives.NativeShapeBatch;
 import org.edtp.entitycollisionoptimizer.natives.NativeBlockScan;
 
-import java.util.ArrayList;
 import java.util.List;
 
 /** Preserves vanilla's z/y/x traversal, halo tests, shape context and collider order. */
 public final class OrderedBlockColliders {
     private OrderedBlockColliders() {}
-
-    public static List<VoxelShape> collect(Entity entity, AABB box, List<VoxelShape> entityShapes) {
-        return collect(entity.level(), CollisionContext.of(entity), entity, box, entityShapes);
-    }
-
-    public static List<VoxelShape> collect(Level level, CollisionContext context, Entity entity,
-                                           AABB box, List<VoxelShape> entityShapes) {
-        List<VoxelShape> result = new ArrayList<>(entityShapes.size() + 16);
-        result.addAll(entityShapes);
-        var border = level.getWorldBorder();
-        if (entity != null && border.isInsideCloseToBorder(entity, box)) result.add(border.getCollisionShape());
-        append(level, context, box, result);
-        return result;
-    }
-
-    public static void append(Level level, CollisionContext context, AABB box, List<VoxelShape> result) {
-        new Scan(level, context, box, (shape, x, y, z) -> result.add(shape.move(x, y, z))).run();
-    }
 
     public static void collectNative(Level level, CollisionContext context, Entity entity,
                                      AABB box, List<VoxelShape> entityShapes, NativeShapeBatch result) {

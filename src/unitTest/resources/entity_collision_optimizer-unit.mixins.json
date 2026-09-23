@@ -1,0 +1,12 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "org.edtp.entitycollisionoptimizer.gametest.mixin",
+  "compatibilityLevel": "JAVA_25",
+  "mixins": [
+    "NativeShapeBatchCaptureMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

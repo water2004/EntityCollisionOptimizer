@@ -11,7 +11,6 @@ import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import org.edtp.entitycollisionoptimizer.EntityCollisionOptimizer;
-import org.edtp.entitycollisionoptimizer.collision.blocks.OrderedBlockColliders;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -57,8 +56,7 @@ final class BlockShapeParity {
         List<VoxelShape> expected = new ArrayList<>();
         var cursor = new BlockCollisions<VoxelShape>(entity.level(), context, box, false, (pos, shape) -> shape);
         cursor.forEachRemaining(expected::add);
-        List<VoxelShape> actual = new ArrayList<>();
-        OrderedBlockColliders.append(entity.level(), context, box, actual);
+        List<VoxelShape> actual = BlockShapeCapture.collect(entity.level(), context, box);
         helper.assertValueEqual(actual.size(), expected.size(), label + " collider count");
         for (int index = 0; index < expected.size(); index++) {
             helper.assertTrue(actual.get(index).toAabbs().equals(expected.get(index).toAabbs()),
