@@ -109,10 +109,10 @@ bool visitPackedRange(std::int64_t minimum, std::int64_t maximum, Visitor&& visi
 }
 
 template<class Visitor>
-bool visitOrderedSections(const eco::LookupSections& sections, Visitor&& visitor) {
-    for (std::int64_t x = sections.minX; x <= sections.maxX; ++x) {
-        if (!visitPackedRange(sections.minZ, sections.maxZ, [&](std::int64_t z) {
-            return visitPackedRange(sections.minY, sections.maxY, [&](std::int64_t y) {
+bool visitOrderedSections(const eco::LookupSections& sectionRange, Visitor&& visitor) {
+    for (std::int64_t x = sectionRange.minX; x <= sectionRange.maxX; ++x) {
+        if (!visitPackedRange(sectionRange.minZ, sectionRange.maxZ, [&](std::int64_t z) {
+            return visitPackedRange(sectionRange.minY, sectionRange.maxY, [&](std::int64_t y) {
                 return visitor(x, y, z);
             });
         })) return false;
@@ -128,19 +128,19 @@ bool visitIntersecting(
 ) {
     std::size_t index = 0;
     for (; index + 8 <= members.ids.size(); index += 8) {
-        unsigned hits = intersectCellBounds8(scan, members.bounds, index);
-        while (hits != 0) {
-            const unsigned lane = std::countr_zero(hits);
+        unsigned hitMask = intersectCellBounds8(scan, members.bounds, index);
+        while (hitMask != 0) {
+            const unsigned lane = std::countr_zero(hitMask);
             if (!consume(index + lane)) return false;
-            hits &= hits - 1;
+            hitMask &= hitMask - 1;
         }
     }
     for (; index + 4 <= members.ids.size(); index += 4) {
-        unsigned hits = intersectCellBounds4(scan, members.bounds, index);
-        while (hits != 0) {
-            const unsigned lane = std::countr_zero(hits);
+        unsigned hitMask = intersectCellBounds4(scan, members.bounds, index);
+        while (hitMask != 0) {
+            const unsigned lane = std::countr_zero(hitMask);
             if (!consume(index + lane)) return false;
-            hits &= hits - 1;
+            hitMask &= hitMask - 1;
         }
     }
     for (; index < members.ids.size(); ++index) {
@@ -179,9 +179,9 @@ int queryHardCollisionEntities(
         const eco::Aabb scan = eco::makeAabb(minX, minY, minZ, maxX, maxY, maxZ);
         if (!eco::isIndexable(scan) || (hardOnly != 0 && context.hardEntityCount == 0)) return 0;
 
-        const eco::LookupSections sections(scan);
+        const eco::LookupSections sectionRange(scan);
         int resultSize = 0;
-        const bool complete = visitOrderedSections(sections, [&](std::int64_t x, std::int64_t y, std::int64_t z) {
+        const bool complete = visitOrderedSections(sectionRange, [&](std::int64_t x, std::int64_t y, std::int64_t z) {
             const eco::CellMembers* members = eco::sectionEntities(context, {x, y, z});
             if (members == nullptr || (hardOnly != 0 && members->hardCount == 0)) return true;
             return visitIntersecting(scan, *members, [&](std::size_t index) {
@@ -217,9 +217,9 @@ int queryEntitiesInBox(
         auto& context = *static_cast<eco::CollisionContext*>(contextPointer);
         const eco::Aabb scan = eco::makeAabb(minX, minY, minZ, maxX, maxY, maxZ);
         if (!eco::isIndexable(scan)) return 0;
-        const eco::LookupSections sections(scan);
+        const eco::LookupSections sectionRange(scan);
         int resultSize = 0;
-        const bool complete = visitOrderedSections(sections, [&](std::int64_t x, std::int64_t y, std::int64_t z) {
+        const bool complete = visitOrderedSections(sectionRange, [&](std::int64_t x, std::int64_t y, std::int64_t z) {
             const eco::CellMembers* members = eco::sectionEntities(context, {x, y, z});
             if (members == nullptr) return true;
             return visitIntersecting(scan, *members, [&](std::size_t index) {
@@ -262,7 +262,7 @@ int queryPushableEntities(
             return 0;
         }
 
-        const eco::LookupSections sections(source);
+        const eco::LookupSections sectionRange(source);
         const eco::TeamFilter teamFilter(sourceTeamId, sourceCollisionRule);
         const bool nativePushSource = sourceNativePushEligible != 0;
         int* const bodySlots = outputBuffer + 3 + outputCapacity;
@@ -289,46 +289,46 @@ int queryPushableEntities(
         };
 
         int status = 0;
-        const bool complete = visitOrderedSections(sections, [&](std::int64_t x, std::int64_t y, std::int64_t z) {
+        const bool complete = visitOrderedSections(sectionRange, [&](std::int64_t x, std::int64_t y, std::int64_t z) {
             const eco::CellMembers* members = eco::sectionEntities(context, {x, y, z});
             if (members == nullptr) return true;
 
             const bool allQueryable = members->queryableCount == members->ids.size();
             std::size_t index = 0;
             for (; index + 8 <= members->ids.size(); index += 8) {
-                const unsigned active = allQueryable
+                const unsigned activeMask = allQueryable
                         ? 0xffU : queryableMask8(members->queryable.data() + index);
-                unsigned hits = active & intersectCellBounds8(source, members->bounds, index);
-                while (hits != 0) {
-                    const unsigned lane = std::countr_zero(hits);
+                unsigned hitMask = activeMask & intersectCellBounds8(source, members->bounds, index);
+                while (hitMask != 0) {
+                    const unsigned lane = std::countr_zero(hitMask);
                     const std::size_t candidateIndex = index + lane;
                     const int candidateNativeId = members->ids[candidateIndex];
                     if (candidateNativeId == excludedNativeId) {
-                        hits &= hits - 1;
+                        hitMask &= hitMask - 1;
                         continue;
                     }
                     status = consume(candidateNativeId);
                     if (status != 0) return false;
-                    hits &= hits - 1;
+                    hitMask &= hitMask - 1;
                 }
             }
             for (; index + 4 <= members->ids.size(); index += 4) {
-                unsigned active = 0;
+                unsigned activeMask = 0;
                 for (unsigned lane = 0; lane < 4; ++lane) {
-                    if ((allQueryable || members->queryable[index + lane] != 0)) active |= 1U << lane;
+                    if ((allQueryable || members->queryable[index + lane] != 0)) activeMask |= 1U << lane;
                 }
-                unsigned hits = active & intersectCellBounds4(source, members->bounds, index);
-                while (hits != 0) {
-                    const unsigned lane = std::countr_zero(hits);
+                unsigned hitMask = activeMask & intersectCellBounds4(source, members->bounds, index);
+                while (hitMask != 0) {
+                    const unsigned lane = std::countr_zero(hitMask);
                     const std::size_t candidateIndex = index + lane;
                     const int candidateNativeId = members->ids[candidateIndex];
                     if (candidateNativeId == excludedNativeId) {
-                        hits &= hits - 1;
+                        hitMask &= hitMask - 1;
                         continue;
                     }
                     status = consume(candidateNativeId);
                     if (status != 0) return false;
-                    hits &= hits - 1;
+                    hitMask &= hitMask - 1;
                 }
             }
             for (; index < members->ids.size(); ++index) {

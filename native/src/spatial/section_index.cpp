@@ -16,15 +16,15 @@ Cell sectionOf(const EntityMetadata& metadata) noexcept {
 void insertSectionEntity(CollisionContext& context, int nativeId, const Aabb& bounds) {
     context.sectionSlots.resize(context.metadata.size(), {nullptr, 0});
     const Cell section = sectionOf(context.metadata[nativeId]);
-    CellMembers*& entry = context.sections.entry(section);
-    if (entry == nullptr) entry = &context.acquireSectionMembers();
-    entry->ids.push_back(nativeId);
+    CellMembers*& membersSlot = context.sections.findOrInsertValueSlot(section);
+    if (membersSlot == nullptr) membersSlot = &context.acquireSectionMembers();
+    membersSlot->ids.push_back(nativeId);
     const bool queryable = metadataIsQueryable(context.metadata[nativeId]);
-    entry->queryable.push_back(static_cast<std::uint8_t>(queryable));
-    if (queryable) ++entry->queryableCount;
-    entry->bounds.push(bounds);
-    if (context.metadata[nativeId].hardCollidable) ++entry->hardCount;
-    context.sectionSlots[nativeId] = {entry, entry->ids.size() - 1};
+    membersSlot->queryable.push_back(static_cast<std::uint8_t>(queryable));
+    if (queryable) ++membersSlot->queryableCount;
+    membersSlot->bounds.push(bounds);
+    if (context.metadata[nativeId].hardCollidable) ++membersSlot->hardCount;
+    context.sectionSlots[nativeId] = {membersSlot, membersSlot->ids.size() - 1};
 }
 
 void removeSectionEntity(CollisionContext& context, int nativeId) {

@@ -49,8 +49,8 @@ public:
         }
     }
 
-    // Single-probe find-or-insert; a null reference marks a fresh slot to fill.
-    Value*& entry(const Cell& key) {
+    // Find or insert the key; a null pointer in the returned slot needs a value.
+    Value*& findOrInsertValueSlot(const Cell& key) {
         if ((used + 1) * 10 >= entries.size() * 7) rehash(entries.size() * 2);
         std::size_t index = CellHash{}(key) & mask;
         while (entries[index].value != nullptr) {

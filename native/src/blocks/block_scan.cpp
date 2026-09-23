@@ -40,7 +40,7 @@ struct Bounds {
 };
 
 struct Row {
-    int baseX, y, z, section, end;
+    int baseX, y, z, descriptorIndex, end;
 };
 
 struct RowBatch {
@@ -68,14 +68,14 @@ int prepare(const std::uint16_t* const* collisionRows, const Bounds& bounds,
                         + (cursor.z == bounds.minZ || cursor.z == bounds.maxZ);
         const int offset = (((cursor.y & 15) << 4) | (cursor.z & 15)) * 3 + edges;
         int sectionX = cursor.x >> 4;
-        int section = (((cursor.z >> 4) - bounds.minSectionZ) * bounds.height
+        int descriptorIndex = (((cursor.z >> 4) - bounds.minSectionZ) * bounds.height
                      + (cursor.y >> 4) - bounds.minSectionY) * bounds.width
                      + sectionX - bounds.minSectionX;
         do {
             const int baseX = cursor.x & ~15;
             const int end = std::min(bounds.maxX, baseX + 15);
-            const auto* planes = collisionRows[section];
-            batch.rows[preparedRowCount] = {baseX, cursor.y, cursor.z, section, end};
+            const auto* planes = collisionRows[descriptorIndex];
+            batch.rows[preparedRowCount] = {baseX, cursor.y, cursor.z, descriptorIndex, end};
             batch.selected[preparedRowCount] = planes ? planes[offset] : 0;
             batch.outer[preparedRowCount] = planes && edges != 2 ? planes[offset + 1] : 0;
             batch.boundary[preparedRowCount] = (sectionX == bounds.minSectionX ? bounds.firstBoundary : 0u)
@@ -84,7 +84,7 @@ int prepare(const std::uint16_t* const* collisionRows, const Bounds& bounds,
                                & (sectionX == bounds.maxSectionX ? bounds.lastRange : 0xffffu);
             cursor.x = end + 1;
             ++sectionX;
-            ++section;
+            ++descriptorIndex;
             ++preparedRowCount;
         } while (cursor.x <= bounds.maxX && preparedRowCount < ROW_BATCH);
     }
@@ -120,7 +120,7 @@ int scanCollisionBlocks(
                 const int selected = row.baseX + std::countr_zero(mask);
                 mask &= mask - 1;
                 int* record = outputRecords + recordCount++ * 4;
-                record[0] = selected; record[1] = row.y; record[2] = row.z; record[3] = row.section;
+                record[0] = selected; record[1] = row.y; record[2] = row.z; record[3] = row.descriptorIndex;
                 if (recordCount == outputCapacity) {
                     // Only consumed work is published. A following call rereads shared
                     // collisionRows, including any palette mutations between output pages.
