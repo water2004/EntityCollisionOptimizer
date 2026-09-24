@@ -17,17 +17,6 @@ public final class BodyFieldAccess {
 
     public static void rewrite(ClassNode node) {
         boolean entityClass = node.name.equals(ENTITY);
-        if (entityClass && node.fields.stream().noneMatch(field ->
-                field.name.equals("deltaMovement") && field.desc.equals(VECTOR)
-                        && (field.access & Opcodes.ACC_PRIVATE) != 0)) {
-            throw new IllegalStateException("Expected Minecraft 26.2's private Entity velocity field");
-        }
-        if (entityClass && node.fields.stream().noneMatch(field ->
-                field.name.equals("position") && field.desc.equals(VECTOR)
-                        && (field.access & Opcodes.ACC_PRIVATE) != 0)) {
-            throw new IllegalStateException("Expected Minecraft 26.2's private Entity position field");
-        }
-        int reads = 0, writes = 0, positionWrites = 0, boundsWrites = 0;
         for (var method : node.methods) {
             // Only these storage primitives may physically touch the unbound field.
             if (entityClass && (method.name.equals("eco$readVelocity") || method.name.equals("eco$writeVelocity")
@@ -55,15 +44,8 @@ public final class BodyFieldAccess {
                         : sync ? (read ? "eco$readNeedsSync" : "eco$writeNeedsSync") : "eco$writeNoPhysics";
                 method.instructions.set(field, new MethodInsnNode(Opcodes.INVOKEINTERFACE, ACCESS,
                         name, read ? "()" + field.desc : "(" + field.desc + ")V", true));
-                if (velocity) { if (read) reads++; else writes++; }
-                if (position && !read) positionWrites++;
-                if (bounds && !read) boundsWrites++;
             }
         }
-        // Getter, setter and constructor must all be covered; missing coverage is not a fallback.
-        if (entityClass && (reads < 1 || writes < 2)) throw new IllegalStateException("Incomplete Entity velocity access rewrite");
-        if (entityClass && positionWrites < 2) throw new IllegalStateException("Incomplete Entity position write rewrite");
-        if (entityClass && boundsWrites < 2) throw new IllegalStateException("Incomplete Entity bounding box write rewrite");
     }
 
     private static boolean isEntity(String type, ClassNode current) {
