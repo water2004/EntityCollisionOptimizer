@@ -1,4 +1,5 @@
 #include "eco/collision_api.h"
+#include "native_error.h"
 
 #include "state/collision_context.h"
 #include "spatial/section_index.h"
@@ -65,7 +66,7 @@ int updateCollisionEntityState(
         }
         return 0;
     } catch (...) {
-        return -2;
+        return eco::recordNativeException();
     }
 }
 
@@ -85,7 +86,7 @@ int invalidateEntityPushEligibilityCache(void* contextPointer, int nativeId) {
         metadata.selectableValid = false;
         return 0;
     } catch (...) {
-        return -2;
+        return eco::recordNativeException();
     }
 }
 
@@ -110,6 +111,6 @@ int invalidatePushEligibilityCacheFields(void* contextPointer, int fieldsToInval
         }
         return 0;
     } catch (...) {
-        return -2;
+        return eco::recordNativeException();
     }
 }

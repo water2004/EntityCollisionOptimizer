@@ -1,5 +1,6 @@
 {
     global:
+        lastNativeException;
         insertCollisionEntity;
         removeCollisionEntity;
         updateCollisionEntitySection;
