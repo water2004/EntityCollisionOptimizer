@@ -102,16 +102,16 @@ final class CollisionRepeatedFrameParity {
         for (int sourceIndex = 0; sourceIndex < vanilla.size(); sourceIndex++) {
             Zombie vanillaSource = vanilla.get(sourceIndex);
             Zombie acceleratedSource = accelerated.get(sourceIndex);
-            List<Integer> expected = vanillaSource.level().getEntities(
+            List<Integer> expected = VanillaEntityQueries.call(() -> vanillaSource.level().getEntities(
                     vanillaSource,
                     vanillaSource.getBoundingBox(),
                     EntitySelector.pushableBy(vanillaSource)
-            ).stream().map(vanilla::indexOf).toList();
-            List<Integer> acceleratedVanilla = acceleratedSource.level().getEntities(
+            )).stream().map(vanilla::indexOf).toList();
+            List<Integer> acceleratedVanilla = VanillaEntityQueries.call(() -> acceleratedSource.level().getEntities(
                     acceleratedSource,
                     acceleratedSource.getBoundingBox(),
                     EntitySelector.pushableBy(acceleratedSource)
-            ).stream().map(accelerated::indexOf).toList();
+            )).stream().map(accelerated::indexOf).toList();
             helper.assertValueEqual(
                     acceleratedVanilla,
                     expected,
