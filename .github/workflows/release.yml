@@ -67,7 +67,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: release-mc${{ steps.release.outputs.minecraft }}-${{ github.sha }}
-          path: dist/*
+          path: |
+            dist/*.jar
+            dist/SHA256SUMS-*.txt
           if-no-files-found: error
           retention-days: 14
 
