@@ -1,8 +1,8 @@
-name: Build Fabric 26.2
+name: Build
 
 on:
   push:
-    branches: [ "**" ]
+    branches-ignore: [ "main", "[0-9]*.[0-9]*" ]
 
 permissions:
   contents: read
