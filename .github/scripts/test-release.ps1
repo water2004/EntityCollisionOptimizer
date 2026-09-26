@@ -35,16 +35,19 @@ Set-Item Function:gh -Value ({
             return 'Not Found (HTTP 404)'
         }
         $assets = @()
-        if ($state.mode -in @('labeled', 'unlabeled')) {
+        if ($state.mode -in @('source', 'legacy')) {
             $assets = @(@{
                 id = 42
-                name = 'entity_collision_optimizer-1.0.0-mc26.1-alpha.8.jar'
-                label = $(if ($state.mode -eq 'labeled') { "commit:$($state.assetCommit)" } else { $null })
+                name = 'SHA256SUMS-mc26.1.txt'
             })
         }
         return (@{ draft = $false; immutable = $false; assets = $assets } | ConvertTo-Json -Depth 5)
     }
     if ($route -like '*/commits/*') { return $state.tagCommit }
+    if ($route -like '*/releases/assets/*') {
+        if ($state.mode -eq 'source') { return "# source-commit: $($state.assetCommit)`nchecksum  fixture.jar" }
+        return 'checksum  fixture.jar'
+    }
     throw "Unexpected GitHub route $route."
 }.GetNewClosure())
 function Start-Sleep { param([int]$Seconds) }
@@ -85,15 +88,21 @@ try {
             } finally { $writer.Dispose() }
         }
     } finally { $archive.Dispose() }
-    & "$scripts/stage-release.ps1" -Version '1.0.0-mc26.1-alpha.8' -Minecraft '26.1'
+    & "$scripts/stage-release.ps1" -Version '1.0.0-mc26.1-alpha.8' -Minecraft '26.1' -Commit $commit
     Assert ((Get-ChildItem dist -File).Count -eq 2) 'Only the JAR and checksum are staged.'
     Assert (-not (Test-Path 'dist/source-mc26.1.json')) 'No source JSON download.'
-    Expect-Failure { & "$scripts/stage-release.ps1" -Version '1.0.0-mc26.1-alpha.8' -Minecraft '26.3' }
+    $checksum = Get-Content 'dist/SHA256SUMS-mc26.1.txt'
+    Assert ($checksum[0] -eq "# source-commit: $commit") 'Source commit stays in a checksum comment.'
+    $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $jar).Hash.ToLowerInvariant()
+    Assert ($checksum[1] -eq "$hash  $(Split-Path -Leaf $jar)") 'Standard checksum line is retained.'
+    Expect-Failure { & "$scripts/stage-release.ps1" -Version '1.0.0-mc26.1-alpha.8' -Minecraft '26.3' -Commit $commit }
+    Expect-Failure { & "$scripts/stage-release.ps1" -Version '1.0.0-mc26.1-alpha.8' -Minecraft '26.1' -Commit '' }
 
     & "$scripts/publish-release.ps1" -Branch main -Commit $commit
     Assert ($state.calls.Where({ $_[0] -eq 'release' -and $_[1] -eq 'create' }).Count -eq 1) 'Main creates release.'
     $createCall = $state.calls.Where({ $_[0] -eq 'release' -and $_[1] -eq 'create' })[0]
-    Assert ($createCall -contains "dist/entity_collision_optimizer-1.0.0-mc26.1-alpha.8.jar#commit:$commit") 'Creation labels the JAR with its source commit.'
+    Assert ($createCall -contains 'dist/entity_collision_optimizer-1.0.0-mc26.1-alpha.8.jar') 'Creation uses the original filename.'
+    Assert (@($createCall | Where-Object { $_ -like '*#*' }).Count -eq 0) 'Creation must not set display labels.'
     Assert (@($createCall | Where-Object { $_ -like '*.json*' }).Count -eq 0) 'Creation does not upload JSON.'
     $state.calls.Clear()
     $state.mode = 'existing'
@@ -101,11 +110,12 @@ try {
     Assert ($state.calls.Where({ $_[0] -eq 'release' -and $_[1] -eq 'upload' }).Count -eq 1) 'Version branch appends assets.'
     Assert ($state.calls.Where({ $_[0] -eq 'release' -and $_[1] -eq 'create' }).Count -eq 0) 'Version branch never creates release.'
     $uploadCall = $state.calls.Where({ $_[0] -eq 'release' -and $_[1] -eq 'upload' })[0]
-    Assert ($uploadCall -contains "dist/entity_collision_optimizer-1.0.0-mc26.1-alpha.8.jar#commit:$commit") 'Upload labels the JAR with its source commit.'
+    Assert ($uploadCall -contains 'dist/entity_collision_optimizer-1.0.0-mc26.1-alpha.8.jar') 'Upload uses the original filename.'
+    Assert (@($uploadCall | Where-Object { $_ -like '*#*' }).Count -eq 0) 'Upload must not set display labels.'
     Assert (@($uploadCall | Where-Object { $_ -like '*.json*' }).Count -eq 0) 'Upload does not include JSON.'
-    $state.mode = 'unlabeled'
+    $state.mode = 'legacy'
     & "$scripts/publish-release.ps1" -Branch '26.1' -Commit $commit
-    $state.mode = 'labeled'
+    $state.mode = 'source'
     & "$scripts/publish-release.ps1" -Branch '26.1' -Commit $commit
     $state.assetCommit = 'b' * 40
     Expect-Failure { & "$scripts/publish-release.ps1" -Branch '26.1' -Commit $commit }
