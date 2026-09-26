@@ -1,4 +1,5 @@
 #include "eco/collision_api.h"
+#include "native_error.h"
 #include "motion/collision_body.h"
 #include "geometry/voxel_geometry.h"
 
@@ -100,5 +101,5 @@ int solveMovement(
             movementData[TARGET + axis] = movementData[POSITION + axis] + movementData[RESULT + axis];
         }
         return 0;
-    } catch (...) { return -2; }
+    } catch (...) { return eco::recordNativeException(); }
 }

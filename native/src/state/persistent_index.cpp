@@ -1,4 +1,5 @@
 #include "eco/collision_api.h"
+#include "native_error.h"
 #include "state/collision_context.h"
 #include "spatial/spatial_index.h"
 #include "spatial/section_index.h"
@@ -33,7 +34,7 @@ int insertCollisionEntity(
                 )
         );
         return 0;
-    } catch (...) { return -2; }
+    } catch (...) { return eco::recordNativeException(); }
 }
 
 int removeCollisionEntity(void* contextPointer, int nativeId) {
@@ -45,7 +46,7 @@ int removeCollisionEntity(void* contextPointer, int nativeId) {
         if (context.metadata[nativeId].hardCollidable) --context.hardEntityCount;
         context.metadata[nativeId] = {};
         return 0;
-    } catch (...) { return -2; }
+    } catch (...) { return eco::recordNativeException(); }
 }
 
 int updateCollisionEntitySection(
@@ -66,5 +67,5 @@ int updateCollisionEntitySection(
         }
         metadata.selectableValid = false;
         return 0;
-    } catch (...) { return -2; }
+    } catch (...) { return eco::recordNativeException(); }
 }
