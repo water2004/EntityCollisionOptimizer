@@ -2,11 +2,11 @@ name: Release
 
 on:
   push:
-    tags:
-      - "v[0-9]*"
+    branches: [ "main", "[0-9]*.[0-9]*" ]
+  workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: release-${{ github.ref }}
@@ -14,61 +14,26 @@ concurrency:
 
 jobs:
   release:
-    name: Build and publish
+    name: Build, test and publish
     runs-on: windows-2025
-    timeout-minutes: 30
+    timeout-minutes: 60
+    permissions:
+      contents: write
     steps:
-      - name: Check out tagged source
+      - name: Check out pushed source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with:
-          fetch-depth: 0
 
-      - name: Validate tag and branch
+      - name: Resolve release version
         id: release
         shell: pwsh
         run: |
-          $tag = $env:GITHUB_REF_NAME
-          if (-not $tag.StartsWith('v')) {
-            throw "Release tag '$tag' must start with v."
+          $metadata = & ./.github/scripts/release-metadata.ps1
+          "version=$($metadata.Version)" >> $env:GITHUB_OUTPUT
+          "minecraft=$($metadata.Minecraft)" >> $env:GITHUB_OUTPUT
+          "tag=$($metadata.Tag)" >> $env:GITHUB_OUTPUT
+          if ($env:GITHUB_REF_NAME -eq 'main' -and -not (Test-Path -LiteralPath $metadata.NotesFile)) {
+            throw "Missing release notes: $($metadata.NotesFile)"
           }
-          $version = $tag.Substring(1)
-          $number = '(?:0|[1-9][0-9]*)'
-          $minecraft = '[0-9]+(?:\.[0-9]+)+'
-          $stable = "^$number\.$number\.$number\+mc(?<minecraft>$minecraft)$"
-          $alpha = "^$number\.$number\.$number-mc(?<minecraft>$minecraft)-alpha\.$number$"
-
-          if ($version -match $stable) {
-            $prerelease = 'false'
-          } elseif ($version -match $alpha) {
-            $prerelease = 'true'
-          } else {
-            throw "Invalid release tag '$tag'."
-          }
-          $tagMinecraft = $Matches.minecraft
-
-          $minecraftLine = Get-Content gradle.properties |
-            Where-Object { $_ -match '^minecraft_version=' } |
-            Select-Object -First 1
-          if ($null -eq $minecraftLine) {
-            throw 'minecraft_version is missing from gradle.properties.'
-          }
-          $projectMinecraft = $minecraftLine.Split('=', 2)[1].Trim()
-          if ($tagMinecraft -ne $projectMinecraft) {
-            throw "Tag targets Minecraft $tagMinecraft, project targets $projectMinecraft."
-          }
-
-          $tagCommit = git rev-parse --verify "$($env:GITHUB_REF)^{commit}"
-          if ($LASTEXITCODE -ne 0) {
-            throw "Cannot resolve tag '$tag' to a commit."
-          }
-          git merge-base --is-ancestor $tagCommit refs/remotes/origin/26.1
-          if ($LASTEXITCODE -ne 0) {
-            throw "Tag '$tag' does not point to a commit in 26.1 history."
-          }
-
-          "tag=$tag" >> $env:GITHUB_OUTPUT
-          "version=$version" >> $env:GITHUB_OUTPUT
-          "prerelease=$prerelease" >> $env:GITHUB_OUTPUT
 
       - name: Set up Microsoft JDK 25
         uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6
@@ -76,6 +41,10 @@ jobs:
           distribution: microsoft
           java-version: "25"
           cache: gradle
+
+      - name: Check release scripts
+        shell: pwsh
+        run: ./.github/scripts/test-release.ps1
 
       - name: Build release artifacts
         shell: pwsh
@@ -92,81 +61,18 @@ jobs:
       - name: Verify and stage artifacts
         shell: pwsh
         run: |
-          $version = '${{ steps.release.outputs.version }}'
-          $mainJar = "build/libs/entity_collision_optimizer-$version.jar"
-          if (-not (Test-Path -LiteralPath $mainJar -PathType Leaf)) {
-            throw "Expected release artifact is missing: $mainJar"
-          }
+          ./.github/scripts/stage-release.ps1 -Version '${{ steps.release.outputs.version }}' -Minecraft '${{ steps.release.outputs.minecraft }}'
 
-          Add-Type -AssemblyName System.IO.Compression.FileSystem
-          $archive = [System.IO.Compression.ZipFile]::OpenRead((Resolve-Path $mainJar))
-          try {
-            $requiredEntries = @(
-              'fabric.mod.json',
-              'org/edtp/entitycollisionoptimizer/mixin/BodyFieldConsumersMixin.class',
-              'natives/windows-x64/EntityCollisionOptimizer.dll',
-              'natives/linux-x64/libEntityCollisionOptimizer.so',
-              'natives/macos-x64/libEntityCollisionOptimizer.dylib'
-            )
-            $entryNames = [System.Collections.Generic.HashSet[string]]::new(
-              [string[]]$archive.Entries.FullName,
-              [System.StringComparer]::Ordinal
-            )
-            foreach ($entryName in $requiredEntries) {
-              if (-not $entryNames.Contains($entryName)) {
-                throw "Release JAR is missing $entryName."
-              }
-            }
+      - name: Preserve tested artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-mc${{ steps.release.outputs.minecraft }}-${{ github.sha }}
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 14
 
-            $metadataEntry = $archive.GetEntry('fabric.mod.json')
-            $reader = [System.IO.StreamReader]::new($metadataEntry.Open())
-            try {
-              $metadata = $reader.ReadToEnd() | ConvertFrom-Json
-            } finally {
-              $reader.Dispose()
-            }
-            if ($metadata.version -ne $version) {
-              throw "fabric.mod.json version '$($metadata.version)' does not match tag '$version'."
-            }
-          } finally {
-            $archive.Dispose()
-          }
-
-          New-Item -ItemType Directory -Path dist | Out-Null
-          Copy-Item -LiteralPath $mainJar -Destination dist
-          $hashLines = Get-ChildItem dist -Filter '*.jar' |
-            Sort-Object Name |
-            ForEach-Object {
-              $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $_.FullName).Hash.ToLowerInvariant()
-              "$hash  $($_.Name)"
-            }
-          Set-Content -LiteralPath dist/SHA256SUMS.txt -Value $hashLines -Encoding utf8NoBOM
-
-      - name: Publish GitHub Release
+      - name: Create release or append version assets
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
-        run: |
-          $tag = '${{ steps.release.outputs.tag }}'
-          $version = '${{ steps.release.outputs.version }}'
-          $notesFile = ".github/release-notes/$version.md"
-          if (-not (Test-Path -LiteralPath $notesFile -PathType Leaf)) {
-            throw "Release notes are missing: $notesFile"
-          }
-          $assets = Get-ChildItem dist -File | ForEach-Object { $_.FullName }
-          $arguments = @(
-            'release', 'create', $tag
-          ) + $assets + @(
-            '--verify-tag',
-            '--notes-file', $notesFile,
-            '--title', "Entity Collision Optimizer $version"
-          )
-          if ('${{ steps.release.outputs.prerelease }}' -eq 'true') {
-            $arguments += @('--prerelease', '--latest=false')
-          } else {
-            $arguments += '--latest'
-          }
-          & gh @arguments
-          if ($LASTEXITCODE -ne 0) {
-            throw 'GitHub Release creation failed.'
-          }
+        run: ./.github/scripts/publish-release.ps1
