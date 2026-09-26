@@ -1,9 +1,11 @@
 param(
     [string]$PropertiesPath = 'gradle.properties',
-    [string]$Branch = $env:GITHUB_REF_NAME
+    [string]$RefName = $env:GITHUB_REF_NAME,
+    [string]$RefType = $env:GITHUB_REF_TYPE
 )
 
 $ErrorActionPreference = 'Stop'
+if ($RefType -ne 'tag') { throw 'Only a release tag can publish artifacts; branch pushes run CI only.' }
 $properties = ConvertFrom-StringData (Get-Content -LiteralPath $PropertiesPath -Raw)
 $version = $properties.mod_version
 $minecraft = $properties.minecraft_version
@@ -23,15 +25,25 @@ if ($version -match "^(?<base>$semver)-mc(?<minecraft>$minecraftPattern)-(?<suff
 if ($Matches.minecraft -ne $minecraft) {
     throw "Mod version '$version' does not target Minecraft $minecraft."
 }
-if ($Branch -ne 'main' -and $Branch -ne $minecraft) {
-    throw "Only main or the matching Minecraft branch '$minecraft' can publish this build."
+$tag = "v$releaseVersion"
+if ($RefName -eq $tag) {
+    $branch = 'main'
+    $createsRelease = $true
+} elseif ($RefName -eq "v$version") {
+    $branch = $minecraft
+    $createsRelease = $false
+} else {
+    throw "Tag '$RefName' must match '$tag' (main) or 'v$version' (Minecraft $minecraft)."
 }
 
 [pscustomobject]@{
     Version = $version
     Minecraft = $minecraft
     ReleaseVersion = $releaseVersion
-    Tag = "v$releaseVersion"
+    Tag = $tag
+    SourceTag = $RefName
+    Branch = $branch
+    CreatesRelease = $createsRelease
     Prerelease = $prerelease
     NotesFile = ".github/release-notes/$releaseVersion.md"
 }
