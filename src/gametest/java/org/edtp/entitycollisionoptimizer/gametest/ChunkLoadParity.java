@@ -29,7 +29,7 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 
 /**
- * Vanilla vs ECO under 26.2 ticket spreading from a radius-2 FORCED ticket:
+ * Vanilla vs ECO under 26.3 ticket spreading from a radius-2 FORCED ticket:
  * entity ticking (31), block ticking / weak load (32), loaded-without-tick (33).
  */
 final class ChunkLoadParity {

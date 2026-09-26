@@ -37,6 +37,9 @@ final class CollisionRepeatedFrameParity {
             for (int frame = 0; frame < 4; frame++) {
                 for (int index = 0; index < vanilla.size(); index++) {
                     Vec3 offset = offset(index, frame);
+                    // Later frames can cross a chunk edge despite the small displacement.
+                    CollisionTestSupport.ensureEntityTicks(helper, new Vec3(18.5, 1.0, 25.0).add(offset));
+                    CollisionTestSupport.ensureEntityTicks(helper, new Vec3(30.5, 1.0, 25.0).add(offset));
                     vanilla.get(index).setPos(helper.absoluteVec(
                             new Vec3(18.5, 1.0, 25.0).add(offset)
                     ));

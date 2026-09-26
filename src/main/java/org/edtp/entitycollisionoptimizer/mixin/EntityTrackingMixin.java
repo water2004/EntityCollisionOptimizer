@@ -2,6 +2,7 @@ package org.edtp.entitycollisionoptimizer.mixin;
 
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
+import org.edtp.entitycollisionoptimizer.collision.CollisionCacheState;
 import org.edtp.entitycollisionoptimizer.natives.CollisionFrame;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
@@ -28,5 +29,12 @@ public abstract class EntityTrackingMixin {
     @Inject(method = "onSectionChange(Lnet/minecraft/world/entity/Entity;)V", at = @At("HEAD"))
     private void eco$section(Entity entity, CallbackInfo ci) {
         CollisionFrame.sectionChanged(this$0, entity);
+    }
+
+    @Inject(method = {"onTickingStart(Lnet/minecraft/world/entity/Entity;)V",
+            "onTickingEnd(Lnet/minecraft/world/entity/Entity;)V"}, at = @At("RETURN"))
+    private void eco$tickingChanged(Entity entity, CallbackInfo ci) {
+        // 26.3 living-entity pushability depends on entity ticking, even without movement.
+        ((CollisionCacheState) entity).entityCollisionOptimizer$invalidateCollisionCache();
     }
 }

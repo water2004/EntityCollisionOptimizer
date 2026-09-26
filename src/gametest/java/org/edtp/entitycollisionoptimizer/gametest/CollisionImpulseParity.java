@@ -42,7 +42,7 @@ final class CollisionImpulseParity {
             source.needsSync = target.needsSync = false;
             if (scenario == 4) {
                 level.getGameRules().set(GameRules.MAX_ENTITY_CRAMMING, 1, level.getServer());
-                source.setInvulnerable(false);
+                source.setPermanentlyInvulnerable(false);
                 source.setHealth(1.0F);
                 source.getRandom().setSeed(seedWhoseNextIntSucceeds(source, 4));
             }

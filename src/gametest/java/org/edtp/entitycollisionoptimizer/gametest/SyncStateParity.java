@@ -9,6 +9,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.UpdateInterval;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.scores.Team;
 import org.edtp.entitycollisionoptimizer.EntityCollisionOptimizer;
@@ -42,7 +43,7 @@ final class SyncStateParity {
                 entity.needsSync = false;
                 entities.add(entity);
                 var sink = new Sink();
-                var tracker = new ServerEntity(helper.getLevel(), entity, 1000, false, sink);
+                var tracker = new ServerEntity(helper.getLevel(), entity, UpdateInterval.periodic(1000), false, sink);
                 tracker.sendChanges(); // Consume initial dirty data; subsequent updates need needsSync.
                 sink.packets.clear();
                 trackers.add(tracker);

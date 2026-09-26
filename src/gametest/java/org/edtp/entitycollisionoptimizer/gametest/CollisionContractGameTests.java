@@ -1,13 +1,13 @@
 package org.edtp.entitycollisionoptimizer.gametest;
 
 import org.edtp.entitycollisionoptimizer.EntityCollisionOptimizer;
-import org.edtp.entitycollisionoptimizer.gametest.mixin.ZombieTestInvoker;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.monster.hoglin.Hoglin;
 import net.minecraft.world.entity.monster.piglin.Piglin;
 import net.minecraft.world.entity.monster.zombie.Zombie;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
 
 /** Deterministic component and contract checks that may inspect optimizer internals. */
@@ -24,8 +24,15 @@ public final class CollisionContractGameTests {
 
     @GameTest(maxTicks = 20)
     public void zombieDrownedConversionLifecycle(GameTestHelper helper) {
+        helper.setBlock(1, 2, 1, Blocks.WATER);
+        helper.setBlock(1, 3, 1, Blocks.WATER);
         Zombie zombie = helper.spawn(EntityTypes.ZOMBIE, new Vec3(1.5, 2.0, 1.5));
-        ((ZombieTestInvoker) zombie).entityCollisionOptimizer$startUnderWaterConversion(0);
+        zombie.setNoGravity(true);
+        zombie.setInWaterTime(600);
+        helper.runAfterDelay(2, () -> {
+            helper.assertTrue(zombie.isUnderWaterConverting(), "submerged zombie must start conversion");
+            zombie.setConversionTime(0);
+        });
         helper.runAfterDelay(5, () -> {
             helper.assertTrue(zombie.isRemoved(), "zombie must complete its drowned conversion");
             helper.succeed();
@@ -192,6 +199,7 @@ public final class CollisionContractGameTests {
     @GameTest(maxTicks = 200, padding = 48)
     public void blockMovementParity(GameTestHelper helper) {
         BlockMovementParity.verify(helper);
+        StepEntityCollisionParity.verify(helper);
         helper.succeed();
     }
 
@@ -236,5 +244,10 @@ public final class CollisionContractGameTests {
     @GameTest(maxTicks = 800, padding = 48, environment = "entity_collision_optimizer:chunk_load")
     public void chunkLoadBoundaries(GameTestHelper helper) {
         ChunkLoadParity.verify(helper);
+    }
+
+    @GameTest(maxTicks = 400, padding = 48, environment = "entity_collision_optimizer:chunk_load")
+    public void entityTickingPushability(GameTestHelper helper) {
+        EntityTickingPushabilityParity.verify(helper);
     }
 }

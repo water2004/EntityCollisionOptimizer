@@ -3,7 +3,7 @@ package org.edtp.entitycollisionoptimizer.mixin;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Pseudo;
 
-/** Field-consumer inventory from the 26.2 bytecode audit. Every target uses the same transformer. */
+/** Field-consumer inventory from the 26.3 bytecode audit. Every target uses the same transformer. */
 @Pseudo
 @Mixin(targets = {
         "net.minecraft.server.level.ServerEntity", "net.minecraft.server.level.ChunkMap",
@@ -17,8 +17,7 @@ import org.spongepowered.asm.mixin.Pseudo;
         "net.minecraft.world.entity.monster.cubemob.AbstractCubeMob", "net.minecraft.world.entity.monster.cubemob.SulfurCube",
         "net.minecraft.world.entity.projectile.FireworkRocketEntity", "net.minecraft.world.entity.projectile.ShulkerBullet",
         "net.minecraft.world.entity.projectile.Projectile", "net.minecraft.world.entity.projectile.hurtingprojectile.AbstractHurtingProjectile",
-        "net.minecraft.world.entity.projectile.arrow.AbstractArrow", "net.minecraft.world.item.enchantment.effects.ApplyEntityImpulse",
-        "net.minecraft.world.level.block.entity.PotentSulfurBlockEntity",
+        "net.minecraft.world.entity.projectile.arrow.AbstractArrow",
         "net.minecraft.world.entity.AreaEffectCloud", "net.minecraft.world.entity.Display",
         "net.minecraft.world.entity.Interaction", "net.minecraft.world.entity.Marker", "net.minecraft.world.entity.OminousItemSpawner",
         "net.minecraft.world.entity.boss.enderdragon.EnderDragon", "net.minecraft.world.entity.decoration.ArmorStand",

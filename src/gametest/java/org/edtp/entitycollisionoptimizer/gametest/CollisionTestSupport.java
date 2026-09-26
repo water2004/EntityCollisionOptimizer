@@ -1,6 +1,7 @@
 package org.edtp.entitycollisionoptimizer.gametest;
 
 import com.mojang.authlib.GameProfile;
+import net.minecraft.core.BlockPos;
 import io.netty.channel.embedded.EmbeddedChannel;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.network.Connection;
@@ -69,9 +70,10 @@ final class CollisionTestSupport {
             EntityType<? extends Entity> type,
             Vec3 position
     ) {
+        ensureEntityTicks(helper, position);
         Entity entity = helper.spawn((EntityType) type, position);
         entity.setNoGravity(true);
-        entity.setInvulnerable(false);
+        entity.setPermanentlyInvulnerable(false);
         entity.setSilent(true);
         if (entity instanceof Mob mob) {
             mob.setNoAi(true);
@@ -81,12 +83,29 @@ final class CollisionTestSupport {
     }
 
     static Zombie spawnZombie(GameTestHelper helper, Vec3 position) {
+        ensureEntityTicks(helper, position);
         Zombie zombie = helper.spawnWithNoFreeWill(EntityTypes.ZOMBIE, position);
         zombie.setNoGravity(true);
-        zombie.setInvulnerable(true);
+        zombie.setPermanentlyInvulnerable(true);
         zombie.setSilent(true);
         zombie.setPersistenceRequired();
         return zombie;
+    }
+
+    static void ensureEntityTicks(GameTestHelper helper, Vec3 position) {
+        ensureEntityTicks(helper, BlockPos.containing(helper.absoluteVec(position)));
+    }
+
+    static void ensureEntityTicks(GameTestHelper helper, BlockPos block) {
+        // 26.3 living entities are unpushable outside entity-ticking chunks. Some
+        // fixtures extend beyond the empty structure's automatically forced area.
+        var level = helper.getLevel();
+        if (level.isPositionEntityTicking(block)) return;
+        level.setChunkForced(block.getX() >> 4, block.getZ() >> 4, true);
+        level.getChunkAt(block);
+        long deadline = System.nanoTime() + 30_000_000_000L;
+        level.getServer().managedBlock(() -> level.isPositionEntityTicking(block) || System.nanoTime() >= deadline);
+        helper.assertTrue(level.isPositionEntityTicking(block), "collision fixture chunk must tick entities");
     }
 
     @SuppressWarnings("removal")

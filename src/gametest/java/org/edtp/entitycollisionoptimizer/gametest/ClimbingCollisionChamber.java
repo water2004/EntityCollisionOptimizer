@@ -38,7 +38,7 @@ final class ClimbingCollisionChamber extends BenchmarkScenario {
             Zombie zombie = helper.spawn(EntityTypes.ZOMBIE, position);
             zombie.setNoAi(true);
             zombie.setNoGravity(true);
-            zombie.setInvulnerable(true);
+            zombie.setPermanentlyInvulnerable(true);
             zombie.setPersistenceRequired();
             zombie.setDeltaMovement(Vec3.ZERO);
             zombies.add(zombie);

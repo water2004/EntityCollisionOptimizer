@@ -1,6 +1,7 @@
 package org.edtp.entitycollisionoptimizer.gametest;
 
 import net.minecraft.gametest.framework.GameTestHelper;
+import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.monster.zombie.Zombie;
 import net.minecraft.world.phys.Vec3;
 import org.edtp.entitycollisionoptimizer.natives.FFMBackend;
@@ -20,6 +21,9 @@ final class NativeImpulseParity {
         Zombie target = spawnZombie(helper, new Vec3(4.7, 1, 18.6));
         try (var context = FFMBackend.createContext()) {
             // Keep epsilon-adjacent doubles representable; a distant GameTest origin would round them together.
+            for (int x : new int[]{-2, 2}) for (int z : new int[]{-2, 2}) {
+                CollisionTestSupport.ensureEntityTicks(helper, BlockPos.containing(x, source.getY(), z));
+            }
             source.setPos(0, source.getY(), 0);
             double epsilon = 0.009999999776482582;
             double[] deltas = {0, Math.nextDown(epsilon), epsilon, Math.nextUp(epsilon),
@@ -34,6 +38,7 @@ final class NativeImpulseParity {
             }
             for (int i = 0; i < count; i++) {
                 target.setPos(positions[2 * i], source.getY(), positions[2 * i + 1]);
+                helper.assertTrue(source.isPushable() && target.isPushable(), "arithmetic oracle entities must be pushable");
                 Vec3 initial = new Vec3(0.125, -0.0, -0.375);
                 source.setDeltaMovement(initial);
                 target.setDeltaMovement(initial);

@@ -4,13 +4,13 @@
 
 <h1 align="center">Entity Collision Optimizer</h1>
 
-<p align="center">Vanilla-accurate entity collision acceleration for Minecraft 26.2 Fabric servers.</p>
+<p align="center">Vanilla-accurate entity collision acceleration for Minecraft 26.3 Fabric servers.</p>
 
 <p align="center"><strong>English</strong> | <a href="README_zh.md">简体中文</a></p>
 
 ---
 
-Entity Collision Optimizer is a server-side Fabric mod for Minecraft 26.2 that uses a C++ native backend to accelerate entity queries, pushing, and movement collision while **preserving vanilla entity-collision behavior**. Install it and it works; connecting clients do not need the mod.
+Entity Collision Optimizer is a server-side Fabric mod for Minecraft 26.3 that uses a C++ native backend to accelerate entity queries, pushing, and movement collision while **preserving vanilla entity-collision behavior**. Install it and it works; connecting clients do not need the mod.
 
 ## Why use Entity Collision Optimizer?
 
@@ -69,9 +69,9 @@ The FFM boundary therefore carries a complete query, push run, or movement opera
 
 | Component | Requirement |
 | --- | --- |
-| Minecraft | 26.2 |
+| Minecraft | 26.3 |
 | Mod loader | Fabric Loader 0.17.0 or newer |
-| Dependency | A Minecraft 26.2-compatible Fabric API 0.145.4 or newer |
+| Dependency | A Minecraft 26.3-compatible Fabric API 0.161.0 or newer |
 | Java | 25 |
 | Operating system | Windows, Linux, or macOS |
 | Processor | x86-64 with AVX2 |
@@ -81,9 +81,9 @@ Release JARs contain native libraries for x86-64 Windows, Linux, and macOS. ARM6
 ## Installation
 
 1. Install Fabric Loader and Fabric API.
-2. Download the JAR for Minecraft 26.2 from [GitHub Releases](https://github.com/water2004/EntityCollisionOptimizer/releases) and place it in the instance's `mods` directory.
+2. Download the JAR for Minecraft 26.3 from [GitHub Releases](https://github.com/water2004/EntityCollisionOptimizer/releases) and place it in the instance's `mods` directory.
 
-No additional JVM arguments are required on the supported Java 25 runtime. The official Minecraft 26.2 launcher already enables native access. A dedicated server started manually without that option may print Java's native-access warning once, but Java 25 still allows the operation and the mod continues to work.
+No additional JVM arguments are required on the supported Java 25 runtime. The official Minecraft 26.3 launcher already enables native access. A dedicated server started manually without that option may print Java's native-access warning once, but Java 25 still allows the operation and the mod continues to work.
 
 Server administrators who want to suppress that warning may optionally add:
 

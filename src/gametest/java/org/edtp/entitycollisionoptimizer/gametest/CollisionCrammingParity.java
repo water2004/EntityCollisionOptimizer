@@ -33,8 +33,8 @@ final class CollisionCrammingParity {
         entities.add(spawnZombie(helper, acceleratedAnchor.add(-0.1, 0.0, 0.0)));
 
         try {
-            vanillaSource.setInvulnerable(false);
-            acceleratedSource.setInvulnerable(false);
+            vanillaSource.setPermanentlyInvulnerable(false);
+            acceleratedSource.setPermanentlyInvulnerable(false);
             level.getGameRules().set(GameRules.MAX_ENTITY_CRAMMING, 1, level.getServer());
             long seed = seedWhoseNextIntSucceeds(vanillaSource, 4);
 
@@ -80,8 +80,8 @@ final class CollisionCrammingParity {
         );
 
         try {
-            vanillaSource.setInvulnerable(false);
-            acceleratedSource.setInvulnerable(false);
+            vanillaSource.setPermanentlyInvulnerable(false);
+            acceleratedSource.setPermanentlyInvulnerable(false);
             vanillaPassenger.startRiding(vanillaSource, true, true);
             acceleratedPassenger.startRiding(acceleratedSource, true, true);
             vanillaPassenger.setPos(vanillaSource.position());
@@ -140,8 +140,8 @@ final class CollisionCrammingParity {
         );
 
         try {
-            vanillaSource.setInvulnerable(false);
-            acceleratedSource.setInvulnerable(false);
+            vanillaSource.setPermanentlyInvulnerable(false);
+            acceleratedSource.setPermanentlyInvulnerable(false);
             level.getGameRules().set(GameRules.MAX_ENTITY_CRAMMING, 1, level.getServer());
             long seed = seedWhoseNextIntSucceeds(vanillaSource, 4);
 

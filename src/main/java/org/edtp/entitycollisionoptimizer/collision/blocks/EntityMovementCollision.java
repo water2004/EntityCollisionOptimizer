@@ -26,7 +26,8 @@ public final class EntityMovementCollision {
         NativeMovement movement = new NativeMovement(entity, requested, null, true);
         try {
             AABB scan = movement.stepScan();
-            int[] hardIds = CollisionFrame.hardCollisionIds(entity, scan);
+            // Since 26.3, the initial entity query also covers the possible upward step.
+            int[] hardIds = CollisionFrame.hardCollisionIds(entity, scan.expandTowards(0.0, entity.maxUpStep(), 0.0));
             movement.steppingState();
             try (NativeShapeBatch shapes = new NativeShapeBatch()) {
                 if (requested.lengthSqr() != 0.0) {

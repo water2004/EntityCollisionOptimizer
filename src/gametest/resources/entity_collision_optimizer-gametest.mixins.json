@@ -10,7 +10,6 @@
     "AttackStrengthAccessor",
     "WindChargeTestInvoker",
     "LivingEntityTestInvoker",
-    "ZombieTestInvoker",
     "EntityMovementTestInvoker",
     "EntityVelocityAccessor",
     "EntityBodyTestAccess",

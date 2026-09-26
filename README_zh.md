@@ -4,13 +4,13 @@
 
 <h1 align="center">实体碰撞优化</h1>
 
-<p align="center">面向 Minecraft 26.2 Fabric 服务器的原版等价实体碰撞加速。</p>
+<p align="center">面向 Minecraft 26.3 Fabric 服务器的原版等价实体碰撞加速。</p>
 
 <p align="center"><a href="README.md">English</a> | <strong>简体中文</strong></p>
 
 ---
 
-实体碰撞优化是面向 Minecraft 26.2 的服务端 Fabric 模组，通过 C++ native 后端加速实体查询、相互推动和移动碰撞，同时**保持原版实体碰撞行为**。安装即生效，连接服务器的客户端无需安装。
+实体碰撞优化是面向 Minecraft 26.3 的服务端 Fabric 模组，通过 C++ native 后端加速实体查询、相互推动和移动碰撞，同时**保持原版实体碰撞行为**。安装即生效，连接服务器的客户端无需安装。
 
 ## 为什么使用实体碰撞优化？
 
@@ -69,9 +69,9 @@ Minecraft 按区段存储实体。一次碰撞查询需要遍历相关区段、�
 
 | 组件 | 要求 |
 | --- | --- |
-| Minecraft | 26.2 |
+| Minecraft | 26.3 |
 | 模组加载器 | Fabric Loader 0.17.0 或更高版本 |
-| 依赖 | Fabric API 0.145.4 或更高的 26.2 兼容版本 |
+| 依赖 | Fabric API 0.161.0 或更高的 26.3 兼容版本 |
 | Java | 25 |
 | 操作系统 | Windows、Linux 或 macOS |
 | 处理器 | 支持 AVX2 的 x86-64 处理器 |
@@ -81,9 +81,9 @@ Minecraft 按区段存储实体。一次碰撞查询需要遍历相关区段、�
 ## 安装
 
 1. 安装 Fabric Loader 和 Fabric API。
-2. 从 [GitHub Releases](https://github.com/water2004/EntityCollisionOptimizer/releases) 下载 Minecraft 26.2 对应的 JAR，放入实例的 `mods` 目录。
+2. 从 [GitHub Releases](https://github.com/water2004/EntityCollisionOptimizer/releases) 下载 Minecraft 26.3 对应的 JAR，放入实例的 `mods` 目录。
 
-在本项目支持的 Java 25 上不需要添加任何 JVM 参数。Minecraft 26.2 官方启动器已经启用了 native access；手动启动的独立服务器如果没有该选项，Java 可能只在日志中输出一次 native access 警告，但 Java 25 仍会允许调用，模组可以正常工作。
+在本项目支持的 Java 25 上不需要添加任何 JVM 参数。Minecraft 26.3 官方启动器已经启用了 native access；手动启动的独立服务器如果没有该选项，Java 可能只在日志中输出一次 native access 警告，但 Java 25 仍会允许调用，模组可以正常工作。
 
 希望消除这条警告的服务器管理员可以选择添加：
 
