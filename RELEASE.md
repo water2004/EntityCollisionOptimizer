@@ -15,7 +15,7 @@
 
 JAR 内版本号与文件名仍带 Minecraft 版本。数字版本分支名必须与 `minecraft_version` 一致。主分支提供 `.github/release-notes/<共用版本>.md`，例如 `1.0.0-alpha.8.md`。
 
-每个 Minecraft 版本只上传可安装 JAR、`SHA256SUMS-mc<版本>.txt` 和 `source-mc<版本>.json`（来源提交、构建链接及校验值）。不同分支不会覆盖彼此的附件。源码 JAR 不发布。
+每个 Minecraft 版本只上传可安装 JAR 和 `SHA256SUMS-mc<版本>.txt`。来源提交记录在 JAR 附件的 `commit:<SHA>` 标签中，不另行上传 JSON。不同分支不会覆盖彼此的附件。源码 JAR 不发布。
 
 ## 发布步骤
 
@@ -30,6 +30,6 @@ JAR 内版本号与文件名仍带 Minecraft 版本。数字版本分支名必�
 
 ## 重跑与版本不可复用
 
-同一提交可以重跑，工作流仅替换该 Minecraft 版本的附件。已发布版本不得用于另一份提交：主 tag 与每个版本的来源记录都会检查提交 SHA；代码更新需递增版本。上传失败的产物保存在 Actions artifacts，便于检查。
+同一提交可以重跑，工作流仅替换该 Minecraft 版本的附件。已发布版本不得用于另一份提交：主 tag 与每个版本的 JAR 附件标签都会检查提交 SHA；代码更新需递增版本。旧附件没有来源标签时，首次更新会补上。上传失败的产物保存在 Actions artifacts，便于检查。
 
 也可通过 `workflow_dispatch` 为所选分支重跑。发布需要仓库允许 `GITHUB_TOKEN` 写入 contents，并允许向已发布 Release 追加附件；不能启用禁止追加附件的 Release immutable 模式。

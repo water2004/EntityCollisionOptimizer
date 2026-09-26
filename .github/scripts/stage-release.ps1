@@ -1,8 +1,6 @@
 param(
     [Parameter(Mandatory)][string]$Version,
-    [Parameter(Mandatory)][string]$Minecraft,
-    [string]$Branch = $env:GITHUB_REF_NAME,
-    [string]$Commit = $env:GITHUB_SHA
+    [Parameter(Mandatory)][string]$Minecraft
 )
 
 $ErrorActionPreference = 'Stop'
@@ -31,11 +29,3 @@ Copy-Item -LiteralPath $mainJar -Destination dist
 $jarName = Split-Path -Leaf $mainJar
 $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $mainJar).Hash.ToLowerInvariant()
 "$hash  $jarName" | Set-Content "dist/SHA256SUMS-mc$Minecraft.txt" -Encoding utf8NoBOM
-@{
-    branch = $Branch
-    commit = $Commit
-    version = $Version
-    minecraft = $Minecraft
-    sha256 = $hash
-    run = "https://github.com/$env:GITHUB_REPOSITORY/actions/runs/$env:GITHUB_RUN_ID"
-} | ConvertTo-Json | Set-Content "dist/source-mc$Minecraft.json" -Encoding utf8NoBOM
