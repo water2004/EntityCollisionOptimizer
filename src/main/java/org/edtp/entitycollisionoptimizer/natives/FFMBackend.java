@@ -28,9 +28,17 @@ import static java.lang.foreign.ValueLayout.JAVA_INT;
  * alternate accelerated backend or silent fallback.
  */
 public final class FFMBackend {
+    private static final int NATIVE_EXCEPTION_STATUS = -100;
+    private static final int NATIVE_ERROR_BYTES = 256;
+    /** An unexpected C++ exception leaves the context unusable; it must reach the crash report. */
+    private static final class NativeFailure extends Error {
+        private NativeFailure(String message) { super(message); }
+        private NativeFailure(String message, Throwable cause) { super(message, cause); }
+    }
     private static Arena nativeArena;
     private static MethodHandle createContextHandle;
     private static MethodHandle destroyContextHandle;
+    private static MethodHandle lastNativeExceptionHandle;
     private static MethodHandle insertEntity, removeEntity, updateEntitySection;
     private static MethodHandle updateEntityState;
     private static MethodHandle invalidateEntityPushEligibilityCache;
@@ -58,7 +66,7 @@ public final class FFMBackend {
             );
             if (recordCount < 0) throw new IllegalStateException("Invalid native block scan: " + recordCount);
             return recordCount;
-        } catch (Throwable failure) { throw new IllegalStateException("Native block scan failed", failure); }
+        } catch (Throwable failure) { throw callFailure("Native block scan failed", failure); }
     }
 
     private FFMBackend() {
@@ -78,7 +86,7 @@ public final class FFMBackend {
             );
             checkStatus("solve native movement", status);
         } catch (Throwable failure) {
-            throw new IllegalStateException("FFM movement call failed", failure);
+            throw callFailure("FFM movement call failed", failure);
         }
     }
 
@@ -90,7 +98,7 @@ public final class FFMBackend {
                     (int) prepareMovement.invokeExact(entityBounds, movementPacket)
             );
         } catch (Throwable failure) {
-            throw new IllegalStateException("FFM movement preparation failed", failure);
+            throw callFailure("FFM movement preparation failed", failure);
         }
     }
 
@@ -108,8 +116,8 @@ public final class FFMBackend {
             initialized = true;
             EntityCollisionOptimizer.LOGGER.info("FFM collision backend initialized");
         } catch (Throwable failure) {
-            resetHandles();
-            throw new IllegalStateException(
+            if (!(failure instanceof Error)) resetHandles();
+            throw callFailure(
                     "FFM collision backend failed to initialize; no fallback backend is configured",
                     failure
             );
@@ -122,20 +130,24 @@ public final class FFMBackend {
         try {
             address = (MemorySegment) createContextHandle.invokeExact();
             if (address.equals(MemorySegment.NULL)) {
-                throw new IllegalStateException("Native library returned a null collision context");
+                throw nativeFailure("create collision context");
             }
             Context context = new Context(address);
             CONTEXTS.add(context);
             return context;
         } catch (Throwable failure) {
-            if (!address.equals(MemorySegment.NULL) && destroyContextHandle != null) {
+            if (!(failure instanceof Error) && !address.equals(MemorySegment.NULL)) {
                 try {
                     destroyContextHandle.invokeExact(address);
                 } catch (Throwable cleanupFailure) {
+                    if (cleanupFailure instanceof Error fatal) {
+                        fatal.addSuppressed(failure);
+                        throw fatal;
+                    }
                     failure.addSuppressed(cleanupFailure);
                 }
             }
-            throw new IllegalStateException("Failed to create an FFM collision context", failure);
+            throw callFailure("Failed to create an FFM collision context", failure);
         }
     }
 
@@ -170,7 +182,7 @@ public final class FFMBackend {
                 );
                 checkStatus("update native entity", status);
             } catch (Throwable failure) {
-                throw new IllegalStateException("FFM updateEntityState call failed", failure);
+                throw callFailure("FFM updateEntityState call failed", failure);
             }
         }
     }
@@ -193,7 +205,7 @@ public final class FFMBackend {
                     sectionY,
                     sectionZ
             )); }
-            catch (Throwable failure) { throw new IllegalStateException("Persistent entity insertion failed", failure); }
+            catch (Throwable failure) { throw callFailure("Persistent entity insertion failed", failure); }
         }
     }
 
@@ -221,7 +233,7 @@ public final class FFMBackend {
                         nativeContext.address, nativeId
                 ));
             }
-            catch (Throwable failure) { throw new IllegalStateException("Persistent entity removal failed", failure); }
+            catch (Throwable failure) { throw callFailure("Persistent entity removal failed", failure); }
         }
     }
 
@@ -241,7 +253,7 @@ public final class FFMBackend {
                     sectionY,
                     sectionZ
             )); }
-            catch (Throwable failure) { throw new IllegalStateException("Persistent entity section update failed", failure); }
+            catch (Throwable failure) { throw callFailure("Persistent entity section update failed", failure); }
         }
     }
 
@@ -252,7 +264,7 @@ public final class FFMBackend {
                 int status = (int) invalidateEntityPushEligibilityCache.invokeExact(nativeContext.address, nativeId);
                 checkStatus("invalidate native entity push-eligibility cache", status);
             } catch (Throwable failure) {
-                throw new IllegalStateException("FFM invalidateEntityPushEligibilityCache call failed", failure);
+                throw callFailure("FFM invalidateEntityPushEligibilityCache call failed", failure);
             }
         }
     }
@@ -265,7 +277,7 @@ public final class FFMBackend {
                         nativeContext.address, fieldsToInvalidate);
                 checkStatus("invalidate native push eligibility fields", status);
             } catch (Throwable failure) {
-                throw new IllegalStateException("FFM invalidatePushEligibilityCacheFields call failed", failure);
+                throw callFailure("FFM invalidatePushEligibilityCacheFields call failed", failure);
             }
         }
     }
@@ -295,6 +307,7 @@ public final class FFMBackend {
                         nativeContext.outputCapacity
                 );
                 if (resultSize < 0 || resultSize > nativeContext.outputCapacity) {
+                    if (resultSize == NATIVE_EXCEPTION_STATUS) throw nativeFailure("query hard collision entities");
                     throw new IllegalStateException(
                             "Native hard collision query returned invalid size " + resultSize
                     );
@@ -307,7 +320,7 @@ public final class FFMBackend {
                 result.nonPassengerCount = 0;
                 return result;
             } catch (Throwable failure) {
-                throw new IllegalStateException("FFM hard collision query failed", failure);
+                throw callFailure("FFM hard collision query failed", failure);
             }
         }
     }
@@ -334,6 +347,7 @@ public final class FFMBackend {
                         nativeContext.outputCapacity
                 );
                 if (resultSize < 0 || resultSize > nativeContext.outputCapacity) {
+                    if (resultSize == NATIVE_EXCEPTION_STATUS) throw nativeFailure("query entities in box");
                     throw new IllegalStateException("Invalid native entity query size: " + resultSize);
                 }
                 QueryResult result = new QueryResult();
@@ -346,7 +360,7 @@ public final class FFMBackend {
                 result.nonPassengerCount = 0;
                 return result;
             } catch (Throwable failure) {
-                throw new IllegalStateException("FFM entity query failed", failure);
+                throw callFailure("FFM entity query failed", failure);
             }
         }
     }
@@ -377,6 +391,7 @@ public final class FFMBackend {
                         nativeContext.outputCapacity
                 );
                 if (resultSize < 0 || resultSize > nativeContext.outputCapacity) {
+                    if (resultSize == NATIVE_EXCEPTION_STATUS) throw nativeFailure("query pushable entities");
                     throw new IllegalStateException(
                             "Native pushable collision query returned invalid size " + resultSize
                     );
@@ -393,7 +408,7 @@ public final class FFMBackend {
                 );
                 return result;
             } catch (Throwable failure) {
-                throw new IllegalStateException("FFM pushable collision query failed", failure);
+                throw callFailure("FFM pushable collision query failed", failure);
             }
         }
     }
@@ -433,7 +448,7 @@ public final class FFMBackend {
                         nativeContext.runIdBuffer, targetCount);
                 checkStatus("execute native push run", status);
             } catch (Throwable failure) {
-                throw new IllegalStateException("FFM push run execution failed", failure);
+                throw callFailure("FFM push run execution failed", failure);
             }
         }
     }
@@ -491,6 +506,10 @@ public final class FFMBackend {
                 FunctionDescriptor.of(JAVA_INT, ADDRESS, ADDRESS, ADDRESS, JAVA_INT));
         createContextHandle = linker.downcallHandle(
                 library.find("createCollisionContext").orElseThrow(() -> missingSymbol("createCollisionContext")),
+                FunctionDescriptor.of(ADDRESS)
+        );
+        lastNativeExceptionHandle = linker.downcallHandle(
+                library.find("lastNativeException").orElseThrow(() -> missingSymbol("lastNativeException")),
                 FunctionDescriptor.of(ADDRESS)
         );
         destroyContextHandle = linker.downcallHandle(
@@ -600,8 +619,27 @@ public final class FFMBackend {
 
     private static void checkStatus(String operation, int status) {
         if (status != 0) {
+            if (status == NATIVE_EXCEPTION_STATUS) throw nativeFailure(operation);
             throw new IllegalStateException("Failed to " + operation + "; native status=" + status);
         }
+    }
+
+    private static NativeFailure nativeFailure(String operation) {
+        String detail;
+        try {
+            // Called on the same Java thread as the failed downcall, only after failure.
+            MemorySegment address = (MemorySegment) lastNativeExceptionHandle.invokeExact();
+            detail = address.reinterpret(NATIVE_ERROR_BYTES).getString(0);
+        } catch (Throwable diagnosticFailure) {
+            return new NativeFailure("Failed to " + operation + "; native exception detail unavailable",
+                    diagnosticFailure);
+        }
+        return new NativeFailure("Failed to " + operation + "; native exception: " + detail);
+    }
+
+    private static IllegalStateException callFailure(String operation, Throwable failure) {
+        if (failure instanceof Error fatal) throw fatal;
+        return new IllegalStateException(operation, failure);
     }
 
     private static IllegalStateException missingSymbol(String symbol) {
@@ -636,8 +674,10 @@ public final class FFMBackend {
     private static void resetHandles() {
         CONTEXTS.clear();
         nativeArena = null;
+        blockScan = null;
         createContextHandle = null;
         destroyContextHandle = null;
+        lastNativeExceptionHandle = null;
         insertEntity = removeEntity = updateEntitySection = null;
         updateEntityState = null;
         invalidateEntityPushEligibilityCache = null;
@@ -647,6 +687,7 @@ public final class FFMBackend {
         queryPushable = null;
         executeRun = null;
         movement = null;
+        prepareMovement = null;
     }
 
     public static final class Context implements AutoCloseable {
@@ -703,7 +744,7 @@ public final class FFMBackend {
             try {
                 destroyContextHandle.invokeExact(closingAddress);
             } catch (Throwable failure) {
-                throw new IllegalStateException("Failed to destroy an FFM collision context", failure);
+                throw callFailure("Failed to destroy an FFM collision context", failure);
             } finally {
                 if (outputArena != null) {
                     outputArena.close();

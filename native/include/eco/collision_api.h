@@ -12,6 +12,9 @@
 // sync with FFMBackend and native/version-script.
 extern "C" {
 
+// Valid on the calling thread after an exported function reports a C++ exception.
+ECO_EXPORT const char* lastNativeException() noexcept;
+
 // Collision context lifecycle.
 ECO_EXPORT void* createCollisionContext();
 ECO_EXPORT void destroyCollisionContext(void* context);

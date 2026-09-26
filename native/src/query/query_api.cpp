@@ -1,4 +1,5 @@
 #include "eco/collision_api.h"
+#include "native_error.h"
 
 #include "geometry/aabb.h"
 #include "query/collision_rules.h"
@@ -197,7 +198,7 @@ int queryHardCollisionEntities(
         });
         return complete ? resultSize : -2;
     } catch (...) {
-        return -3;
+        return eco::recordNativeException();
     }
 }
 
@@ -230,7 +231,7 @@ int queryEntitiesInBox(
         });
         return complete ? resultSize : -4;
     } catch (...) {
-        return -2;
+        return eco::recordNativeException();
     }
 }
 
@@ -360,6 +361,6 @@ int queryPushableEntities(
         outputBuffer[2] = nonPassengerCount;
         return actionableCount;
     } catch (...) {
-        return -3;
+        return eco::recordNativeException();
     }
 }

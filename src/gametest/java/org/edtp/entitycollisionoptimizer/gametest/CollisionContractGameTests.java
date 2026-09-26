@@ -56,6 +56,7 @@ public final class CollisionContractGameTests {
         org.edtp.entitycollisionoptimizer.natives.MovementBoundsChecks.verify(helper);
         org.edtp.entitycollisionoptimizer.natives.NativeRowsChecks.verify(helper);
         org.edtp.entitycollisionoptimizer.natives.MovementLeaseChecks.verify(helper);
+        org.edtp.entitycollisionoptimizer.natives.NativeFailureChecks.verify(helper);
         helper.succeed();
     }
 

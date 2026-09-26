@@ -1,13 +1,13 @@
 #include "eco/collision_api.h"
+#include "native_error.h"
 
 #include "state/collision_context.h"
-
-#include <new>
 
 void* createCollisionContext() {
     try {
         return new eco::CollisionContext();
     } catch (...) {
+        eco::recordNativeException();
         return nullptr;
     }
 }
