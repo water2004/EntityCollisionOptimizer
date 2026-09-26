@@ -100,7 +100,8 @@ final class CollisionContractParity {
     }
 
     static void ordered(GameTestHelper helper, LivingEntity source, String label) {
-        List<Entity> expected = source.level().getEntities(source, source.getBoundingBox(), EntitySelector.pushableBy(source));
+        List<Entity> expected = VanillaEntityQueries.call(() -> source.level().getEntities(
+                source, source.getBoundingBox(), EntitySelector.pushableBy(source)));
         List<Entity> actual = new ArrayList<>();
         var team = source.getTeam();
         try (var batch = CollisionFrame.collectPushable(source, team,

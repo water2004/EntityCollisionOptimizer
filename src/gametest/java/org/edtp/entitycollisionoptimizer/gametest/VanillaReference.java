@@ -20,11 +20,11 @@ final class VanillaReference {
 
     /** Mirrors vanilla LivingEntity.pushEntities without going through the production mixin. */
     static void pushEntities(LivingEntity source) {
-        List<Entity> list = source.level().getEntities(
+        List<Entity> list = VanillaEntityQueries.call(() -> source.level().getEntities(
                 source,
                 source.getBoundingBox(),
                 EntitySelector.pushableBy(source)
-        );
+        ));
         if (list.isEmpty()) {
             return;
         }

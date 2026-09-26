@@ -154,7 +154,7 @@ final class CollisionDispatchParity {
 
             CollisionFrame.end(level);
             if (VanillaReference.overridesPushEntities(vanillaSource)) {
-                VanillaReference.dispatchPushEntities(vanillaSource);
+                VanillaEntityQueries.run(() -> VanillaReference.dispatchPushEntities(vanillaSource));
             } else {
                 VanillaReference.pushEntities(vanillaSource);
             }
