@@ -23,15 +23,14 @@ $assets = @(
 foreach ($asset in $assets) {
     if (-not (Test-Path -LiteralPath $asset -PathType Leaf)) { throw "Missing release asset $asset." }
 }
-# Keep provenance in the JAR's GitHub asset label, not in a separate download.
-$uploadAssets = @("$($assets[0])#commit:$Commit", $assets[1])
+# GitHub asset labels replace filenames in the download UI; always upload plain paths.
 $release = Get-Release
 if ($Branch -eq 'main') {
     if ($null -eq $release) {
         if (-not (Test-Path -LiteralPath $metadata.NotesFile -PathType Leaf)) {
             throw "Missing release notes: $($metadata.NotesFile)"
         }
-        $arguments = @('release', 'create', $tag) + $uploadAssets + @(
+        $arguments = @('release', 'create', $tag) + $assets + @(
             '--repo', $repository, '--target', $Commit,
             '--title', "Entity Collision Optimizer $($metadata.ReleaseVersion)",
             '--notes-file', $metadata.NotesFile
@@ -61,11 +60,15 @@ if ($release.draft -or $release.immutable) {
 }
 
 # A retry may replace its own assets, but a new commit requires a new version.
-$jarName = Split-Path -Leaf $assets[0]
-$jarAsset = $release.assets | Where-Object name -EQ $jarName | Select-Object -First 1
-# Older releases have no label; their next publication establishes provenance.
-if ($null -ne $jarAsset -and $jarAsset.label -and $jarAsset.label -ne "commit:$Commit") {
-    throw "Minecraft $($metadata.Minecraft) is already published from another commit; increment mod_version."
+$checksumName = Split-Path -Leaf $assets[1]
+$checksumAsset = $release.assets | Where-Object name -EQ $checksumName | Select-Object -First 1
+if ($null -ne $checksumAsset) {
+    $checksum = & gh api "repos/$repository/releases/assets/$($checksumAsset.id)" -H 'Accept: application/octet-stream'
+    if ($LASTEXITCODE -ne 0) { throw "Cannot read existing checksum $checksumName." }
+    # Older checksum files have no source comment; their next publication adds one.
+    if (($checksum -join "`n") -match '(?m)^# source-commit: ([0-9a-f]{40})\r?$' -and $Matches[1] -ne $Commit) {
+        throw "Minecraft $($metadata.Minecraft) is already published from another commit; increment mod_version."
+    }
 }
-& gh release upload $tag @uploadAssets --repo $repository --clobber
+& gh release upload $tag @assets --repo $repository --clobber
 if ($LASTEXITCODE -ne 0) { throw 'GitHub Release asset upload failed.' }
