@@ -7,7 +7,7 @@ import net.minecraft.world.scores.Team;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * Minecraft 26.2's EntitySelector.pushableBy predicate, expressed directly so
+ * Minecraft 1.21.1's EntitySelector.pushableBy predicate, expressed directly so
  * the FFM path owns collision selection without invoking another mod's query
  * or predicate replacement.
  */
@@ -23,7 +23,6 @@ public final class VanillaMethodDetector {
     private static final ClassValue<Boolean> USE_VANILLA_GET_TEAM = declaringClass("getTeam", Entity.class);
     private static final ClassValue<Boolean> USE_VANILLA_CAN_BE_COLLIDED_WITH = declaringClass(
             "canBeCollidedWith",
-            Entity.class,
             Entity.class
     );
     private static final ClassValue<Boolean> USE_VANILLA_CAN_COLLIDE_WITH = declaringClass(
@@ -38,7 +37,9 @@ public final class VanillaMethodDetector {
             Class<?> current = type;
             while (current != null) {
                 try {
-                    return current.getDeclaredMethod("doPush", Entity.class).getDeclaringClass()
+                    return current.getDeclaredMethod(RuntimeMappings.method(
+                            "net.minecraft.class_1309", "method_6087", "(Lnet/minecraft/class_1297;)V"),
+                            Entity.class).getDeclaringClass()
                             == LivingEntity.class;
                 } catch (NoSuchMethodException ignored) {
                     current = current.getSuperclass();
@@ -52,7 +53,9 @@ public final class VanillaMethodDetector {
         protected Boolean computeValue(Class<?> type) {
             for (Class<?> current = type; current != null; current = current.getSuperclass()) {
                 try {
-                    Class<?> owner = current.getDeclaredMethod("push", Entity.class).getDeclaringClass();
+                    Class<?> owner = current.getDeclaredMethod(RuntimeMappings.method(
+                            "net.minecraft.class_1297", "method_5697", "(Lnet/minecraft/class_1297;)V"),
+                            Entity.class).getDeclaringClass();
                     // LivingEntity only adds a sleeping guard, which the native batch applies live.
                     return owner == Entity.class || owner == LivingEntity.class;
                 } catch (NoSuchMethodException ignored) {
@@ -107,13 +110,22 @@ public final class VanillaMethodDetector {
             Class<?> expectedOwner,
             Class<?>... parameterTypes
     ) {
+        String mappedName = switch (methodName) {
+            case "getTeam" -> RuntimeMappings.method("net.minecraft.class_1297", "method_5781", "()Lnet/minecraft/class_268;");
+            case "canBeCollidedWith" -> RuntimeMappings.method("net.minecraft.class_1297", "method_30948", "()Z");
+            case "canCollideWith" -> RuntimeMappings.method("net.minecraft.class_1297", "method_30949", "(Lnet/minecraft/class_1297;)Z");
+            case "push" -> RuntimeMappings.method("net.minecraft.class_1297", "method_5762", "(DDD)V");
+            case "getDeltaMovement" -> RuntimeMappings.method("net.minecraft.class_1297", "method_18798", "()Lnet/minecraft/class_243;");
+            case "setDeltaMovement" -> RuntimeMappings.method("net.minecraft.class_1297", "method_18799", "(Lnet/minecraft/class_243;)V");
+            default -> throw new IllegalArgumentException("Unmapped method: " + methodName);
+        };
         return new ClassValue<>() {
             @Override
             protected Boolean computeValue(Class<?> type) {
                 Class<?> current = type;
                 while (current != null) {
                     try {
-                        return current.getDeclaredMethod(methodName, parameterTypes).getDeclaringClass()
+                        return current.getDeclaredMethod(mappedName, parameterTypes).getDeclaringClass()
                                 == expectedOwner;
                     } catch (NoSuchMethodException ignored) {
                         current = current.getSuperclass();

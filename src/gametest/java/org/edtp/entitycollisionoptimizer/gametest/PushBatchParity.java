@@ -1,7 +1,7 @@
 package org.edtp.entitycollisionoptimizer.gametest;
 
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.world.entity.monster.zombie.Zombie;
+import net.minecraft.world.entity.monster.Zombie;
 import net.minecraft.world.phys.Vec3;
 import org.edtp.entitycollisionoptimizer.natives.CollisionFrame;
 import org.edtp.entitycollisionoptimizer.natives.PushBatch;
@@ -37,10 +37,10 @@ final class PushBatchParity {
                 NativeImpulseParity.exact(helper, source.getDeltaMovement(), expectedSource, "late source geometry");
                 NativeImpulseParity.exact(helper, target.getDeltaMovement(), expectedTarget, "late target geometry");
                 // A completed run has already committed its velocity, even without a getter read.
-                nestedTarget.needsSync = false;
+                nestedTarget.hasImpulse = false;
                 CollisionFrame.begin(level);
                 helper.assertTrue(nestedTarget.getDeltaMovement().lengthSqr() > 0, "new frame preserves committed velocity");
-                helper.assertTrue(!nestedTarget.needsSync, "new frame preserves reset sync");
+                helper.assertTrue(!nestedTarget.hasImpulse, "new frame preserves reset sync");
             }
             try (PushBatch batch = collect(source)) {
                 for (int phase = 0; phase < 3; phase++) {
@@ -48,17 +48,17 @@ final class PushBatchParity {
                     if (phase == 2) target.clearSleepingPos();
                     source.setDeltaMovement(Vec3.ZERO);
                     target.setDeltaMovement(Vec3.ZERO);
-                    source.needsSync = target.needsSync = false;
+                    source.hasImpulse = target.hasImpulse = false;
                     target.push(source);
                     Vec3 expectedSource = source.getDeltaMovement(), expectedTarget = target.getDeltaMovement();
-                    boolean sync = target.needsSync;
+                    boolean sync = target.hasImpulse;
                     source.setDeltaMovement(Vec3.ZERO);
                     target.setDeltaMovement(Vec3.ZERO);
-                    source.needsSync = target.needsSync = false;
+                    source.hasImpulse = target.hasImpulse = false;
                     batch.applyNativeRun(source, 0, 1);
                     NativeImpulseParity.exact(helper, source.getDeltaMovement(), expectedSource, "sleep source phase " + phase);
                     NativeImpulseParity.exact(helper, target.getDeltaMovement(), expectedTarget, "sleep target phase " + phase);
-                    helper.assertValueEqual(target.needsSync, sync, "sleep sync phase " + phase);
+                    helper.assertValueEqual(target.hasImpulse, sync, "sleep sync phase " + phase);
                 }
             }
         } finally {

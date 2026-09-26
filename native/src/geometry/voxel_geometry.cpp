@@ -105,20 +105,25 @@ double clipVoxel(const VoxelRef& shape, int axis, const double* box, double dist
 }
 
 void clipMovement(const double* requested, const double* box, const VoxelRef* shapes, int count, double* result) {
-    if (count == 0) { std::copy_n(requested, 3, result); return; }
-    std::fill_n(result, 3, 0.0);
+    std::copy_n(requested, 3, result);
+    if (count == 0) return;
+    double moved[6];
+    std::copy_n(box, 6, moved);
     int order[3]{1, 0, 2};
     if (std::abs(requested[0]) < std::abs(requested[2])) std::swap(order[1], order[2]);
-    for (int axis : order) {
+    for (int index = 0; index < 3; ++index) {
+        const int axis = order[index];
         double distance = requested[axis];
+        // Vanilla retains the sign of a zero component when it skips that axis.
         if (distance == 0.0) continue;
-        double moved[6];
-        for (int i = 0; i < 6; ++i) moved[i] = box[i] + result[i % 3];
         for (int i = 0; i < count; ++i) {
             if (std::abs(distance) < 1.0e-7) { distance = 0.0; break; }
             distance = clipVoxel(shapes[i], axis, moved, distance);
         }
         result[axis] = distance;
+        if (index < 2 && distance != 0.0) {
+            for (int i = 0; i < 6; ++i) moved[i] += i % 3 == axis ? distance : 0.0;
+        }
     }
 }
 }

@@ -1,7 +1,7 @@
 package org.edtp.entitycollisionoptimizer.natives;
 
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.world.entity.monster.zombie.Zombie;
+import net.minecraft.world.entity.monster.Zombie;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import org.edtp.entitycollisionoptimizer.EntityCollisionOptimizer;

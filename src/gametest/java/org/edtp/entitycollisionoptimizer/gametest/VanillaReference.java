@@ -4,7 +4,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntitySelector;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.level.gamerules.GameRules;
+import net.minecraft.world.level.GameRules;
 import org.edtp.entitycollisionoptimizer.gametest.mixin.LivingEntityTestInvoker;
 
 import java.lang.reflect.InvocationTargetException;
@@ -30,7 +30,7 @@ final class VanillaReference {
         }
 
         ServerLevel level = (ServerLevel) source.level();
-        int maxCramming = level.getGameRules().get(GameRules.MAX_ENTITY_CRAMMING);
+        int maxCramming = level.getGameRules().getInt(GameRules.RULE_MAX_ENTITY_CRAMMING);
         if (maxCramming > 0
                 && list.size() > maxCramming - 1
                 && source.getRandom().nextInt(4) == 0) {
@@ -41,7 +41,7 @@ final class VanillaReference {
                 }
             }
             if (nonPassengers > maxCramming - 1) {
-                source.hurtServer(level, source.damageSources().cramming(), 6.0F);
+                source.hurt(source.damageSources().cramming(), 6.0F);
             }
         }
 

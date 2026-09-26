@@ -3,8 +3,8 @@ package org.edtp.entitycollisionoptimizer.gametest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.EntityTypes;
-import net.minecraft.world.entity.monster.zombie.Zombie;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.monster.Zombie;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
 import org.edtp.entitycollisionoptimizer.EntityCollisionOptimizer;
@@ -35,7 +35,7 @@ final class ClimbingCollisionChamber extends BenchmarkScenario {
         helper.setBlock(FEET.above(), Blocks.SCAFFOLDING);
         Vec3 position = new Vec3(2.5, 1.0, 2.5);
         for (int index = 0; index < ENTITY_COUNT; index++) {
-            Zombie zombie = helper.spawn(EntityTypes.ZOMBIE, position);
+            Zombie zombie = helper.spawn(EntityType.ZOMBIE, position);
             zombie.setNoAi(true);
             zombie.setNoGravity(true);
             zombie.setInvulnerable(true);

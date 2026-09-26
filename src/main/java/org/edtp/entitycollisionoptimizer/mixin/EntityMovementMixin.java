@@ -47,12 +47,18 @@ public abstract class EntityMovementMixin {
         return result.displacement();
     }
 
+    // 1.21.1 publishes the collided destination with scalar setPos, after the no-physics branch.
     @WrapOperation(method = "move", at = @At(value = "INVOKE", ordinal = 1, target =
-            "Lnet/minecraft/world/phys/Vec3;add(Lnet/minecraft/world/phys/Vec3;)Lnet/minecraft/world/phys/Vec3;"))
-    private Vec3 eco$movementDestination(Vec3 from, Vec3 displacement, Operation<Vec3> original,
+            "Lnet/minecraft/world/entity/Entity;setPos(DDD)V"))
+    private void eco$movementDestination(Entity entity, double x, double y, double z, Operation<Void> original,
                                          @Share("eco$movement") LocalRef<NativeMovement> transaction) {
         var result = transaction.get();
-        return result == null ? original.call(from, displacement) : result.destination(from);
+        if (result == null) {
+            original.call(entity, x, y, z);
+        } else {
+            Vec3 destination = result.destination(entity.position());
+            original.call(entity, destination.x, destination.y, destination.z);
+        }
     }
 
     @Inject(method = "collide", at = @At("HEAD"), cancellable = true)
@@ -73,12 +79,4 @@ public abstract class EntityMovementMixin {
         }
     }
 
-    @Inject(method = "collideBoundingBox(Lnet/minecraft/world/phys/shapes/CollisionContext;Lnet/minecraft/world/phys/Vec3;Lnet/minecraft/world/phys/AABB;Lnet/minecraft/world/level/Level;Ljava/util/List;)Lnet/minecraft/world/phys/Vec3;",
-            at = @At("HEAD"), cancellable = true)
-    private static void eco$ownContextBox(CollisionContext context, Vec3 requested, AABB box, Level level,
-                                          List<VoxelShape> entities, CallbackInfoReturnable<Vec3> cir) {
-        if (level instanceof ServerLevel) {
-            cir.setReturnValue(EntityMovementCollision.collideBox(level, context, null, requested, box, entities));
-        }
-    }
 }

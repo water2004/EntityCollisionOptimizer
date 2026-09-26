@@ -8,7 +8,7 @@ import org.edtp.entitycollisionoptimizer.natives.PushBatch;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.level.gamerules.GameRules;
+import net.minecraft.world.level.GameRules;
 import net.minecraft.world.scores.PlayerTeam;
 import net.minecraft.world.scores.Team;
 import org.spongepowered.asm.mixin.Mixin;
@@ -48,12 +48,12 @@ public abstract class LivingEntityMixin {
                 return;
             }
 
-            int maxEntityCramming = serverLevel.getGameRules().get(GameRules.MAX_ENTITY_CRAMMING);
+            int maxEntityCramming = serverLevel.getGameRules().getInt(GameRules.RULE_MAX_ENTITY_CRAMMING);
             if (maxEntityCramming > 0
                     && pushableCount > maxEntityCramming - 1
                     && self.getRandom().nextInt(4) == 0) {
                 if (nonPassengerCount > maxEntityCramming - 1) {
-                    self.hurtServer(serverLevel, self.damageSources().cramming(), 6.0F);
+                    self.hurt(self.damageSources().cramming(), 6.0F);
                 }
             }
 

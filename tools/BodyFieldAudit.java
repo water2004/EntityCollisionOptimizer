@@ -62,11 +62,13 @@ public final class BodyFieldAudit {
                 return new MethodVisitor(Opcodes.ASM9) {
                     @Override public void visitFieldInsn(int opcode, String owner, String name, String desc) {
                         if (!name.equals(FIELD) || !desc.equals(DESCRIPTOR)) return;
+                        // These fields are private to Entity; unrelated records may use the same names.
+                        if (Set.of("deltaMovement", "position", "bb").contains(FIELD) && !owner.equals(ENTITY)) return;
                         fields++;
                         System.out.println(location + " " + (opcode == Opcodes.GETFIELD ? "READ" : "WRITE") + " " + owner + "." + name);
                         boolean storage = type.equals(ENTITY) && owner.equals(ENTITY) && switch (FIELD) {
                             case "deltaMovement" -> java.util.Set.of("eco$readVelocity", "eco$writeVelocity", "eco$detachBody").contains(method);
-                            case "needsSync" -> java.util.Set.of("eco$readNeedsSync", "eco$writeNeedsSync", "eco$detachBody").contains(method);
+                            case "hasImpulse" -> java.util.Set.of("eco$readNeedsSync", "eco$writeNeedsSync", "eco$detachBody").contains(method);
                             case "noPhysics" -> method.equals("eco$writeNoPhysics");
                             case "position" -> Set.of("eco$readPosition", "eco$writePosition", "eco$detachBody").contains(method);
                             case "bb" -> Set.of("eco$readBounds", "eco$writeBounds", "eco$detachBody").contains(method);
@@ -79,7 +81,7 @@ public final class BodyFieldAudit {
                     @Override public void visitMethodInsn(int opcode, String owner, String name, String desc, boolean itf) {
                         String suffix = switch (FIELD) {
                             case "deltaMovement" -> "Velocity";
-                            case "needsSync" -> "NeedsSync";
+                            case "hasImpulse" -> "NeedsSync";
                             case "noPhysics" -> "NoPhysics";
                             case "position" -> "Position";
                             case "bb" -> "Bounds";

@@ -1,5 +1,6 @@
 package org.edtp.entitycollisionoptimizer.integration;
 
+import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.gametest.framework.GameTestHelper;
 
 import java.io.IOException;
@@ -22,11 +23,21 @@ final class CrossProcessTrace {
             throw new IllegalStateException("Integration tests require the integrationTest Gradle suite");
         }
 
+        boolean optimizerLoaded = FabricLoader.getInstance().isModLoaded("entity_collision_optimizer");
+        if ("record".equals(mode) && optimizerLoaded) {
+            throw new IllegalStateException("Vanilla recording must not load Entity Collision Optimizer");
+        }
+        if ("compare".equals(mode) && !optimizerLoaded) {
+            throw new IllegalStateException("Optimized comparison must load Entity Collision Optimizer");
+        }
+
         Path tracePath = Path.of(traceDirectory).resolve(scenario + ".bin");
         try {
             if ("record".equals(mode)) {
                 Files.createDirectories(tracePath.getParent());
                 Files.write(tracePath, actual);
+                System.out.println("ECO_TRACE_RECORDED " + scenario + " bytes=" + actual.length
+                        + " optimizerLoaded=false");
                 return;
             }
             if (!"compare".equals(mode)) {
@@ -39,6 +50,8 @@ final class CrossProcessTrace {
                 Files.write(tracePath.resolveSibling(scenario + "-actual.bin"), actual);
             }
             helper.assertTrue(matches, mismatchMessage(scenario, expected, actual));
+            System.out.println("ECO_TRACE_MATCH " + scenario + " bytes=" + actual.length
+                    + " optimizerLoaded=true");
         } catch (IOException failure) {
             throw new IllegalStateException("Cannot access integration trace " + tracePath, failure);
         }

@@ -1,16 +1,18 @@
+> 本分支适配 Minecraft 1.21.1；构建步骤与验证范围见 [PORTING_1.21.1.md](PORTING_1.21.1.md)。以下性能图表为上游历史结果，不是本次 1.21.1 基准。
+
 <p align="center">
   <img src="src/main/resources/assets/entity_collision_optimizer/icon.png" width="180" alt="实体碰撞优化图标">
 </p>
 
 <h1 align="center">实体碰撞优化</h1>
 
-<p align="center">面向 Minecraft 26.2 Fabric 服务器的原版等价实体碰撞加速。</p>
+<p align="center">面向 Minecraft 1.21.1 Fabric 服务器的原版等价实体碰撞加速。</p>
 
 <p align="center"><a href="README.md">English</a> | <strong>简体中文</strong></p>
 
 ---
 
-实体碰撞优化是面向 Minecraft 26.2 的服务端 Fabric 模组，通过 C++ native 后端加速实体查询、相互推动和移动碰撞，同时**保持原版实体碰撞行为**。安装即生效，连接服务器的客户端无需安装。
+实体碰撞优化是面向 Minecraft 1.21.1 的服务端 Fabric 模组，通过 C++ native 后端加速实体查询、相互推动和移动碰撞，同时**保持原版实体碰撞行为**。安装即生效，连接服务器的客户端无需安装。
 
 ## 为什么使用实体碰撞优化？
 
@@ -69,10 +71,10 @@ Minecraft 按区段存储实体。一次碰撞查询需要遍历相关区段、�
 
 | 组件 | 要求 |
 | --- | --- |
-| Minecraft | 26.2 |
+| Minecraft | 1.21.1 |
 | 模组加载器 | Fabric Loader 0.17.0 或更高版本 |
-| 依赖 | Fabric API 0.145.4 或更高的 26.2 兼容版本 |
-| Java | 25 |
+| 依赖 | Fabric API 0.116.7 或更高的 1.21.1 兼容版本 |
+| Java | 22+（本次使用 25 验证） |
 | 操作系统 | Windows、Linux 或 macOS |
 | 处理器 | 支持 AVX2 的 x86-64 处理器 |
 
@@ -81,9 +83,9 @@ Minecraft 按区段存储实体。一次碰撞查询需要遍历相关区段、�
 ## 安装
 
 1. 安装 Fabric Loader 和 Fabric API。
-2. 从 [GitHub Releases](https://github.com/water2004/EntityCollisionOptimizer/releases) 下载 Minecraft 26.2 对应的 JAR，放入实例的 `mods` 目录。
+2. 在本地构建 Minecraft 1.21.1 JAR，产物位于 `build/libs`，放入实例的 `mods` 目录。
 
-在本项目支持的 Java 25 上不需要添加任何 JVM 参数。Minecraft 26.2 官方启动器已经启用了 native access；手动启动的独立服务器如果没有该选项，Java 可能只在日志中输出一次 native access 警告，但 Java 25 仍会允许调用，模组可以正常工作。
+游戏/服务端使用 Java 22 或更高版本，并添加 `--enable-native-access=ALL-UNNAMED` 启动参数。FFM 后端无法运行在 Minecraft 1.21.1 常用的 Java 21 上。
 
 希望消除这条警告的服务器管理员可以选择添加：
 
@@ -108,7 +110,7 @@ Minecraft 按区段存储实体。一次碰撞查询需要遍历相关区段、�
 
 ## 构建与测试
 
-使用 Java 25 和仓库内的 Gradle Wrapper：
+使用 Java 21 启动 Gradle，另安装 JDK 25 编译工具链。使用仓库内的 Gradle Wrapper，工具链配置见 [PORTING_1.21.1.md](PORTING_1.21.1.md)：
 
 ```powershell
 ./gradlew.bat build

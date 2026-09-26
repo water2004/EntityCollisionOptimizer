@@ -1,11 +1,12 @@
 package org.edtp.entitycollisionoptimizer.integration;
 
-import net.fabricmc.fabric.api.gametest.v1.GameTest;
+import net.fabricmc.fabric.api.gametest.v1.FabricGameTest;
+import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.entity.EntityTypes;
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.item.PrimedTnt;
-import net.minecraft.world.entity.monster.zombie.Zombie;
+import net.minecraft.world.entity.monster.Zombie;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
@@ -17,7 +18,7 @@ import java.util.List;
 import java.util.Random;
 
 /** Real TNT explosion in a deterministic zombie crowd, compared across separate processes. */
-public final class TntCrowdIntegrationGameTests {
+public final class TntCrowdIntegrationGameTests implements FabricGameTest {
     private static final int TRACE_MAGIC = 0x45434F54;
     private static final int TRACE_VERSION = 1;
     private static final int ENTITY_COUNT = 96;
@@ -31,13 +32,11 @@ public final class TntCrowdIntegrationGameTests {
     private static final long SPAWN_SEED = 0xEC02007AL;
     private static final int ENTITY_ID_BASE = 2_000_000;
     private static final long DAY_TIME = 18_000L;
-    private static final long GAME_TIME = 1_000L;
     private static final Vec3 SCENE_ORIGIN = new Vec3(-5_909_900.0, -57.0, -9_908_000.0);
 
     @GameTest(
-            maxTicks = 1000,
-            padding = 48,
-            environment = "entity_collision_optimizer:integration"
+            template = "entity_collision_optimizer:empty_128",
+            timeoutTicks = 1000
     )
     public void tntExplosionInZombieCrowdMatchesVanilla(GameTestHelper helper) {
         ScenarioRun run = new ScenarioRun(helper);
@@ -50,7 +49,6 @@ public final class TntCrowdIntegrationGameTests {
         private final Vec3 sceneOrigin;
         private final IntegrationArena arena;
         private final long previousDayTime;
-        private final long previousGameTime;
         private final List<Zombie> zombies = new ArrayList<>(ENTITY_COUNT);
         private final ByteArrayOutputStream bytes = new ByteArrayOutputStream(3 * 1024 * 1024);
         private final DataOutputStream output = new DataOutputStream(bytes);
@@ -67,7 +65,6 @@ public final class TntCrowdIntegrationGameTests {
             sceneOrigin = SCENE_ORIGIN;
             arena = new IntegrationArena(level, ENTITY_ID_BASE, LEVEL_SEED);
             previousDayTime = arena.defaultClockTime();
-            previousGameTime = arena.gameTime();
         }
 
         private void start() {
@@ -111,11 +108,10 @@ public final class TntCrowdIntegrationGameTests {
 
         private void initializeTrace() throws IOException {
             arena.setDefaultClockTime(DAY_TIME);
-            arena.setGameTime(GAME_TIME);
             level.getRandom().setSeed(LEVEL_SEED);
             Random spawnRandom = new Random(SPAWN_SEED);
             for (int index = 0; index < ENTITY_COUNT; index++) {
-                Zombie zombie = arena.spawn(EntityTypes.ZOMBIE, spawnPosition(sceneOrigin, spawnRandom));
+                Zombie zombie = arena.spawn(EntityType.ZOMBIE, spawnPosition(sceneOrigin, spawnRandom));
                 ZombieTrace.normalize(
                         zombie,
                         LEVEL_SEED + ENTITY_SEED_STEP * index
@@ -123,7 +119,7 @@ public final class TntCrowdIntegrationGameTests {
                 zombies.add(zombie);
             }
 
-            tnt = arena.spawn(EntityTypes.TNT, roomCenter(sceneOrigin));
+            tnt = arena.spawn(EntityType.TNT, roomCenter(sceneOrigin));
             tnt.setOldPosAndRot();
             tnt.setDeltaMovement(Vec3.ZERO);
             tnt.setOnGround(true);
@@ -168,7 +164,6 @@ public final class TntCrowdIntegrationGameTests {
             cleanedUp = true;
             arena.close();
             arena.setDefaultClockTime(previousDayTime);
-            arena.setGameTime(previousGameTime);
         }
     }
 

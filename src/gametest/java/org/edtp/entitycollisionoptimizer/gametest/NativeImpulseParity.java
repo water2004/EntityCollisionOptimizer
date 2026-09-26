@@ -1,7 +1,7 @@
 package org.edtp.entitycollisionoptimizer.gametest;
 
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.world.entity.monster.zombie.Zombie;
+import net.minecraft.world.entity.monster.Zombie;
 import net.minecraft.world.phys.Vec3;
 import org.edtp.entitycollisionoptimizer.natives.FFMBackend;
 import java.lang.foreign.Arena;
@@ -37,20 +37,20 @@ final class NativeImpulseParity {
                 Vec3 initial = new Vec3(0.125, -0.0, -0.375);
                 source.setDeltaMovement(initial);
                 target.setDeltaMovement(initial);
-                source.needsSync = target.needsSync = false;
+                source.hasImpulse = target.hasImpulse = false;
                 target.push(source);
                 Vec3 expectedSource = source.getDeltaMovement();
                 Vec3 expectedTarget = target.getDeltaMovement();
-                boolean expectedSourceSync = source.needsSync;
-                boolean expectedTargetSync = target.needsSync;
+                boolean expectedSourceSync = source.hasImpulse;
+                boolean expectedTargetSync = target.hasImpulse;
                 source.setDeltaMovement(initial);
                 target.setDeltaMovement(initial);
-                source.needsSync = target.needsSync = false;
+                source.hasImpulse = target.hasImpulse = false;
                 nativePair(context, source, target);
                 exact(helper, source.getDeltaMovement(), expectedSource, "kernel source " + i);
                 exact(helper, target.getDeltaMovement(), expectedTarget, "kernel target " + i);
-                helper.assertValueEqual(source.needsSync, expectedSourceSync, "kernel source sync " + i);
-                helper.assertValueEqual(target.needsSync, expectedTargetSync, "kernel target sync " + i);
+                helper.assertValueEqual(source.hasImpulse, expectedSourceSync, "kernel source sync " + i);
+                helper.assertValueEqual(target.hasImpulse, expectedTargetSync, "kernel target sync " + i);
             }
             verifyArithmetic(helper, context, source, target);
         } finally {
@@ -67,7 +67,7 @@ final class NativeImpulseParity {
         for (int scenario = 0; scenario < initial.length; scenario++) {
             source.setDeltaMovement(initial[scenario]);
             target.setDeltaMovement(initial[scenario]);
-            source.needsSync = target.needsSync = false;
+            source.hasImpulse = target.hasImpulse = false;
             Vec3[] expectedSource = new Vec3[count], expectedTarget = new Vec3[count];
             boolean[] expectedSourceSync = new boolean[count], expectedTargetSync = new boolean[count];
             for (int i = 0; i < count; i++) {
@@ -75,19 +75,19 @@ final class NativeImpulseParity {
                 target.push(source);
                 expectedSource[i] = source.getDeltaMovement();
                 expectedTarget[i] = target.getDeltaMovement();
-                expectedSourceSync[i] = source.needsSync;
-                expectedTargetSync[i] = target.needsSync;
+                expectedSourceSync[i] = source.hasImpulse;
+                expectedTargetSync[i] = target.hasImpulse;
             }
             source.setDeltaMovement(initial[scenario]);
             target.setDeltaMovement(initial[scenario]);
-            source.needsSync = target.needsSync = false;
+            source.hasImpulse = target.hasImpulse = false;
             for (int i = 0; i < count; i++) {
                 target.setPos(positions[2 * i], source.getY(), positions[2 * i + 1]);
                 nativePair(context, source, target);
                 exact(helper, source.getDeltaMovement(), expectedSource[i], "native accumulation source " + scenario + "/" + i);
                 exact(helper, target.getDeltaMovement(), expectedTarget[i], "native accumulation target " + scenario + "/" + i);
-                helper.assertValueEqual(source.needsSync, expectedSourceSync[i], "accumulation source sync");
-                helper.assertValueEqual(target.needsSync, expectedTargetSync[i], "accumulation target sync");
+                helper.assertValueEqual(source.hasImpulse, expectedSourceSync[i], "accumulation source sync");
+                helper.assertValueEqual(target.hasImpulse, expectedTargetSync[i], "accumulation target sync");
             }
         }
     }
@@ -105,8 +105,8 @@ final class NativeImpulseParity {
                 bodies.set(JAVA_INT, (long) slot * STRIDE_BYTES + STATE_OFFSET, 1);
                 bodies.set(JAVA_INT, (long) slot * STRIDE_BYTES + ROOT_OFFSET, slot);
             }
-            bodies.set(JAVA_INT, 3L * STRIDE_BYTES + SYNC_OFFSET, source.needsSync ? 1 : 0);
-            bodies.set(JAVA_INT, (long) STRIDE_BYTES + SYNC_OFFSET, target.needsSync ? 1 : 0);
+            bodies.set(JAVA_INT, 3L * STRIDE_BYTES + SYNC_OFFSET, source.hasImpulse ? 1 : 0);
+            bodies.set(JAVA_INT, (long) STRIDE_BYTES + SYNC_OFFSET, target.hasImpulse ? 1 : 0);
             FFMBackend.executePushRun(
                     context,
                     bodies.asSlice(3L * STRIDE_BYTES, STRIDE_BYTES),
@@ -119,8 +119,8 @@ final class NativeImpulseParity {
             // Decode the API result; integration tests separately exercise the canonical field publication.
             if (bodies.get(JAVA_LONG, 3L * STRIDE_BYTES + VERSION_OFFSET) != 0) source.setDeltaMovement(readVelocity(bodies, 3));
             if (bodies.get(JAVA_LONG, (long) STRIDE_BYTES + VERSION_OFFSET) != 0) target.setDeltaMovement(readVelocity(bodies, 1));
-            source.needsSync = bodies.get(JAVA_INT, 3L * STRIDE_BYTES + SYNC_OFFSET) != 0;
-            target.needsSync = bodies.get(JAVA_INT, (long) STRIDE_BYTES + SYNC_OFFSET) != 0;
+            source.hasImpulse = bodies.get(JAVA_INT, 3L * STRIDE_BYTES + SYNC_OFFSET) != 0;
+            target.hasImpulse = bodies.get(JAVA_INT, (long) STRIDE_BYTES + SYNC_OFFSET) != 0;
         }
     }
 

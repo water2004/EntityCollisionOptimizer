@@ -3,12 +3,12 @@ package org.edtp.entitycollisionoptimizer.gametest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.EntityTypes;
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.Pose;
-import net.minecraft.world.entity.animal.equine.Horse;
+import net.minecraft.world.entity.animal.horse.Horse;
 import net.minecraft.world.entity.decoration.ArmorStand;
 import net.minecraft.world.entity.monster.warden.Warden;
-import net.minecraft.world.entity.monster.zombie.Zombie;
+import net.minecraft.world.entity.monster.Zombie;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.phys.Vec3;
 import org.edtp.entitycollisionoptimizer.gametest.mixin.LivingEntityTestInvoker;
@@ -49,7 +49,7 @@ final class CollisionSpecialTransitionParity {
             VanillaReference.pushEntities(vanillaSource);
             player.setGameMode(transitionedMode);
             helper.assertValueEqual(
-                    player.gameMode(),
+                    ((net.minecraft.server.level.ServerPlayer) player).gameMode.getGameModeForPlayer(),
                     transitionedMode,
                     initialMode + " -> " + transitionedMode + " vanilla mode transition"
             );
@@ -69,7 +69,7 @@ final class CollisionSpecialTransitionParity {
             ((LivingEntityTestInvoker) acceleratedSource).entityCollisionOptimizer$invokePushEntities();
             player.setGameMode(transitionedMode);
             helper.assertValueEqual(
-                    player.gameMode(),
+                    ((net.minecraft.server.level.ServerPlayer) player).gameMode.getGameModeForPlayer(),
                     transitionedMode,
                     initialMode + " -> " + transitionedMode + " accelerated mode transition"
             );
@@ -120,13 +120,13 @@ final class CollisionSpecialTransitionParity {
         Zombie vanillaSource = spawnZombie(helper, vanillaAnchor);
         Warden vanillaTarget = (Warden) spawnEntity(
                 helper,
-                EntityTypes.WARDEN,
+                EntityType.WARDEN,
                 vanillaAnchor.add(0.18, 0.0, 0.07)
         );
         Zombie acceleratedSource = spawnZombie(helper, acceleratedAnchor);
         Warden acceleratedTarget = (Warden) spawnEntity(
                 helper,
-                EntityTypes.WARDEN,
+                EntityType.WARDEN,
                 acceleratedAnchor.add(0.18, 0.0, 0.07)
         );
         Pose initialPose = initiallyEmerging ? Pose.EMERGING : Pose.STANDING;
@@ -181,29 +181,29 @@ final class CollisionSpecialTransitionParity {
         Zombie vanillaSource = spawnZombie(helper, vanillaAnchor);
         Horse vanillaTarget = (Horse) spawnEntity(
                 helper,
-                EntityTypes.HORSE,
+                EntityType.HORSE,
                 vanillaAnchor.add(0.18, 0.0, 0.07)
         );
         ArmorStand vanillaPassenger = (ArmorStand) spawnEntity(
                 helper,
-                EntityTypes.ARMOR_STAND,
+                EntityType.ARMOR_STAND,
                 vanillaAnchor.add(0.0, 4.0, 0.0)
         );
         Zombie acceleratedSource = spawnZombie(helper, acceleratedAnchor);
         Horse acceleratedTarget = (Horse) spawnEntity(
                 helper,
-                EntityTypes.HORSE,
+                EntityType.HORSE,
                 acceleratedAnchor.add(0.18, 0.0, 0.07)
         );
         ArmorStand acceleratedPassenger = (ArmorStand) spawnEntity(
                 helper,
-                EntityTypes.ARMOR_STAND,
+                EntityType.ARMOR_STAND,
                 acceleratedAnchor.add(0.0, 4.0, 0.0)
         );
         try {
             if (initiallyMounted) {
-                vanillaPassenger.startRiding(vanillaTarget, true, true);
-                acceleratedPassenger.startRiding(acceleratedTarget, true, true);
+                vanillaPassenger.startRiding(vanillaTarget, true);
+                acceleratedPassenger.startRiding(acceleratedTarget, true);
             }
 
             CollisionFrame.end(level);
@@ -254,7 +254,7 @@ final class CollisionSpecialTransitionParity {
             passenger.stopRiding();
             passenger.setPos(horse.position().add(0.0, 4.0, 0.0));
         } else {
-            passenger.startRiding(horse, true, true);
+            passenger.startRiding(horse, true);
         }
     }
 }

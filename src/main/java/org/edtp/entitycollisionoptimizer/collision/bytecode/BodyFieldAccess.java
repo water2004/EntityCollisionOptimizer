@@ -1,31 +1,42 @@
 package org.edtp.entitycollisionoptimizer.collision.bytecode;
 
+import org.edtp.entitycollisionoptimizer.collision.RuntimeMappings;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.ClassNode;
 import org.objectweb.asm.tree.FieldInsnNode;
 import org.objectweb.asm.tree.MethodInsnNode;
 import org.spongepowered.asm.service.MixinService;
+
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /** Uniform field access boundary; consumer mixins declare coverage, not per-consumer behavior. */
 public final class BodyFieldAccess {
-    private static final String ENTITY = "net/minecraft/world/entity/Entity";
-    private static final String VECTOR = "Lnet/minecraft/world/phys/Vec3;";
+    private static final String ENTITY = RuntimeMappings.type("net.minecraft.class_1297");
+    private static final String BOUNDS = "L" + RuntimeMappings.type("net.minecraft.class_238") + ";";
+    private static final String VELOCITY_FIELD = RuntimeMappings.field(
+            "net.minecraft.class_1297", "field_18276", "Lnet/minecraft/class_243;");
+    private static final String POSITION_FIELD = RuntimeMappings.field(
+            "net.minecraft.class_1297", "field_22467", "Lnet/minecraft/class_243;");
+    private static final String BOUNDS_FIELD = RuntimeMappings.field(
+            "net.minecraft.class_1297", "field_6005", "Lnet/minecraft/class_238;");
+    private static final String SYNC_FIELD = RuntimeMappings.field("net.minecraft.class_1297", "field_6007", "Z");
+    private static final String PHYSICS_FIELD = RuntimeMappings.field("net.minecraft.class_1297", "field_5960", "Z");
+    private static final String VECTOR = "L" + RuntimeMappings.type("net.minecraft.class_243") + ";";
     private static final String ACCESS = "org/edtp/entitycollisionoptimizer/collision/CollisionBodyAccess";
     private static final Map<String, Boolean> ENTITY_TYPES = new ConcurrentHashMap<>();
 
     public static void rewrite(ClassNode node) {
         boolean entityClass = node.name.equals(ENTITY);
         if (entityClass && node.fields.stream().noneMatch(field ->
-                field.name.equals("deltaMovement") && field.desc.equals(VECTOR)
+                field.name.equals(VELOCITY_FIELD) && field.desc.equals(VECTOR)
                         && (field.access & Opcodes.ACC_PRIVATE) != 0)) {
-            throw new IllegalStateException("Expected Minecraft 26.2's private Entity velocity field");
+            throw new IllegalStateException("Expected Minecraft 1.21.1's private Entity velocity field");
         }
         if (entityClass && node.fields.stream().noneMatch(field ->
-                field.name.equals("position") && field.desc.equals(VECTOR)
+                field.name.equals(POSITION_FIELD) && field.desc.equals(VECTOR)
                         && (field.access & Opcodes.ACC_PRIVATE) != 0)) {
-            throw new IllegalStateException("Expected Minecraft 26.2's private Entity position field");
+            throw new IllegalStateException("Expected Minecraft 1.21.1's private Entity position field");
         }
         int reads = 0, writes = 0, positionWrites = 0, boundsWrites = 0;
         for (var method : node.methods) {
@@ -39,12 +50,12 @@ public final class BodyFieldAccess {
             for (var instruction : method.instructions.toArray()) {
                 if (!(instruction instanceof FieldInsnNode field)) continue;
                 boolean read = field.getOpcode() == Opcodes.GETFIELD;
-                boolean velocity = field.owner.equals(ENTITY) && field.name.equals("deltaMovement") && field.desc.equals(VECTOR);
-                boolean position = field.owner.equals(ENTITY) && field.name.equals("position") && field.desc.equals(VECTOR);
-                boolean bounds = field.owner.equals(ENTITY) && field.name.equals("bb")
-                        && field.desc.equals("Lnet/minecraft/world/phys/AABB;");
-                boolean sync = field.name.equals("needsSync") && field.desc.equals("Z");
-                boolean physics = !read && field.name.equals("noPhysics") && field.desc.equals("Z");
+                boolean velocity = field.owner.equals(ENTITY) && field.name.equals(VELOCITY_FIELD) && field.desc.equals(VECTOR);
+                boolean position = field.owner.equals(ENTITY) && field.name.equals(POSITION_FIELD) && field.desc.equals(VECTOR);
+                boolean bounds = field.owner.equals(ENTITY) && field.name.equals(BOUNDS_FIELD)
+                        && field.desc.equals(BOUNDS);
+                boolean sync = field.name.equals(SYNC_FIELD) && field.desc.equals("Z");
+                boolean physics = !read && field.name.equals(PHYSICS_FIELD) && field.desc.equals("Z");
                 if (!velocity && !position && !bounds && !((sync || physics) && isEntity(field.owner, node))) continue;
                 if (!read && field.getOpcode() != Opcodes.PUTFIELD) {
                     throw new IllegalStateException("Unexpected collision body field opcode");

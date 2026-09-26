@@ -259,7 +259,7 @@ final class LevelCollisionFrame {
             if (target.isRemoved() || target.isSpectator()) {
                 continue;
             }
-            if (entity == null ? !target.canBeCollidedWith(null) : !entity.canCollideWith(target)) {
+            if (entity == null ? !target.canBeCollidedWith() : !entity.canCollideWith(target)) {
                 continue;
             }
             shapes.add(Shapes.create(target.getBoundingBox()));

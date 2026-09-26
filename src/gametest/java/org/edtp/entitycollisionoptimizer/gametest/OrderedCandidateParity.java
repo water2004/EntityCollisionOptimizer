@@ -2,7 +2,7 @@ package org.edtp.entitycollisionoptimizer.gametest;
 
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.EntityTypes;
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.phys.Vec3;
 import org.edtp.entitycollisionoptimizer.natives.CollisionFrame;
@@ -18,7 +18,7 @@ final class OrderedCandidateParity {
             Vec3 origin = helper.absoluteVec(new Vec3(4, 2, 4));
             double x = Math.floor(origin.x / 16) * 16 + 16, z = Math.floor(origin.z / 16) * 16 + 16;
             for (int i = 0; i < count; i++) {
-                var entity = (LivingEntity) scene.spawn(EntityTypes.ZOMBIE, new Vec3(4, 2, 4));
+                var entity = (LivingEntity) scene.spawn(EntityType.ZOMBIE, new Vec3(4, 2, 4));
                 int shuffled = (i * 7) % count;
                 entity.setPos(x + (shuffled % 5 - 2) * .07, origin.y, z + (shuffled / 5 - 2) * .07);
                 entities.add(entity);
@@ -34,7 +34,7 @@ final class OrderedCandidateParity {
                     CollisionContractParity.ordered(helper, source, "reentry/reuse " + phase + "/" + repeat);
                 }
             }
-            var added = (LivingEntity) scene.spawn(EntityTypes.ZOMBIE, new Vec3(4, 2, 4));
+            var added = (LivingEntity) scene.spawn(EntityType.ZOMBIE, new Vec3(4, 2, 4));
             added.setPos(entities.getFirst().position());
             for (LivingEntity source : entities) CollisionContractParity.ordered(helper, source, "same-frame insertion");
             added.discard();

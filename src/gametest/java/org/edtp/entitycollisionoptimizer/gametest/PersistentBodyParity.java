@@ -2,7 +2,7 @@ package org.edtp.entitycollisionoptimizer.gametest;
 
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.EntityTypes;
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.scores.Team;
@@ -18,7 +18,7 @@ final class PersistentBodyParity {
         for (int count : new int[]{2, 8, 20}) {
             try (var scene = new InteractionScene(helper)) {
                 List<LivingEntity> entities = new ArrayList<>();
-                for (int i = 0; i < count; i++) entities.add((LivingEntity) scene.spawn(EntityTypes.ZOMBIE,
+                for (int i = 0; i < count; i++) entities.add((LivingEntity) scene.spawn(EntityType.ZOMBIE,
                         new Vec3(4.5 + (i % 5) * .025, 1, 4.5 + (i / 5) * .025)));
                 for (int phase = 0; phase < 12; phase++) {
                     LivingEntity source = entities.get(phase % count);
@@ -34,7 +34,7 @@ final class PersistentBodyParity {
                             if (phase % 4 == 3) entity.push(.0625, -.03125, .015625);
                             // Raw position changes need not change the AABB: the stored candidates remain fixed.
                             if (i == phase % count) entity.setPosRaw(entity.getX() + .001, entity.getY(), entity.getZ());
-                            entity.needsSync = (i + phase) % 3 == 0;
+                            entity.hasImpulse = (i + phase) % 3 == 0;
                         }
                         List<State> before = snapshot(entities);
                         for (int i = 0; i < batch.size(); i++) batch.target(i).push(source);
@@ -53,12 +53,12 @@ final class PersistentBodyParity {
         }
     }
     private static List<State> snapshot(List<LivingEntity> entities) {
-        return entities.stream().map(e -> new State(((EntityVelocityAccessor) e).eco$rawVelocity(), e.needsSync)).toList();
+        return entities.stream().map(e -> new State(((EntityVelocityAccessor) e).eco$rawVelocity(), e.hasImpulse)).toList();
     }
     private static void restore(List<LivingEntity> entities, List<State> states) {
         for (int i = 0; i < entities.size(); i++) {
             ((EntityVelocityAccessor) entities.get(i)).eco$rawVelocity(states.get(i).velocity);
-            entities.get(i).needsSync = states.get(i).sync;
+            entities.get(i).hasImpulse = states.get(i).sync;
         }
     }
     private record State(Vec3 velocity, boolean sync) {}

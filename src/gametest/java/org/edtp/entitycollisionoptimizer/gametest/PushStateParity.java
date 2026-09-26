@@ -2,7 +2,7 @@ package org.edtp.entitycollisionoptimizer.gametest;
 
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.EntityTypes;
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
@@ -26,12 +26,12 @@ final class PushStateParity {
     private static void compare(GameTestHelper helper, int count) {
         try (var scene = new InteractionScene(helper)) {
             List<LivingEntity> entities = new ArrayList<>();
-            for (int i = 0; i < count; i++) entities.add((LivingEntity) scene.spawn(EntityTypes.ZOMBIE,
+            for (int i = 0; i < count; i++) entities.add((LivingEntity) scene.spawn(EntityType.ZOMBIE,
                     new Vec3(4.4 + i % 5 * .04, 1, 4.4 + i / 5 * .04)));
             LivingEntity source = entities.getFirst(), target = entities.get(1);
             // Roots are outside the query. Only an ancestor changes when the two branches join.
-            Entity firstRoot = scene.spawn(EntityTypes.OAK_BOAT, new Vec3(10, 1, 4));
-            Entity secondRoot = scene.spawn(EntityTypes.OAK_BOAT, new Vec3(11, 1, 4));
+            Entity firstRoot = scene.spawn(EntityType.BOAT, new Vec3(10, 1, 4));
+            Entity secondRoot = scene.spawn(EntityType.BOAT, new Vec3(11, 1, 4));
             CollisionFrame.begin(helper.getLevel());
             try (var batch = CollisionFrame.collectPushable(source, null, Team.CollisionRule.ALWAYS, true)) {
                 helper.assertValueEqual(batch.size(), count - 1, "state fixture candidate count");
@@ -73,10 +73,10 @@ final class PushStateParity {
                 source.setPosRaw(position.x, position.y, position.z);
                 helper.assertTrue(!source.onClimbable(), "raw movement restores original block");
                 assertRun(helper, entities, batch, "raw position leaves climbable block");
-                helper.assertTrue(source.startRiding(firstRoot, true, true), "source branch mounted");
-                helper.assertTrue(target.startRiding(secondRoot, true, true), "target branch mounted");
+                helper.assertTrue(source.startRiding(firstRoot, true), "source branch mounted");
+                helper.assertTrue(target.startRiding(secondRoot, true), "target branch mounted");
                 assertRun(helper, entities, batch, "separate vehicle trees");
-                helper.assertTrue(firstRoot.startRiding(secondRoot, true, true), "ancestor branch joined");
+                helper.assertTrue(firstRoot.startRiding(secondRoot, true), "ancestor branch joined");
                 helper.assertTrue(source.isPassengerOfSameVehicle(target), "ancestor change establishes shared root");
                 assertRun(helper, entities, batch, "ancestor root joined");
                 firstRoot.stopRiding();
@@ -85,7 +85,7 @@ final class PushStateParity {
                 source.stopRiding();
                 target.stopRiding();
                 assertRun(helper, entities, batch, "branches dismounted");
-                helper.assertTrue(target.startRiding(source, true, true), "source now carries target");
+                helper.assertTrue(target.startRiding(source, true), "source now carries target");
                 assertRun(helper, entities, batch, "source is vehicle");
                 target.stopRiding();
                 assertRun(helper, entities, batch, "source no longer vehicle");
@@ -102,19 +102,19 @@ final class PushStateParity {
         for (int i = 0; i < batch.size(); i++) batch.target(i).push(entities.getFirst());
         Vec3[] expected = entities.stream().map(Entity::getDeltaMovement).toArray(Vec3[]::new);
         boolean[] sync = new boolean[entities.size()];
-        for (int i = 0; i < sync.length; i++) sync[i] = entities.get(i).needsSync;
+        for (int i = 0; i < sync.length; i++) sync[i] = entities.get(i).hasImpulse;
         reset(entities);
         batch.applyNativeRun(entities.getFirst(), 0, batch.size());
         for (int i = 0; i < entities.size(); i++) {
             NativeImpulseParity.exact(helper, entities.get(i).getDeltaMovement(), expected[i], label + " body=" + i);
-            helper.assertValueEqual(entities.get(i).needsSync, sync[i], label + " sync=" + i);
+            helper.assertValueEqual(entities.get(i).hasImpulse, sync[i], label + " sync=" + i);
         }
     }
 
     private static void reset(List<LivingEntity> entities) {
         for (int i = 0; i < entities.size(); i++) {
             entities.get(i).setDeltaMovement(new Vec3(.125 * i, -.0, -.25 * i));
-            entities.get(i).needsSync = false;
+            entities.get(i).hasImpulse = false;
         }
     }
 }

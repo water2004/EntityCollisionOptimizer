@@ -1,11 +1,12 @@
 package org.edtp.entitycollisionoptimizer.integration;
 
-import net.fabricmc.fabric.api.gametest.v1.GameTest;
+import net.fabricmc.fabric.api.gametest.v1.FabricGameTest;
+import net.minecraft.gametest.framework.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.entity.EntityTypes;
-import net.minecraft.world.entity.monster.zombie.Zombie;
-import net.minecraft.world.level.gamerules.GameRules;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.monster.Zombie;
+import net.minecraft.world.level.GameRules;
 import net.minecraft.world.phys.Vec3;
 
 import java.io.ByteArrayOutputStream;
@@ -19,7 +20,7 @@ import java.util.Random;
  * Cross-process parity fixture shared by the vanilla-only and optimized GameTest runs.
  * The vanilla process records the trace; the optimized process must reproduce every byte.
  */
-public final class ZombieCrammingIntegrationGameTests {
+public final class ZombieCrammingIntegrationGameTests implements FabricGameTest {
     private static final int TRACE_MAGIC = 0x45434F5A;
     private static final int TRACE_VERSION = 1;
     private static final int ENTITY_COUNT = 320;
@@ -34,13 +35,11 @@ public final class ZombieCrammingIntegrationGameTests {
     private static final long SPAWN_SEED = 0xEC020026L;
     private static final int ENTITY_ID_BASE = 1_000_000;
     private static final long DAY_TIME = 18_000L;
-    private static final long GAME_TIME = 1_000L;
     private static final Vec3 SCENE_ORIGIN = new Vec3(-5_910_000.0, -57.0, -9_908_000.0);
 
     @GameTest(
-            maxTicks = 400,
-            padding = 48,
-            environment = "entity_collision_optimizer:integration"
+            template = "entity_collision_optimizer:empty_128",
+            timeoutTicks = 400
     )
     public void crowdedChamberMatchesVanilla(GameTestHelper helper) {
         ScenarioRun run = new ScenarioRun(helper);
@@ -53,7 +52,6 @@ public final class ZombieCrammingIntegrationGameTests {
         private final Vec3 sceneOrigin;
         private final int previousCramming;
         private final long previousDayTime;
-        private final long previousGameTime;
         private final List<Zombie> zombies = new ArrayList<>(ENTITY_COUNT);
         private final IntegrationArena arena;
         private final ByteArrayOutputStream bytes = new ByteArrayOutputStream(16 * 1024 * 1024);
@@ -68,19 +66,15 @@ public final class ZombieCrammingIntegrationGameTests {
             this.helper = helper;
             level = helper.getLevel();
             sceneOrigin = SCENE_ORIGIN;
-            previousCramming = level.getGameRules().get(GameRules.MAX_ENTITY_CRAMMING);
+            previousCramming = level.getGameRules().getInt(GameRules.RULE_MAX_ENTITY_CRAMMING);
             arena = new IntegrationArena(level, ENTITY_ID_BASE, LEVEL_SEED);
             previousDayTime = arena.defaultClockTime();
-            previousGameTime = arena.gameTime();
         }
 
         private void start() {
             try {
-                level.getGameRules().set(
-                        GameRules.MAX_ENTITY_CRAMMING,
-                        MAX_ENTITY_CRAMMING,
-                        level.getServer()
-                );
+                level.getGameRules().getRule(GameRules.RULE_MAX_ENTITY_CRAMMING)
+                        .set(MAX_ENTITY_CRAMMING, level.getServer());
                 arena.buildStoneRoom(sceneOrigin, CHAMBER_SIZE, CHAMBER_HEIGHT, CHAMBER_SIZE);
                 arena.awaitReadyRoom(sceneOrigin, CHAMBER_SIZE, CHAMBER_HEIGHT, CHAMBER_SIZE);
                 prepared = true;
@@ -119,11 +113,10 @@ public final class ZombieCrammingIntegrationGameTests {
 
         private void initializeTrace() throws IOException {
             arena.setDefaultClockTime(DAY_TIME);
-            arena.setGameTime(GAME_TIME);
             level.getRandom().setSeed(LEVEL_SEED);
             Random spawnRandom = new Random(SPAWN_SEED);
             for (int index = 0; index < ENTITY_COUNT; index++) {
-                Zombie zombie = arena.spawn(EntityTypes.ZOMBIE, spawnPosition(sceneOrigin, spawnRandom));
+                Zombie zombie = arena.spawn(EntityType.ZOMBIE, spawnPosition(sceneOrigin, spawnRandom));
                 ZombieTrace.normalize(
                         zombie,
                         LEVEL_SEED + ENTITY_SEED_STEP * index
@@ -159,13 +152,9 @@ public final class ZombieCrammingIntegrationGameTests {
             if (cleanedUp) return;
             cleanedUp = true;
             arena.close();
-            level.getGameRules().set(
-                    GameRules.MAX_ENTITY_CRAMMING,
-                    previousCramming,
-                    level.getServer()
-            );
+            level.getGameRules().getRule(GameRules.RULE_MAX_ENTITY_CRAMMING)
+                    .set(previousCramming, level.getServer());
             arena.setDefaultClockTime(previousDayTime);
-            arena.setGameTime(previousGameTime);
         }
     }
 

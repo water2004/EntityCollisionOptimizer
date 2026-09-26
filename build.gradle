@@ -1,5 +1,5 @@
 plugins {
-    id 'net.fabricmc.fabric-loom' version "${loom_version}"
+    id 'fabric-loom' version "${loom_version}"
     id 'maven-publish'
 }
 
@@ -126,8 +126,9 @@ if (enabledTestSuites == 1) {
 
 dependencies {
     minecraft "com.mojang:minecraft:${project.minecraft_version}"
-    implementation "net.fabricmc:fabric-loader:${project.loader_version}"
-    implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+    mappings loom.officialMojangMappings()
+    modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
     if (providers.gradleProperty("compatModsDir").isPresent()) {
         runtimeOnly fileTree(
                 dir: providers.gradleProperty("compatModsDir").get(),
@@ -147,11 +148,13 @@ processResources {
 }
 
 tasks.withType(JavaCompile).configureEach {
-    options.release = 25
+    options.release = 22
 }
 
 java {
     toolchain.languageVersion = JavaLanguageVersion.of(25)
+    sourceCompatibility = JavaVersion.VERSION_22
+    targetCompatibility = JavaVersion.VERSION_22
     withSourcesJar()
 }
 
@@ -176,4 +179,13 @@ publishing {
 def cppScript = file('cpp-build.gradle')
 if (cppScript.exists()) {
     apply from: cppScript
+}
+
+// Creaking was introduced after Minecraft 1.21.1.
+sourceSets.main.java.exclude("**/CreakingMixin.java")
+
+// Loom 1.10 defaults game launches to Gradle's JVM; FFM requires the newer toolchain.
+tasks.withType(JavaExec).configureEach {
+    javaLauncher = javaToolchains.launcherFor(java.toolchain)
+    executable = javaToolchains.launcherFor(java.toolchain).get().executablePath.asFile.absolutePath
 }

@@ -3,8 +3,8 @@ package org.edtp.entitycollisionoptimizer.gametest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
-import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.MoverType;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
@@ -19,8 +19,8 @@ import java.util.List;
 final class SurfaceInteractionParity {
     static void verify(GameTestHelper helper) {
         int cases = 0;
-        for (var type : List.of(EntityTypes.ZOMBIE, EntityTypes.ITEM, EntityTypes.PLAYER,
-                EntityTypes.SULFUR_CUBE, EntityTypes.OAK_BOAT, EntityTypes.TNT)) {
+        for (var type : List.of(EntityType.ZOMBIE, EntityType.ITEM, EntityType.PLAYER,
+                EntityType.MAGMA_CUBE, EntityType.BOAT, EntityType.TNT)) {
             for (Block floor : List.of(Blocks.STONE, Blocks.ICE, Blocks.PACKED_ICE, Blocks.BLUE_ICE,
                     Blocks.SLIME_BLOCK, Blocks.HONEY_BLOCK, Blocks.SOUL_SAND, Blocks.MUD)) {
                 for (boolean falling : new boolean[]{false, true}) {
@@ -29,7 +29,7 @@ final class SurfaceInteractionParity {
                     String label = type + " on " + floor + " falling=" + falling;
                     for (int i = 0; i < expected.size(); i++) actual.get(i).compare(helper, expected.get(i), label + " step=" + i);
                     helper.assertTrue(expected.stream().anyMatch(s -> s.velocity().lengthSqr() > 0), label + " must exercise motion");
-                    if (falling && floor == Blocks.SLIME_BLOCK && (type == EntityTypes.ZOMBIE || type == EntityTypes.ITEM || type == EntityTypes.PLAYER)) {
+                    if (falling && floor == Blocks.SLIME_BLOCK && (type == EntityType.ZOMBIE || type == EntityType.ITEM || type == EntityType.PLAYER)) {
                         helper.assertTrue(expected.stream().anyMatch(s -> s.velocity().y > 0.1), label + " must really bounce upward");
                     }
                     cases++;
@@ -45,6 +45,9 @@ final class SurfaceInteractionParity {
             scene.floor(floor);
             for (int y = 1; y <= 4; y++) for (int z = 1; z <= 8; z++) scene.block(10, y, z, Blocks.STONE);
             Entity entity = scene.spawn(type, new Vec3(4.5, falling ? 3.2 : 1.0, 4.5));
+            // 1.21.1 travel() skips NoAI mobs. These fixtures call baseTick/travel
+            // directly, so enabling effective AI permits physics without running AI goals.
+            if (entity instanceof Mob mob) mob.setNoAi(false);
             entity.setOnGround(!falling);
             entity.setDeltaMovement(new Vec3(0.24, falling ? -0.45 : 0, 0.06));
             List<InteractionScene.State> states = new ArrayList<>();
@@ -55,7 +58,7 @@ final class SurfaceInteractionParity {
                 if (entity instanceof LivingEntity living) {
                     living.baseTick();
                     living.travel(Vec3.ZERO);
-                    living.applyEffectsFromBlocks(before, living.position());
+                    // In 1.21.1 Entity.move already calls tryCheckInsideBlocks.
                 } else {
                     entity.tick();
                 }

@@ -27,14 +27,11 @@ inline bool pushImpulse(double sourceX, double sourceZ, double targetX, double t
 }
 
 void push(eco::CollisionBody& body, double x, double z) noexcept {
-    // Entity.push first rejects non-finite input, then setDeltaMovement rejects non-finite sums.
-    // The latter still sets needsSync; it does not partially accept individual components.
-    if (!std::isfinite(x) || !std::isfinite(z)) return;
+    // Minecraft 1.21.1 accepts non-finite inputs and sums without filtering.
     const double vx = body.vx + x;
     const double vy = body.vy + 0.0; // Preserve vanilla's signed-zero addition, too.
     const double vz = body.vz + z;
     body.needsSync = 1;
-    if (!std::isfinite(vx) || !std::isfinite(vy) || !std::isfinite(vz)) return;
     body.vx = vx;
     body.vy = vy;
     body.vz = vz;

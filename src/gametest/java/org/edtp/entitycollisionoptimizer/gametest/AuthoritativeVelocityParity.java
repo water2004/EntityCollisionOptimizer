@@ -2,7 +2,7 @@ package org.edtp.entitycollisionoptimizer.gametest;
 
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.EntityTypes;
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.scores.Team;
@@ -25,7 +25,7 @@ final class AuthoritativeVelocityParity {
     private static void compare(GameTestHelper helper, int count) {
         try (var scene = new InteractionScene(helper)) {
             List<LivingEntity> entities = new ArrayList<>();
-            for (int i = 0; i < count; i++) entities.add((LivingEntity) scene.spawn(EntityTypes.ZOMBIE,
+            for (int i = 0; i < count; i++) entities.add((LivingEntity) scene.spawn(EntityType.ZOMBIE,
                     new Vec3(4.5 + i % 5 * .03, 1, 4.5 + i / 5 * .04)));
             LivingEntity source = entities.getFirst();
             reset(entities);
@@ -40,25 +40,28 @@ final class AuthoritativeVelocityParity {
                 }
                 Vec3[] expected = snapshot(entities);
                 boolean[] expectedSync = new boolean[count];
-                for (int i = 0; i < count; i++) expectedSync[i] = entities.get(i).needsSync;
+                for (int i = 0; i < count; i++) expectedSync[i] = entities.get(i).hasImpulse;
                 // Use the exact original references, not just equal components.
                 for (int i = 0; i < count; i++) {
                     entities.get(i).setDeltaMovement(before[i]);
-                    entities.get(i).needsSync = false;
+                    entities.get(i).hasImpulse = false;
                 }
                 for (int run = 0; run < 7; run++) batch.applyNativeRun(source, 0, batch.size());
                 // Reflection is deliberately NOT the public velocity contract. It checks that
                 // this fixture truly skipped eager field publication; accessor checks follow.
                 for (int i = 0; i < count; i++) {
                     helper.assertTrue(stored(storage, entities.get(i)) == unpublished[i], "no eager Vec3 publication");
-                    helper.assertValueEqual(entities.get(i).needsSync, expectedSync[i], "sync is immediate");
-                    entities.get(i).needsSync = false;
-                    entities.get(i).setDeltaMovement(Double.NaN, 0, 0);
+                    helper.assertValueEqual(entities.get(i).hasImpulse, expectedSync[i], "sync is immediate");
+                    entities.get(i).hasImpulse = false;
                     // Read through a separately merged raw field accessor FIRST, before the vanilla getter.
                     Vec3 actual = ((EntityVelocityAccessor) entities.get(i)).eco$rawVelocity();
                     NativeImpulseParity.exact(helper, actual, expected[i], "unobserved runs body=" + i);
                     helper.assertTrue(entities.get(i).getDeltaMovement() == actual, "same-version snapshot reused");
-                    helper.assertTrue(!entities.get(i).needsSync, "reading does not resurrect consumed sync");
+                    helper.assertTrue(!entities.get(i).hasImpulse, "reading does not resurrect consumed sync");
+                    // 1.21.1 accepts non-finite setter writes; test them after observing the deferred run.
+                    entities.get(i).setDeltaMovement(Double.NaN, 0, 0);
+                    NativeImpulseParity.exact(helper, entities.get(i).getDeltaMovement(),
+                            new Vec3(Double.NaN, 0, 0), "non-finite setter remains authoritative");
                     Vec3 write = new Vec3(.625, -.0, -.125);
                     ((EntityVelocityAccessor) entities.get(i)).eco$rawVelocity(write);
                     helper.assertTrue(entities.get(i).getDeltaMovement() == write, "raw accessor writes same authority");
@@ -73,7 +76,7 @@ final class AuthoritativeVelocityParity {
     private static void reset(List<LivingEntity> entities) {
         for (int i = 0; i < entities.size(); i++) {
             entities.get(i).setDeltaMovement(new Vec3(i * .125, -.0, -i * .25));
-            entities.get(i).needsSync = false;
+            entities.get(i).hasImpulse = false;
         }
     }
     private static Vec3[] snapshot(List<LivingEntity> entities) {

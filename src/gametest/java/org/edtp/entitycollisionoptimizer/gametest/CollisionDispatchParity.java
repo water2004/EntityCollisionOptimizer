@@ -6,16 +6,13 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.Unit;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
-import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.Pose;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
-import net.minecraft.world.entity.animal.golem.IronGolem;
-import net.minecraft.world.entity.monster.creaking.Creaking;
-import net.minecraft.world.entity.monster.cubemob.Slime;
-import net.minecraft.world.entity.monster.cubemob.SulfurCube;
+import net.minecraft.world.entity.animal.IronGolem;
+import net.minecraft.world.entity.monster.Slime;
 import net.minecraft.world.entity.monster.warden.Warden;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.phys.Vec3;
@@ -35,86 +32,74 @@ final class CollisionDispatchParity {
 
     static void verify(GameTestHelper helper) {
         int scenario = 0;
-        verifyPair(helper, scenario++, "living -> living", EntityTypes.ZOMBIE, EntityTypes.ZOMBIE, PairSetup.NONE);
-        verifyPair(helper, scenario++, "dead living target", EntityTypes.ZOMBIE, EntityTypes.ZOMBIE,
+        verifyPair(helper, scenario++, "living -> living", EntityType.ZOMBIE, EntityType.ZOMBIE, PairSetup.NONE);
+        verifyPair(helper, scenario++, "dead living target", EntityType.ZOMBIE, EntityType.ZOMBIE,
                 (source, target) -> ((LivingEntity) target).setHealth(0.0F));
-        verifyPair(helper, scenario++, "living -> shulker", EntityTypes.ZOMBIE, EntityTypes.SHULKER, PairSetup.NONE);
-        verifyPair(helper, scenario++, "living -> cube mob", EntityTypes.ZOMBIE, EntityTypes.SLIME,
+        verifyPair(helper, scenario++, "living -> shulker", EntityType.ZOMBIE, EntityType.SHULKER, PairSetup.NONE);
+        verifyPair(helper, scenario++, "living -> cube mob", EntityType.ZOMBIE, EntityType.SLIME,
                 (source, target) -> ((Slime) target).setSize(2, false));
-        verifyPair(helper, scenario++, "living -> boat", EntityTypes.ZOMBIE, EntityTypes.OAK_BOAT, PairSetup.NONE);
+        verifyPair(helper, scenario++, "living -> boat", EntityType.ZOMBIE, EntityType.BOAT, PairSetup.NONE);
         verifyPair(helper, scenario++, "living -> lower boat vertical rejection",
-                EntityTypes.ZOMBIE, EntityTypes.OAK_BOAT,
+                EntityType.ZOMBIE, EntityType.BOAT,
                 (source, target) -> target.setPos(target.getX(), target.getY() - 0.3, target.getZ()));
-        verifyPair(helper, scenario++, "living -> minecart", EntityTypes.ZOMBIE, EntityTypes.MINECART, PairSetup.NONE);
-        verifyPair(helper, scenario++, "no-physics source", EntityTypes.ZOMBIE, EntityTypes.ZOMBIE,
+        verifyPair(helper, scenario++, "living -> minecart", EntityType.ZOMBIE, EntityType.MINECART, PairSetup.NONE);
+        verifyPair(helper, scenario++, "no-physics source", EntityType.ZOMBIE, EntityType.ZOMBIE,
                 (source, target) -> source.noPhysics = true);
-        verifyPair(helper, scenario++, "no-physics target", EntityTypes.ZOMBIE, EntityTypes.ZOMBIE,
+        verifyPair(helper, scenario++, "no-physics target", EntityType.ZOMBIE, EntityType.ZOMBIE,
                 (source, target) -> target.noPhysics = true);
-        verifyPair(helper, scenario++, "sleeping living target", EntityTypes.ZOMBIE, EntityTypes.ZOMBIE,
+        verifyPair(helper, scenario++, "sleeping living target", EntityType.ZOMBIE, EntityType.ZOMBIE,
                 (source, target) -> ((LivingEntity) target).startSleeping(target.blockPosition()));
-        verifyPair(helper, scenario++, "sleeping living source", EntityTypes.ZOMBIE, EntityTypes.ZOMBIE,
+        verifyPair(helper, scenario++, "sleeping living source", EntityType.ZOMBIE, EntityType.ZOMBIE,
                 (source, target) -> source.startSleeping(source.blockPosition()));
-        verifyPair(helper, scenario++, "living passenger relation", EntityTypes.ZOMBIE, EntityTypes.ZOMBIE,
+        verifyPair(helper, scenario++, "living passenger relation", EntityType.ZOMBIE, EntityType.ZOMBIE,
                 (source, target) -> {
                     source.startRiding(target);
                     source.setPos(target.position());
                 });
         verifyPair(helper, scenario++, "minecart passenger relation",
-                EntityTypes.ZOMBIE, EntityTypes.MINECART,
+                EntityType.ZOMBIE, EntityType.MINECART,
                 (source, target) -> {
                     source.startRiding(target);
                     source.setPos(target.position());
                 });
         verifyPair(helper, scenario++, "living -> unmounted horse",
-                EntityTypes.ZOMBIE, EntityTypes.HORSE, PairSetup.NONE);
-        verifyPair(helper, scenario++, "living -> movable creaking",
-                EntityTypes.ZOMBIE, EntityTypes.CREAKING,
-                (source, target) -> {
-                    if (!((Creaking) target).canMove()) {
-                        throw new IllegalStateException("Creaking setup must be movable");
-                    }
-                });
+                EntityType.ZOMBIE, EntityType.HORSE, PairSetup.NONE);
         verifyPair(helper, scenario++, "living -> standing warden",
-                EntityTypes.ZOMBIE, EntityTypes.WARDEN,
+                EntityType.ZOMBIE, EntityType.WARDEN,
                 (source, target) -> target.setPose(Pose.STANDING));
         verifyPair(helper, scenario++, "living -> emerging warden exclusion",
-                EntityTypes.ZOMBIE, EntityTypes.WARDEN,
+                EntityType.ZOMBIE, EntityType.WARDEN,
                 (source, target) -> target.setPose(Pose.EMERGING));
         verifyPair(helper, scenario++, "iron golem -> damaging cube mob",
-                EntityTypes.IRON_GOLEM, EntityTypes.SLIME,
+                EntityType.IRON_GOLEM, EntityType.SLIME,
                 (source, target) -> ((Slime) target).setSize(3, false));
         verifyPair(helper, scenario++, "iron golem -> creeper exclusion",
-                EntityTypes.IRON_GOLEM, EntityTypes.CREEPER, PairSetup.NONE);
+                EntityType.IRON_GOLEM, EntityType.CREEPER, PairSetup.NONE);
         verifyPair(helper, scenario++, "iron golem -> passive entity",
-                EntityTypes.IRON_GOLEM, EntityTypes.COW, PairSetup.NONE);
+                EntityType.IRON_GOLEM, EntityType.COW, PairSetup.NONE);
         verifyPair(helper, scenario++, "iron golem failed hostile target roll",
-                EntityTypes.IRON_GOLEM, EntityTypes.ZOMBIE, PairSetup.NONE, true);
-        verifyPair(helper, scenario++, "parrot source", EntityTypes.PARROT, EntityTypes.ZOMBIE, PairSetup.NONE);
-        verifyPair(helper, scenario++, "sulfur cube source",
-                EntityTypes.SULFUR_CUBE, EntityTypes.ZOMBIE, PairSetup.NONE);
-        verifyPair(helper, scenario++, "hot sulfur cube contact damage",
-                EntityTypes.SULFUR_CUBE, EntityTypes.ZOMBIE,
-                (source, target) -> prepareHotSulfurCube((SulfurCube) source));
-        verifyPair(helper, scenario++, "active warden source", EntityTypes.WARDEN, EntityTypes.ZOMBIE,
+                EntityType.IRON_GOLEM, EntityType.ZOMBIE, PairSetup.NONE, true);
+        verifyPair(helper, scenario++, "parrot source", EntityType.PARROT, EntityType.ZOMBIE, PairSetup.NONE);
+        verifyPair(helper, scenario++, "active warden source", EntityType.WARDEN, EntityType.ZOMBIE,
                 (source, target) -> ((Warden) source).setNoAi(false));
-        verifyPair(helper, scenario++, "no-AI warden source", EntityTypes.WARDEN, EntityTypes.ZOMBIE,
+        verifyPair(helper, scenario++, "no-AI warden source", EntityType.WARDEN, EntityType.ZOMBIE,
                 PairSetup.NONE);
         verifyPair(helper, scenario++, "warden touch cooldown already present",
-                EntityTypes.WARDEN, EntityTypes.ZOMBIE,
+                EntityType.WARDEN, EntityType.ZOMBIE,
                 (source, target) -> {
                     Warden warden = (Warden) source;
                     warden.setNoAi(false);
                     warden.getBrain().setMemory(MemoryModuleType.TOUCH_COOLDOWN, Unit.INSTANCE);
                 });
-        verifyPair(helper, scenario++, "emerging warden source", EntityTypes.WARDEN, EntityTypes.ZOMBIE,
+        verifyPair(helper, scenario++, "emerging warden source", EntityType.WARDEN, EntityType.ZOMBIE,
                 (source, target) -> {
                     ((Warden) source).setNoAi(false);
                     source.setPose(Pose.EMERGING);
                 });
-        verifyPair(helper, scenario++, "bat pushEntities override", EntityTypes.BAT, EntityTypes.ZOMBIE,
+        verifyPair(helper, scenario++, "bat pushEntities override", EntityType.BAT, EntityType.ZOMBIE,
                 PairSetup.NONE);
         verifyPair(helper, scenario++, "armor stand minecart override",
-                EntityTypes.ARMOR_STAND, EntityTypes.MINECART, PairSetup.NONE);
+                EntityType.ARMOR_STAND, EntityType.MINECART, PairSetup.NONE);
         CollisionPushParity.verifyPlayerTargets(helper, scenario);
     }
 
@@ -194,16 +179,7 @@ final class CollisionDispatchParity {
                 );
                 assertWardenDisturbanceMatches(helper, vanillaWarden, acceleratedWarden, scenario);
             }
-            if (vanillaSource instanceof SulfurCube vanillaSulfurCube
-                    && acceleratedSource instanceof SulfurCube acceleratedSulfurCube
-                    && vanillaSulfurCube.hasBodyItem()
-                    && acceleratedSulfurCube.hasBodyItem()
-                    && vanillaTarget instanceof LivingEntity vanillaLivingTarget) {
-                helper.assertTrue(
-                        vanillaLivingTarget.getHealth() < vanillaLivingTarget.getMaxHealth(),
-                        "equipped sulfur cube setup must trigger contact damage: " + scenario
-                );
-            }
+
         } finally {
             vanillaSource.discard();
             vanillaTarget.discard();
@@ -213,13 +189,7 @@ final class CollisionDispatchParity {
         }
     }
 
-    private static void prepareHotSulfurCube(SulfurCube sulfurCube) {
-        sulfurCube.setItemSlot(EquipmentSlot.BODY, Items.MAGMA_BLOCK.getDefaultInstance());
-        sulfurCube.tick();
-        if (!sulfurCube.hasBodyItem()) {
-            throw new IllegalStateException("Hot sulfur cube setup did not equip its body item");
-        }
-    }
+
 
     private static void assertWardenDisturbanceMatches(
             GameTestHelper helper,

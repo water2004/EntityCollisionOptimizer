@@ -6,19 +6,16 @@ import java.util.Set;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
-import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.MoverType;
-import net.minecraft.world.entity.Relative;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.minecraft.world.level.portal.TeleportTransition;
+import net.minecraft.world.level.portal.DimensionTransition;
 import net.minecraft.world.phys.Vec3;
 import org.edtp.entitycollisionoptimizer.natives.CollisionFrame;
 
-/** Real dimension transfers; the disabled-backend run supplies all trajectory oracles. */
+/** Minecraft 1.21.1 supplies velocity explicitly; preserve and rotate it before real dimension transfers; the disabled-backend run supplies all trajectory oracles. */
 final class DimensionMomentumParity {
     private static final Vec3 VELOCITY = new Vec3(0.35, 0.15, -0.22);
 
@@ -37,12 +34,12 @@ final class DimensionMomentumParity {
     static List<Observation> capture(GameTestHelper helper, ServerLevel overworld, ServerLevel nether,
                                      Vec3 sourceOrigin, Vec3 destinationOrigin) {
         List<Observation> observations = new ArrayList<>();
-        for (EntityType<?> type : new EntityType<?>[]{EntityTypes.ITEM, EntityTypes.TNT,
-                EntityTypes.ENDER_PEARL, EntityTypes.OAK_BOAT}) {
+        for (EntityType<?> type : new EntityType<?>[]{EntityType.ITEM, EntityType.TNT,
+                EntityType.ENDER_PEARL, EntityType.BOAT}) {
             for (int mode = 0; mode < 3; mode++) {
                 List<Entity> owned = new ArrayList<>();
                 try {
-                    Entity entity = type.create(overworld, EntitySpawnReason.COMMAND);
+                    Entity entity = type.create(overworld);
                     helper.assertTrue(entity != null, "create teleport fixture " + type);
                     owned.add(entity);
                     if (entity instanceof ItemEntity item) item.setItem(new ItemStack(Items.STONE));
@@ -51,19 +48,16 @@ final class DimensionMomentumParity {
                     entity.setYRot(20);
                     entity.setXRot(15);
                     helper.assertTrue(overworld.addFreshEntity(entity), "add teleport fixture");
-                    Set<Relative> relatives = switch (mode) {
-                        case 0 -> Set.of();
-                        case 1 -> Set.of(Relative.DELTA_X, Relative.DELTA_Y, Relative.DELTA_Z);
-                        default -> Relative.DELTA; // Includes ROTATE_DELTA in 26.2.
-                    };
                     for (int leg = 0; leg < 2; leg++) {
                         ServerLevel destination = leg == 0 ? nether : overworld;
                         Vec3 origin = leg == 0 ? destinationOrigin : sourceOrigin;
                         Entity before = entity;
                         Vec3 beforeVelocity = before.getDeltaMovement();
-                        entity = before.teleport(new TeleportTransition(destination, origin.add(0, 4, 0),
-                                mode == 0 ? VELOCITY : Vec3.ZERO, leg == 0 ? 90 : -45,
-                                leg == 0 ? 0 : 30, relatives, TeleportTransition.DO_NOTHING));
+                        Vec3 transferVelocity = mode == 0 ? VELOCITY : mode == 1 ? beforeVelocity
+                                : beforeVelocity.yRot((float) Math.toRadians(leg == 0 ? 70 : -135));
+                        entity = before.changeDimension(new DimensionTransition(destination, origin.add(0, 4, 0),
+                                transferVelocity, leg == 0 ? 90 : -45,
+                                leg == 0 ? 0 : 30, DimensionTransition.DO_NOTHING));
                         helper.assertTrue(entity != null && entity.level() == destination, "dimension transfer completed");
                         if (entity != before) owned.add(entity);
                         if (mode < 2) CollisionTestSupport.assertVectorEqual(helper, entity.getDeltaMovement(),

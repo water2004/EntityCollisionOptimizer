@@ -1,16 +1,18 @@
+> Minecraft 1.21.1 backport. See [PORTING_1.21.1.md](PORTING_1.21.1.md) for build instructions and verification scope. Performance figures below are historical upstream results, not 1.21.1 benchmarks.
+
 <p align="center">
   <img src="src/main/resources/assets/entity_collision_optimizer/icon.png" width="180" alt="Entity Collision Optimizer logo">
 </p>
 
 <h1 align="center">Entity Collision Optimizer</h1>
 
-<p align="center">Vanilla-accurate entity collision acceleration for Minecraft 26.2 Fabric servers.</p>
+<p align="center">Vanilla-accurate entity collision acceleration for Minecraft 1.21.1 Fabric servers.</p>
 
 <p align="center"><strong>English</strong> | <a href="README_zh.md">简体中文</a></p>
 
 ---
 
-Entity Collision Optimizer is a server-side Fabric mod for Minecraft 26.2 that uses a C++ native backend to accelerate entity queries, pushing, and movement collision while **preserving vanilla entity-collision behavior**. Install it and it works; connecting clients do not need the mod.
+Entity Collision Optimizer is a server-side Fabric mod for Minecraft 1.21.1 that uses a C++ native backend to accelerate entity queries, pushing, and movement collision while **preserving vanilla entity-collision behavior**. Install it and it works; connecting clients do not need the mod.
 
 ## Why use Entity Collision Optimizer?
 
@@ -69,10 +71,10 @@ The FFM boundary therefore carries a complete query, push run, or movement opera
 
 | Component | Requirement |
 | --- | --- |
-| Minecraft | 26.2 |
+| Minecraft | 1.21.1 |
 | Mod loader | Fabric Loader 0.17.0 or newer |
-| Dependency | A Minecraft 26.2-compatible Fabric API 0.145.4 or newer |
-| Java | 25 |
+| Dependency | A Minecraft 1.21.1-compatible Fabric API 0.116.7 or newer |
+| Java | 22+ (tested on 25) |
 | Operating system | Windows, Linux, or macOS |
 | Processor | x86-64 with AVX2 |
 
@@ -81,9 +83,9 @@ Release JARs contain native libraries for x86-64 Windows, Linux, and macOS. ARM6
 ## Installation
 
 1. Install Fabric Loader and Fabric API.
-2. Download the JAR for Minecraft 26.2 from [GitHub Releases](https://github.com/water2004/EntityCollisionOptimizer/releases) and place it in the instance's `mods` directory.
+2. Build the local Minecraft 1.21.1 JAR in `build/libs` and place it in the instance's `mods` directory.
 
-No additional JVM arguments are required on the supported Java 25 runtime. The official Minecraft 26.2 launcher already enables native access. A dedicated server started manually without that option may print Java's native-access warning once, but Java 25 still allows the operation and the mod continues to work.
+Use Java 22 or newer and add `--enable-native-access=ALL-UNNAMED` to the game/server JVM arguments. The FFM backend cannot run on Minecraft 1.21.1's usual Java 21 runtime.
 
 Server administrators who want to suppress that warning may optionally add:
 
@@ -108,7 +110,7 @@ Please report reproducible problems through the [issue tracker](https://github.c
 
 ## Building and testing
 
-Use Java 25 and the included Gradle Wrapper:
+Run Gradle with Java 21 and install a JDK 25 compiler toolchain. Use the included Gradle Wrapper; see [PORTING_1.21.1.md](PORTING_1.21.1.md) for toolchain configuration:
 
 ```powershell
 ./gradlew.bat build

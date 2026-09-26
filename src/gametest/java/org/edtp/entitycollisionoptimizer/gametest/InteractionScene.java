@@ -4,15 +4,13 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
-import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.gamerules.GameRule;
-import net.minecraft.world.level.gamerules.GameRules;
+import net.minecraft.world.level.GameRules;
 import net.minecraft.world.phys.Vec3;
 import org.edtp.entitycollisionoptimizer.natives.CollisionFrame;
 
@@ -27,7 +25,7 @@ final class InteractionScene implements AutoCloseable {
     private final int maxX, maxY, maxZ;
     private final Map<BlockPos, BlockState> blocks = new LinkedHashMap<>();
     private final List<Entity> entities = new ArrayList<>();
-    private final Map<GameRule<Boolean>, Boolean> rules = new LinkedHashMap<>();
+    private final Map<GameRules.Key<GameRules.BooleanValue>, Boolean> rules = new LinkedHashMap<>();
 
     InteractionScene(GameTestHelper helper) {
         this(helper, 12, 8, 8);
@@ -40,10 +38,10 @@ final class InteractionScene implements AutoCloseable {
         this.maxZ = maxZ;
         CollisionFrame.end(helper.getLevel());
         // GameTest environments disable some damage rules; compare normal survival interactions.
-        for (var rule : List.of(GameRules.PVP, GameRules.FALL_DAMAGE, GameRules.FIRE_DAMAGE,
-                GameRules.DROWNING_DAMAGE, GameRules.FREEZE_DAMAGE)) {
-            rules.put(rule, helper.getLevel().getGameRules().get(rule));
-            helper.getLevel().getGameRules().set(rule, true, helper.getLevel().getServer());
+        for (var rule : List.of(GameRules.RULE_FALL_DAMAGE, GameRules.RULE_FIRE_DAMAGE,
+                GameRules.RULE_DROWNING_DAMAGE, GameRules.RULE_FREEZE_DAMAGE)) {
+            rules.put(rule, helper.getLevel().getGameRules().getBoolean(rule));
+            helper.getLevel().getGameRules().getRule(rule).set(true, helper.getLevel().getServer());
         }
         // Padding can place fixtures below the generated terrain surface. Establish the whole
         // test volume explicitly; otherwise "open air" explosions can be occluded by terrain.
@@ -55,7 +53,7 @@ final class InteractionScene implements AutoCloseable {
     void block(int x, int y, int z, BlockState state) {
         BlockPos pos = helper.absolutePos(new BlockPos(x, y, z));
         blocks.putIfAbsent(pos, helper.getLevel().getBlockState(pos));
-        helper.getLevel().setBlock(pos, state, Block.UPDATE_SKIP_ALL_SIDEEFFECTS);
+        helper.getLevel().setBlock(pos, state, Block.UPDATE_KNOWN_SHAPE | Block.UPDATE_CLIENTS);
     }
 
     void block(int x, int y, int z, Block block) { block(x, y, z, block.defaultBlockState()); }
@@ -71,7 +69,7 @@ final class InteractionScene implements AutoCloseable {
 
     Entity spawn(EntityType<?> type, Vec3 position) {
         Entity entity;
-        if (type == EntityTypes.ITEM) {
+        if (type == EntityType.ITEM) {
             Vec3 absolute = helper.absoluteVec(position);
             entity = new ItemEntity(helper.getLevel(), absolute.x, absolute.y, absolute.z, new ItemStack(Items.DIAMOND, 7));
             // ItemEntity's low-speed motion is staggered by (tickCount + id) % 4.
@@ -79,13 +77,19 @@ final class InteractionScene implements AutoCloseable {
             entity.setId(-1_000_000_000 + entities.size());
             helper.getLevel().addFreshEntity(entity);
         } else {
-            entity = type == EntityTypes.PLAYER ? CollisionTestSupport.spawnMockServerPlayer(helper, position, net.minecraft.world.level.GameType.SURVIVAL)
+            entity = type == EntityType.PLAYER ? CollisionTestSupport.spawnMockServerPlayer(helper, position, net.minecraft.world.level.GameType.SURVIVAL)
                     : CollisionTestSupport.spawnEntity(helper, type, position);
         }
         if (entity instanceof ItemEntity item) {
             item.setItem(new ItemStack(Items.DIAMOND, 7));
             item.setNeverPickUp();
             item.setUnlimitedLifetime();
+        }
+        if (entity instanceof net.minecraft.server.level.ServerPlayer player) {
+            // ServerPlayer starts with 60 ticks of spawn protection in 1.21.1. Let the
+            // native server tick expire it before survival combat/fall-damage fixtures.
+            // This tick only maintains server state; doTick() owns movement simulation.
+            for (int i = 0; i < 60; i++) player.tick();
         }
         // The helper may adjust spawn placement; these are paired physics fixtures, not spawn tests.
         entity.setPos(helper.absoluteVec(position));
@@ -114,9 +118,9 @@ final class InteractionScene implements AutoCloseable {
         }
         for (var entry : blocks.entrySet()) {
             helper.getLevel().removeBlockEntity(entry.getKey());
-            helper.getLevel().setBlock(entry.getKey(), entry.getValue(), Block.UPDATE_SKIP_ALL_SIDEEFFECTS);
+            helper.getLevel().setBlock(entry.getKey(), entry.getValue(), Block.UPDATE_KNOWN_SHAPE | Block.UPDATE_CLIENTS);
         }
-        rules.forEach((rule, value) -> helper.getLevel().getGameRules().set(rule, value, helper.getLevel().getServer()));
+        rules.forEach((rule, value) -> helper.getLevel().getGameRules().getRule(rule).set(value, helper.getLevel().getServer()));
     }
 
     record State(Vec3 position, Vec3 velocity, int flags, double fall, float health, int items, int fire, int frozen, int fuse) {
@@ -124,7 +128,7 @@ final class InteractionScene implements AutoCloseable {
             int flags = (entity.onGround() ? 1 : 0) | (entity.horizontalCollision ? 2 : 0)
                     | (entity.verticalCollision ? 4 : 0) | (entity.verticalCollisionBelow ? 8 : 0)
                     | (entity.minorHorizontalCollision ? 16 : 0) | (entity.isInWater() ? 32 : 0)
-                    | (entity.isRemoved() ? 64 : 0) | (entity.needsSync ? 128 : 0);
+                    | (entity.isRemoved() ? 64 : 0) | (entity.hasImpulse ? 128 : 0);
             return new State(entity.position(), entity.getDeltaMovement(), flags, entity.fallDistance,
                     entity instanceof LivingEntity living ? living.getHealth() : 0,
                     entity instanceof ItemEntity item ? item.getItem().getCount() : 0,

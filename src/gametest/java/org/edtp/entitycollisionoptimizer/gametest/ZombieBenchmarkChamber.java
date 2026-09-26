@@ -16,10 +16,10 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.network.CommonListenerCookie;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.EntityTypes;
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.ExperienceOrb;
 import net.minecraft.world.entity.item.ItemEntity;
-import net.minecraft.world.entity.monster.zombie.Zombie;
+import net.minecraft.world.entity.monster.Zombie;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.enchantment.Enchantments;
@@ -129,7 +129,7 @@ final class ZombieBenchmarkChamber extends BenchmarkScenario {
         Vec3 spawn = BOTTOM.add(0, DROP_HEIGHT, 0);
         for (int i = 0; i < SPAWN_PER_TICK; i++) {
             // Full 0.6-wide body starts supported by the same block; only its position varies.
-            Zombie zombie = helper.spawn(EntityTypes.ZOMBIE, spawn.add(
+            Zombie zombie = helper.spawn(EntityType.ZOMBIE, spawn.add(
                     (spawnRandom.nextDouble() - 0.5) * 0.36, 0,
                     (spawnRandom.nextDouble() - 0.5) * 0.36));
             zombies.add(zombie);
@@ -207,7 +207,7 @@ final class ZombieBenchmarkChamber extends BenchmarkScenario {
 
     void verify(int ticks) {
         if (spawned != ticks * SPAWN_PER_TICK) throw new IllegalStateException("Incorrect spawn count");
-        if (player == null || player.isRemoved() || !player.isAlive() || player.gameMode() != GameType.SURVIVAL) {
+        if (player == null || player.isRemoved() || !player.isAlive() || ((net.minecraft.server.level.ServerPlayer) player).gameMode.getGameModeForPlayer() != GameType.SURVIVAL) {
             throw new IllegalStateException("Survival attacker did not survive");
         }
         if (attacks == 0 || acceptedAttacks == 0 || observedKnockbacks == 0 || sweepAttacks == 0) {

@@ -3,12 +3,11 @@ package org.edtp.entitycollisionoptimizer.gametest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.TicketType;
-import net.minecraft.world.entity.EntitySpawnReason;
-import net.minecraft.world.entity.EntityTypes;
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.ChunkPos;
@@ -30,7 +29,7 @@ final class ElderGuardianPipe extends BenchmarkScenario {
     private final List<Resident> residents = new ArrayList<>();
     private final Random random = new Random(0xEC0262L);
     private static final ResourceKey<Level> VOID = ResourceKey.create(Registries.DIMENSION,
-            Identifier.fromNamespaceAndPath("entity_collision_optimizer", "benchmark_void"));
+            ResourceLocation.fromNamespaceAndPath("entity_collision_optimizer", "benchmark_void"));
     private static final ChunkPos CENTER = new ChunkPos(0, 0);
     private static final int LOAD_RADIUS = 4;
     private ServerLevel level;
@@ -59,7 +58,9 @@ final class ElderGuardianPipe extends BenchmarkScenario {
                 || !generator.settings().getLayersInfo().isEmpty()) {
             throw new IllegalStateException("Benchmark requires an empty-layer void dimension");
         }
-        level.getChunkSource().addTicketAndLoadWithRadius(TicketType.FORCED, CENTER, LOAD_RADIUS);
+        level.getChunkSource().addRegionTicket(TicketType.FORCED, CENTER, LOAD_RADIUS, CENTER);
+        for (int x = CENTER.x - LOAD_RADIUS; x <= CENTER.x + LOAD_RADIUS; x++)
+            for (int z = CENTER.z - LOAD_RADIUS; z <= CENTER.z + LOAD_RADIUS; z++) level.getChunk(x, z);
         forced = true;
         level.getChunk(0, 0);
         // Absolute heights, independent of the GameTest structure's placement height.
@@ -96,7 +97,7 @@ final class ElderGuardianPipe extends BenchmarkScenario {
     @Override void tick(int tick) {
         observe();
         for (int i = 0; i < SPAWN_PER_TICK; i++) {
-            var entity = EntityTypes.ELDER_GUARDIAN.create(level, EntitySpawnReason.COMMAND);
+            var entity = EntityType.ELDER_GUARDIAN.create(level);
             if (entity == null) throw new IllegalStateException("Failed to create elder guardian");
             entity.setPos(0.5 + (random.nextDouble() - 0.5) * 0.04, SPAWN_Y,
                     0.5 + (random.nextDouble() - 0.5) * 0.04);
@@ -148,7 +149,7 @@ final class ElderGuardianPipe extends BenchmarkScenario {
         residents.clear();
         if (level != null) {
             CollisionFrame.end(level);
-            if (forced) level.getChunkSource().removeTicketWithRadius(TicketType.FORCED, CENTER, LOAD_RADIUS);
+            if (forced) level.getChunkSource().removeRegionTicket(TicketType.FORCED, CENTER, LOAD_RADIUS, CENTER);
         }
         forced = false;
     }

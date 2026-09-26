@@ -1,8 +1,8 @@
 package org.edtp.entitycollisionoptimizer.gametest;
 
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.world.entity.monster.zombie.Zombie;
-import net.minecraft.world.level.gamerules.GameRules;
+import net.minecraft.world.entity.monster.Zombie;
+import net.minecraft.world.level.GameRules;
 import net.minecraft.world.scores.Team;
 import net.minecraft.world.phys.Vec3;
 import org.edtp.entitycollisionoptimizer.gametest.mixin.LivingEntityTestInvoker;
@@ -14,9 +14,9 @@ import static org.edtp.entitycollisionoptimizer.gametest.CollisionTestSupport.*;
 final class CollisionImpulseParity {
     static void verify(GameTestHelper helper) {
         var level = helper.getLevel();
-        int cramming = level.getGameRules().get(GameRules.MAX_ENTITY_CRAMMING);
+        int cramming = level.getGameRules().getInt(GameRules.RULE_MAX_ENTITY_CRAMMING);
         try {
-            level.getGameRules().set(GameRules.MAX_ENTITY_CRAMMING, 0, level.getServer());
+            level.getGameRules().getRule(GameRules.RULE_MAX_ENTITY_CRAMMING).set(0, level.getServer());
             for (int scenario = 0; scenario < 5; scenario++) {
                 Outcome expected = run(helper, false, scenario);
                 Outcome actual = run(helper, true, scenario);
@@ -27,7 +27,7 @@ final class CollisionImpulseParity {
             }
         } finally {
             CollisionFrame.end(level);
-            level.getGameRules().set(GameRules.MAX_ENTITY_CRAMMING, cramming, level.getServer());
+            level.getGameRules().getRule(GameRules.RULE_MAX_ENTITY_CRAMMING).set(cramming, level.getServer());
         }
     }
 
@@ -39,9 +39,9 @@ final class CollisionImpulseParity {
         try {
             source.setDeltaMovement(new Vec3(0.125, 0.25, -0.375));
             target.setDeltaMovement(Vec3.ZERO);
-            source.needsSync = target.needsSync = false;
+            source.hasImpulse = target.hasImpulse = false;
             if (scenario == 4) {
-                level.getGameRules().set(GameRules.MAX_ENTITY_CRAMMING, 1, level.getServer());
+                level.getGameRules().getRule(GameRules.RULE_MAX_ENTITY_CRAMMING).set(1, level.getServer());
                 source.setInvulnerable(false);
                 source.setHealth(1.0F);
                 source.getRandom().setSeed(seedWhoseNextIntSucceeds(source, 4));
@@ -58,8 +58,9 @@ final class CollisionImpulseParity {
                 }
                 helper.assertTrue(covered, "ordinary zombie pair must use native impulse calculation");
             }
-            ((LivingEntityTestInvoker) source).entityCollisionOptimizer$invokePushEntities();
-            boolean immediateSync = target.needsSync;
+            if (enabled) ((LivingEntityTestInvoker) source).entityCollisionOptimizer$invokePushEntities();
+            else VanillaReference.pushEntities(source);
+            boolean immediateSync = target.hasImpulse;
             switch (scenario) {
                 case 0 -> target.setDeltaMovement(new Vec3(0.75, 0.5, -0.25));
                 case 1 -> target.setDeltaMovement(0.75, 0.5, -0.25);
@@ -73,7 +74,7 @@ final class CollisionImpulseParity {
             CollisionFrame.end(level);
             source.discard();
             target.discard();
-            level.getGameRules().set(GameRules.MAX_ENTITY_CRAMMING, 0, level.getServer());
+            level.getGameRules().getRule(GameRules.RULE_MAX_ENTITY_CRAMMING).set(0, level.getServer());
         }
     }
 

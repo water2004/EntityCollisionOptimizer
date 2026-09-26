@@ -5,8 +5,8 @@ import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.AbortableIterationConsumer;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.EntityTypes;
-import net.minecraft.world.entity.monster.zombie.Zombie;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.monster.Zombie;
 import net.minecraft.world.level.entity.EntitySectionStorage;
 import net.minecraft.world.level.entity.EntityTypeTest;
 import net.minecraft.world.level.entity.Visibility;
@@ -34,11 +34,11 @@ final class EntityQueryParity {
         List<Entity> fixtures = List.of(
                 spawnZombie(helper, new Vec3(34.25, 2.0, 3.25)),
                 spawnZombie(helper, new Vec3(2.25, 2.0, 3.25)),
-                spawnEntity(helper, EntityTypes.ARMOR_STAND, new Vec3(18.25, 2.0, 3.25)),
+                spawnEntity(helper, EntityType.ARMOR_STAND, new Vec3(18.25, 2.0, 3.25)),
                 spawnZombie(helper, new Vec3(18.75, 2.0, 3.25)),
                 spawnZombie(helper, new Vec3(2.75, 2.0, 3.25)),
                 spawnZombie(helper, new Vec3(4.25, 2.0, 3.25)),
-                spawnEntity(helper, EntityTypes.ARMOR_STAND, new Vec3(5.25, 2.0, 3.25)),
+                spawnEntity(helper, EntityType.ARMOR_STAND, new Vec3(5.25, 2.0, 3.25)),
                 spawnZombie(helper, new Vec3(6.25, 2.0, 3.25)),
                 spawnZombie(helper, new Vec3(7.25, 2.0, 3.25))
         );

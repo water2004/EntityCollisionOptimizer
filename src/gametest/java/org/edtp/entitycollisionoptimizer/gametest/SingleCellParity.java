@@ -24,7 +24,7 @@ final class SingleCellParity {
         VoxelShape cell = new SingleCell();
         helper.assertTrue((((NativeVoxelAccess) cell).eco$nativeGeometry().get(JAVA_INT, 12) & 4) != 0,
                 "simple cell uses interval solver");
-        VoxelShape subdivided = new CubeVoxelShape(BitSetDiscreteVoxelShape.withFilledBounds(4, 4, 4, 0, 0, 0, 4, 4, 4));
+        VoxelShape subdivided = org.edtp.entitycollisionoptimizer.gametest.mixin.CubeShapeTestInvoker.eco$create(BitSetDiscreteVoxelShape.withFilledBounds(4, 4, 4, 0, 0, 0, 4, 4, 4));
         helper.assertTrue((((NativeVoxelAccess) subdivided).eco$nativeGeometry().get(JAVA_INT, 12) & 4) == 0,
                 "a solid box with internal grid planes must keep its voxel semantics");
         NativeVoxelParity.compare(helper, subdivided, "internal voxel planes");
@@ -61,6 +61,7 @@ final class SingleCellParity {
         org.edtp.entitycollisionoptimizer.EntityCollisionOptimizer.LOGGER.info(
                 "ECO_SINGLE_CELL_PARITY bitwise_cases={} internal_planes=true mixed_descriptors=true result=passed", cases);
     }
+
 
     private static final class SingleCell extends VoxelShape {
         private final DoubleList coordinates = DoubleArrayList.wrap(new double[]{-0.0, .5});

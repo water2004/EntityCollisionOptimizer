@@ -7,7 +7,7 @@ import net.minecraft.network.protocol.game.ClientboundSetEntityMotionPacket;
 import net.minecraft.server.level.ServerEntity;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.EntityTypes;
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.scores.Team;
@@ -36,13 +36,13 @@ final class SyncStateParity {
             List<ServerEntity> trackers = new ArrayList<>();
             List<Sink> sinks = new ArrayList<>();
             for (int i = 0; i < count; i++) {
-                var entity = (LivingEntity) scene.spawn(EntityTypes.ZOMBIE,
+                var entity = (LivingEntity) scene.spawn(EntityType.ZOMBIE,
                         new Vec3(4.5 + i % 5 * .03, 1, 4.5 + i / 5 * .04));
                 entity.setDeltaMovement(Vec3.ZERO);
-                entity.needsSync = false;
+                entity.hasImpulse = false;
                 entities.add(entity);
                 var sink = new Sink();
-                var tracker = new ServerEntity(helper.getLevel(), entity, 1000, false, sink);
+                var tracker = new ServerEntity(helper.getLevel(), entity, 1000, false, sink::sendToTrackingPlayers);
                 tracker.sendChanges(); // Consume initial dirty data; subsequent updates need needsSync.
                 sink.packets.clear();
                 trackers.add(tracker);
@@ -62,21 +62,21 @@ final class SyncStateParity {
                         Entity entity = entities.get(i);
                         if (enabled) helper.assertTrue(!physicalSync(entity), "no Java sync publication");
                         if (phase == 1) entity.push(.125, 0, -.25); // Java also writes the same authority.
-                        if (phase == 2) entity.needsSync = false; // Explicit consumption suppresses this update.
-                        helper.assertValueEqual(((EntityBodyTestAccess) entity).eco$rawNeedsSync(), entity.needsSync,
+                        if (phase == 2) entity.hasImpulse = false; // Explicit consumption suppresses this update.
+                        helper.assertValueEqual(((EntityBodyTestAccess) entity).eco$rawNeedsSync(), entity.hasImpulse,
                                 "independent accessor shares the public field authority");
                         if (phase == 3) {
-                            entity.needsSync = false;
+                            entity.hasImpulse = false;
                             ((EntityBodyTestAccess) entity).eco$rawNeedsSync(true);
                         }
-                        boolean before = entity.needsSync;
+                        boolean before = entity.hasImpulse;
                         trackers.get(i).sendChanges(); // FIRST velocity observer after the native run.
-                        helper.assertTrue(!entity.needsSync, "server tracker consumes sync immediately");
-                        states.add(new State(before, entity.needsSync, entity.getDeltaMovement(),
+                        helper.assertTrue(!entity.hasImpulse, "server tracker consumes sync immediately");
+                        states.add(new State(before, entity.hasImpulse, entity.getDeltaMovement(),
                                 trackers.get(i).getLastSentMovement(), List.copyOf(sinks.get(i).packets)));
                         sinks.get(i).packets.clear();
                         trackers.get(i).sendChanges();
-                        helper.assertTrue(!entity.needsSync, "later tracker/getter cannot resurrect sync");
+                        helper.assertTrue(!entity.hasImpulse, "later tracker/getter cannot resurrect sync");
                         helper.assertTrue(sinks.get(i).packets.isEmpty(), "no duplicate network publication");
                     }
                 }
@@ -88,23 +88,23 @@ final class SyncStateParity {
     }
 
     private static boolean physicalSync(Entity entity) {
-        try { return Entity.class.getField("needsSync").getBoolean(entity); }
+        try { return Entity.class.getField("hasImpulse").getBoolean(entity); }
         catch (ReflectiveOperationException failure) { throw new AssertionError(failure); }
     }
 
     private record State(boolean before, boolean after, Vec3 velocity, Vec3 tracked, List<Sent> packets) {}
     private record Sent(String type, Vec3 velocity) {}
 
-    private static final class Sink implements ServerEntity.Synchronizer {
+    private static final class Sink {
         final List<Sent> packets = new ArrayList<>();
-        @Override public void sendToTrackingPlayers(Packet<? super ClientGamePacketListener> packet) {
+        public void sendToTrackingPlayers(Packet<?> packet) {
             packets.add(new Sent(packet.getClass().getName(),
-                    packet instanceof ClientboundSetEntityMotionPacket motion ? motion.movement() : null));
+                    packet instanceof ClientboundSetEntityMotionPacket motion ? new Vec3(motion.getXa(), motion.getYa(), motion.getZa()) : null));
         }
-        @Override public void sendToTrackingPlayersAndSelf(Packet<? super ClientGamePacketListener> packet) {
+        public void sendToTrackingPlayersAndSelf(Packet<?> packet) {
             sendToTrackingPlayers(packet);
         }
-        @Override public void sendToTrackingPlayersFiltered(Packet<? super ClientGamePacketListener> packet,
+        public void sendToTrackingPlayersFiltered(Packet<?> packet,
                                                            Predicate<ServerPlayer> predicate) {
             sendToTrackingPlayers(packet);
         }

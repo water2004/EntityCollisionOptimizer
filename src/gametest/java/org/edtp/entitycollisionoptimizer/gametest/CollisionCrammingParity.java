@@ -2,8 +2,8 @@ package org.edtp.entitycollisionoptimizer.gametest;
 
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.entity.monster.zombie.Zombie;
-import net.minecraft.world.level.gamerules.GameRules;
+import net.minecraft.world.entity.monster.Zombie;
+import net.minecraft.world.level.GameRules;
 import net.minecraft.world.phys.Vec3;
 import org.edtp.entitycollisionoptimizer.gametest.mixin.LivingEntityTestInvoker;
 import org.edtp.entitycollisionoptimizer.natives.CollisionFrame;
@@ -21,7 +21,7 @@ final class CollisionCrammingParity {
 
     static void verifyDamage(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
-        int previousCramming = level.getGameRules().get(GameRules.MAX_ENTITY_CRAMMING);
+        int previousCramming = level.getGameRules().getInt(GameRules.RULE_MAX_ENTITY_CRAMMING);
         Vec3 vanillaAnchor = new Vec3(6.5, 1.0, 0.5);
         Vec3 acceleratedAnchor = new Vec3(9.5, 1.0, 0.5);
         Zombie vanillaSource = spawnZombie(helper, vanillaAnchor);
@@ -35,7 +35,7 @@ final class CollisionCrammingParity {
         try {
             vanillaSource.setInvulnerable(false);
             acceleratedSource.setInvulnerable(false);
-            level.getGameRules().set(GameRules.MAX_ENTITY_CRAMMING, 1, level.getServer());
+            level.getGameRules().getRule(GameRules.RULE_MAX_ENTITY_CRAMMING).set(1, level.getServer());
             long seed = seedWhoseNextIntSucceeds(vanillaSource, 4);
 
             vanillaSource.getRandom().setSeed(seed);
@@ -55,7 +55,7 @@ final class CollisionCrammingParity {
                     "cramming parity setup must trigger damage"
             );
         } finally {
-            level.getGameRules().set(GameRules.MAX_ENTITY_CRAMMING, previousCramming, level.getServer());
+            level.getGameRules().getRule(GameRules.RULE_MAX_ENTITY_CRAMMING).set(previousCramming, level.getServer());
             for (Zombie entity : entities) {
                 entity.discard();
             }
@@ -65,7 +65,7 @@ final class CollisionCrammingParity {
 
     static void verifyPassengerExclusion(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
-        int previousCramming = level.getGameRules().get(GameRules.MAX_ENTITY_CRAMMING);
+        int previousCramming = level.getGameRules().getInt(GameRules.RULE_MAX_ENTITY_CRAMMING);
         Vec3 vanillaAnchor = new Vec3(7.5, 1.0, 8.5);
         Vec3 acceleratedAnchor = new Vec3(10.5, 1.0, 8.5);
         Zombie vanillaSource = spawnZombie(helper, vanillaAnchor);
@@ -82,15 +82,15 @@ final class CollisionCrammingParity {
         try {
             vanillaSource.setInvulnerable(false);
             acceleratedSource.setInvulnerable(false);
-            vanillaPassenger.startRiding(vanillaSource, true, true);
-            acceleratedPassenger.startRiding(acceleratedSource, true, true);
+            vanillaPassenger.startRiding(vanillaSource, true);
+            acceleratedPassenger.startRiding(acceleratedSource, true);
             vanillaPassenger.setPos(vanillaSource.position());
             acceleratedPassenger.setPos(acceleratedSource.position());
             helper.assertTrue(
                     vanillaPassenger.isPassenger() && acceleratedPassenger.isPassenger(),
                     "passenger cramming setup must create passengers"
             );
-            level.getGameRules().set(GameRules.MAX_ENTITY_CRAMMING, 1, level.getServer());
+            level.getGameRules().getRule(GameRules.RULE_MAX_ENTITY_CRAMMING).set(1, level.getServer());
             long seed = seedWhoseNextIntSucceeds(vanillaSource, 4);
 
             vanillaSource.getRandom().setSeed(seed);
@@ -111,7 +111,7 @@ final class CollisionCrammingParity {
                     "passengers must not count toward cramming damage"
             );
         } finally {
-            level.getGameRules().set(GameRules.MAX_ENTITY_CRAMMING, previousCramming, level.getServer());
+            level.getGameRules().getRule(GameRules.RULE_MAX_ENTITY_CRAMMING).set(previousCramming, level.getServer());
             for (Zombie entity : entities) {
                 entity.discard();
             }
@@ -121,7 +121,7 @@ final class CollisionCrammingParity {
 
     static void verifyExactOverlap(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
-        int previousCramming = level.getGameRules().get(GameRules.MAX_ENTITY_CRAMMING);
+        int previousCramming = level.getGameRules().getInt(GameRules.RULE_MAX_ENTITY_CRAMMING);
         Vec3 vanillaAnchor = new Vec3(13.5, 1.0, 0.5);
         Vec3 acceleratedAnchor = new Vec3(16.5, 1.0, 0.5);
         Zombie vanillaSource = spawnZombie(helper, vanillaAnchor);
@@ -142,7 +142,7 @@ final class CollisionCrammingParity {
         try {
             vanillaSource.setInvulnerable(false);
             acceleratedSource.setInvulnerable(false);
-            level.getGameRules().set(GameRules.MAX_ENTITY_CRAMMING, 1, level.getServer());
+            level.getGameRules().getRule(GameRules.RULE_MAX_ENTITY_CRAMMING).set(1, level.getServer());
             long seed = seedWhoseNextIntSucceeds(vanillaSource, 4);
 
             zeroVelocities(entities);
@@ -170,7 +170,7 @@ final class CollisionCrammingParity {
                 );
             }
         } finally {
-            level.getGameRules().set(GameRules.MAX_ENTITY_CRAMMING, previousCramming, level.getServer());
+            level.getGameRules().getRule(GameRules.RULE_MAX_ENTITY_CRAMMING).set(previousCramming, level.getServer());
             for (Zombie entity : entities) {
                 entity.discard();
             }

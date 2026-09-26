@@ -33,7 +33,7 @@ final class BlockHaloParity {
                     level.removeBlockEntity(pos);
                     var state = block.defaultBlockState();
                     if (block == Blocks.MOVING_PISTON) state = state.setValue(BlockStateProperties.FACING, Direction.WEST);
-                    level.setBlock(pos, state, Block.UPDATE_SKIP_ALL_SIDEEFFECTS);
+                    level.setBlock(pos, state, Block.UPDATE_KNOWN_SHAPE | Block.UPDATE_CLIENTS);
                     PistonMovingBlockEntity piston = null;
                     if (block == Blocks.MOVING_PISTON) {
                         piston = new PistonMovingBlockEntity(pos, state, Blocks.STONE.defaultBlockState(), Direction.WEST, true, false);
@@ -53,7 +53,7 @@ final class BlockHaloParity {
                 }
             } finally {
                 level.removeBlockEntity(pos);
-                level.setBlock(pos, original, Block.UPDATE_SKIP_ALL_SIDEEFFECTS);
+                level.setBlock(pos, original, Block.UPDATE_KNOWN_SHAPE | Block.UPDATE_CLIENTS);
                 if (originalBlockEntity != null) level.setBlockEntity(originalBlockEntity);
             }
         }

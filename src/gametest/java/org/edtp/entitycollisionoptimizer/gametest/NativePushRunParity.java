@@ -2,8 +2,8 @@ package org.edtp.entitycollisionoptimizer.gametest;
 
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.EntityTypes;
-import net.minecraft.world.entity.monster.zombie.Zombie;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.monster.Zombie;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.scores.Team;
 import org.edtp.entitycollisionoptimizer.EntityCollisionOptimizer;
@@ -29,11 +29,11 @@ final class NativePushRunParity {
 
     private static void compare(GameTestHelper helper, int count, Vec3 initial, int guards) {
         try (var scene = new InteractionScene(helper)) {
-            var source = (Zombie) scene.spawn(EntityTypes.ZOMBIE, new Vec3(4.5, 1, 4.5));
+            var source = (Zombie) scene.spawn(EntityType.ZOMBIE, new Vec3(4.5, 1, 4.5));
             List<Entity> entities = new ArrayList<>();
             entities.add(source);
             for (int i = 0; i < count; i++) {
-                entities.add(scene.spawn(EntityTypes.ZOMBIE,
+                entities.add(scene.spawn(EntityType.ZOMBIE,
                         new Vec3(4.5 + (i % 5 - 2) * .06, 1, 4.5 + (i / 5 - 2) * .06)));
             }
             // Snapshot candidates before transitions: execution must read the live guards after collection.
@@ -63,11 +63,11 @@ final class NativePushRunParity {
                 batch.applyNativeRun(source, split, count);
                 compare(helper, entities, expected, label + " second commit");
                 // A consumed sync flag must not be resurrected by a later getter or frame lifecycle.
-                entities.forEach(entity -> entity.needsSync = false);
+                entities.forEach(entity -> entity.hasImpulse = false);
                 CollisionFrame.end(helper.getLevel());
                 for (Entity entity : entities) {
                     entity.getDeltaMovement();
-                    helper.assertTrue(!entity.needsSync, "no deferred sync after run commit");
+                    helper.assertTrue(!entity.hasImpulse, "no deferred sync after run commit");
                 }
             }
         }
@@ -77,19 +77,19 @@ final class NativePushRunParity {
         for (int i = 0; i < entities.size(); i++) {
             // Non-finite raw states are numerical guard probes, not a custom entity implementation.
             ((EntityVelocityAccessor) entities.get(i)).eco$rawVelocity(velocity);
-            entities.get(i).needsSync = (i & 1) != 0;
+            entities.get(i).hasImpulse = (i & 1) != 0;
         }
     }
 
     private static List<State> snapshot(List<Entity> entities) {
-        return entities.stream().map(entity -> new State(((EntityVelocityAccessor) entity).eco$rawVelocity(), entity.needsSync)).toList();
+        return entities.stream().map(entity -> new State(((EntityVelocityAccessor) entity).eco$rawVelocity(), entity.hasImpulse)).toList();
     }
 
     private static void compare(GameTestHelper helper, List<Entity> entities, List<State> expected, String label) {
         for (int i = 0; i < entities.size(); i++) {
             NativeImpulseParity.exact(helper, ((EntityVelocityAccessor) entities.get(i)).eco$rawVelocity(),
                     expected.get(i).velocity, label + " raw velocity " + i);
-            helper.assertValueEqual(entities.get(i).needsSync, expected.get(i).sync, label + " sync " + i);
+            helper.assertValueEqual(entities.get(i).hasImpulse, expected.get(i).sync, label + " sync " + i);
         }
     }
 

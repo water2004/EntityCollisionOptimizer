@@ -2,8 +2,8 @@ package org.edtp.entitycollisionoptimizer.gametest;
 
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.entity.EntityType;
-import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.Mob;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.phys.Vec3;
@@ -17,20 +17,20 @@ import java.util.List;
 final class FluidInteractionParity {
     static void verify(GameTestHelper helper) {
         int cases = 0;
-        for (var type : List.of(EntityTypes.ITEM, EntityTypes.ZOMBIE, EntityTypes.PLAYER,
-                EntityTypes.OAK_BOAT, EntityTypes.SULFUR_CUBE, EntityTypes.STRIDER)) {
+        for (var type : List.of(EntityType.ITEM, EntityType.ZOMBIE, EntityType.PLAYER,
+                EntityType.BOAT, EntityType.MAGMA_CUBE, EntityType.STRIDER)) {
             for (int fixture = 0; fixture < 5; fixture++) {
                 var expected = run(helper, false, type, fixture);
                 var actual = run(helper, true, type, fixture);
                 for (int i = 0; i < expected.size(); i++) actual.get(i).compare(helper, expected.get(i),
                         "fluid fixture=" + fixture + " type=" + type + " step=" + i);
-                if (fixture == 1 && (type == EntityTypes.ITEM || type == EntityTypes.ZOMBIE)) {
+                if (fixture == 1 && (type == EntityType.ITEM || type == EntityType.ZOMBIE)) {
                     helper.assertTrue(expected.getLast().position().x > expected.getFirst().position().x,
                             "water gradient must actually transport " + type);
                 }
                 if (fixture != 2) helper.assertTrue(expected.stream().anyMatch(s -> (s.flags() & 32) != 0),
                         "water fixture must immerse " + type);
-                if ((type == EntityTypes.ITEM || type == EntityTypes.ZOMBIE) && (fixture == 3 || fixture == 4)) {
+                if ((type == EntityType.ITEM || type == EntityType.ZOMBIE) && (fixture == 3 || fixture == 4)) {
                     boolean upward = fixture == 3;
                     helper.assertTrue(expected.stream().anyMatch(s -> upward ? s.velocity().y > 0 : s.velocity().y < 0),
                             "bubble column must actually " + (upward ? "push up " : "pull down ") + type);
@@ -58,6 +58,9 @@ final class FluidInteractionParity {
                 }
             }
             var entity = scene.spawn(type, new Vec3(3.5, 1.05, 4.5));
+            // 1.21.1 travel() skips NoAI mobs. These fixtures call baseTick/travel
+            // directly, so enabling effective AI permits physics without running AI goals.
+            if (entity instanceof Mob mob) mob.setNoAi(false);
             entity.setDeltaMovement(Vec3.ZERO);
             List<InteractionScene.State> states = new ArrayList<>();
             for (int step = 0; step < 12; step++) {
@@ -67,7 +70,7 @@ final class FluidInteractionParity {
                 if (entity instanceof LivingEntity living) {
                     living.baseTick();
                     living.travel(Vec3.ZERO);
-                    living.applyEffectsFromBlocks(before, living.position());
+                    // In 1.21.1 Entity.move already calls tryCheckInsideBlocks.
                 } else entity.tick();
                 states.add(InteractionScene.State.of(entity));
                 CollisionFrame.end(helper.getLevel());

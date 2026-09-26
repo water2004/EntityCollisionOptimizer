@@ -8,13 +8,13 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 
-/** Position, velocity and needsSync use vanilla fields only while the entity is unbound. */
+/** Position, velocity and hasImpulse use vanilla fields only while the entity is unbound. */
 @Mixin(Entity.class)
 public abstract class EntityBodyMixin implements CollisionBodyAccess {
     @Shadow private Vec3 position;
     @Shadow private net.minecraft.world.phys.AABB bb;
     @Shadow private Vec3 deltaMovement;
-    @Shadow public boolean needsSync;
+    @Shadow public boolean hasImpulse;
     @Shadow public boolean noPhysics;
     @Unique private CollisionStateTable eco$bodyTable;
     @Unique private int eco$bodySlot;
@@ -30,11 +30,11 @@ public abstract class EntityBodyMixin implements CollisionBodyAccess {
     }
 
     @Override public final boolean eco$readNeedsSync() {
-        return eco$bodyTable == null ? needsSync : eco$bodyTable.needsSync(eco$bodySlot);
+        return eco$bodyTable == null ? hasImpulse : eco$bodyTable.needsSync(eco$bodySlot);
     }
 
     @Override public final void eco$writeNeedsSync(boolean value) {
-        if (eco$bodyTable == null) needsSync = value;
+        if (eco$bodyTable == null) hasImpulse = value;
         else eco$bodyTable.needsSync(eco$bodySlot, value);
     }
 
@@ -91,7 +91,7 @@ public abstract class EntityBodyMixin implements CollisionBodyAccess {
     @Override public final void eco$detachBody(CollisionStateTable table, int slot) {
         if (eco$bodyTable == table && eco$bodySlot == slot) {
             deltaMovement = table.velocity(slot);
-            needsSync = table.needsSync(slot);
+            hasImpulse = table.needsSync(slot);
             position = table.position(slot);
             bb = table.bounds(slot);
             table.unbind(slot);

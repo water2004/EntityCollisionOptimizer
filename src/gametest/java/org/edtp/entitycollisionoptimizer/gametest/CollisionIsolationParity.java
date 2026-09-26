@@ -3,7 +3,7 @@ package org.edtp.entitycollisionoptimizer.gametest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.monster.zombie.Zombie;
+import net.minecraft.world.entity.monster.Zombie;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.scores.PlayerTeam;
@@ -100,7 +100,7 @@ final class CollisionIsolationParity {
                 Set<Entity> observed = identitySet(spatial);
                 if (spatial.size() != expected.size() || !observed.equals(expected)) {
                     throw new AssertionError(
-                            group.level().dimension().identifier()
+                            group.level().dimension().location()
                                     + " returned a foreign, duplicate, or missing entity"
                     );
                 }
@@ -117,7 +117,7 @@ final class CollisionIsolationParity {
                     if (pushable.pushableCount() != expectedPushable
                             || pushable.nonPassengerCount() != expectedPushable) {
                         throw new AssertionError(
-                                group.level().dimension().identifier()
+                                group.level().dimension().location()
                                         + " pushable counts were " + pushable.pushableCount()
                                         + "/" + pushable.nonPassengerCount()
                         );
@@ -150,7 +150,7 @@ final class CollisionIsolationParity {
         for (int i = 0; i < entities.size(); i++) {
             if (entities.get(i).getDeltaMovement().distanceToSqr(expected[i]) > 1.0E-24) {
                 throw new AssertionError("Concurrent native impulse buffer contamination in "
-                        + group.level().dimension().identifier());
+                        + group.level().dimension().location());
             }
         }
     }

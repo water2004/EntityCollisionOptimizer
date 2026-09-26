@@ -13,7 +13,7 @@ public final class CollisionOptimizerCommand {
 
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
         dispatcher.register(Commands.literal("eco")
-                .requires(Commands.hasPermission(Commands.LEVEL_GAMEMASTERS))
+                .requires(source -> source.hasPermission(Commands.LEVEL_GAMEMASTERS))
                 .executes(CollisionOptimizerCommand::status)
                 .then(Commands.literal("check").executes(CollisionOptimizerCommand::status)));
     }

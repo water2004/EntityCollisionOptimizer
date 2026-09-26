@@ -4,7 +4,7 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
-import net.minecraft.world.entity.EntityTypes;
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.MoverType;
 import net.minecraft.world.entity.ai.attributes.Attributes;
@@ -25,6 +25,19 @@ import java.util.List;
 /** Player attacks, sprint knockback, contact pushing and item collection with identical initial inputs. */
 final class PlayerInteractionParity {
     static void verify(GameTestHelper helper) {
+        // 1.21.1 stores PvP on MinecraftServer rather than a gamerule, and the
+        // GameTest server starts with it disabled. Exercise real player damage.
+        var server = helper.getLevel().getServer();
+        boolean previousPvp = server.isPvpAllowed();
+        server.setPvpAllowed(true);
+        try {
+            verifyWithPvp(helper);
+        } finally {
+            server.setPvpAllowed(previousPvp);
+        }
+    }
+
+    private static void verifyWithPvp(GameTestHelper helper) {
         int cases = 0;
         for (int kind = 0; kind < 4; kind++) for (boolean sprinting : new boolean[]{false, true}) {
             var expected = attack(helper, false, kind, sprinting);
@@ -43,9 +56,9 @@ final class PlayerInteractionParity {
         try (var scene = new InteractionScene(helper)) {
             scene.floor(Blocks.BLUE_ICE);
             for (int y = 1; y <= 4; y++) for (int z = 2; z <= 6; z++) scene.block(7, y, z, Blocks.STONE);
-            var player = (ServerPlayer) scene.spawn(EntityTypes.PLAYER, new Vec3(4.5, 1, 4.5));
+            var player = (ServerPlayer) scene.spawn(EntityType.PLAYER, new Vec3(4.5, 1, 4.5));
             player.setGameMode(GameType.SURVIVAL);
-            var type = List.of(EntityTypes.ZOMBIE, EntityTypes.SULFUR_CUBE, EntityTypes.SLIME, EntityTypes.PLAYER).get(kind);
+            var type = List.of(EntityType.ZOMBIE, EntityType.MAGMA_CUBE, EntityType.SLIME, EntityType.PLAYER).get(kind);
             var target = (LivingEntity) scene.spawn(type, new Vec3(5.1, 1, 4.5));
             target.getAttribute(Attributes.MAX_HEALTH).setBaseValue(200);
             target.setHealth(200);
@@ -68,7 +81,7 @@ final class PlayerInteractionParity {
                     ((LivingEntityTestInvoker) entity).entityCollisionOptimizer$invokePushEntities();
                     Vec3 before = entity.position();
                     entity.move(entity == player ? MoverType.PLAYER : MoverType.SELF, entity.getDeltaMovement());
-                    entity.applyEffectsFromBlocks(before, entity.position());
+                    // In 1.21.1 Entity.move already calls tryCheckInsideBlocks.
                     states.add(InteractionScene.State.of(entity));
                 }
             }
@@ -79,10 +92,10 @@ final class PlayerInteractionParity {
     private static List<Integer> pickup(GameTestHelper helper, boolean enabled) {
         try (var scene = new InteractionScene(helper)) {
             scene.floor(Blocks.STONE);
-            var player = (ServerPlayer) scene.spawn(EntityTypes.PLAYER, new Vec3(4.5, 1, 4.5));
+            var player = (ServerPlayer) scene.spawn(EntityType.PLAYER, new Vec3(4.5, 1, 4.5));
             player.setGameMode(GameType.SURVIVAL);
             player.getInventory().clearContent();
-            var item = (ItemEntity) scene.spawn(EntityTypes.ITEM, new Vec3(4.6, 1, 4.5));
+            var item = (ItemEntity) scene.spawn(EntityType.ITEM, new Vec3(4.6, 1, 4.5));
             item.setNoPickUpDelay();
             CollisionFrame.begin(helper.getLevel());
             ((LivingEntityTestInvoker) player).entityCollisionOptimizer$invokePushEntities();

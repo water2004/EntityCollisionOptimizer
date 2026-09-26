@@ -4,9 +4,9 @@ import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.EntityTypes;
-import net.minecraft.world.entity.animal.parrot.Parrot;
-import net.minecraft.world.entity.monster.zombie.Zombie;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.animal.Parrot;
+import net.minecraft.world.entity.monster.Zombie;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.GameType;
 import net.minecraft.world.phys.Vec3;
@@ -87,7 +87,7 @@ final class CollisionPushParity {
         ServerLevel level = helper.getLevel();
         Vec3 anchor = new Vec3(0.5, 1.0, 35.0);
         ServerPlayer player = spawnPlayer(helper, anchor.add(0.18, 0.0, 0.07));
-        Parrot vanillaSource = (Parrot) spawnEntity(helper, EntityTypes.PARROT, anchor);
+        Parrot vanillaSource = (Parrot) spawnEntity(helper, EntityType.PARROT, anchor);
         Parrot acceleratedSource = null;
         try {
             zeroVelocities(List.of(player, vanillaSource));
@@ -97,7 +97,7 @@ final class CollisionPushParity {
 
             vanillaSource.discard();
             player.setDeltaMovement(Vec3.ZERO);
-            acceleratedSource = (Parrot) spawnEntity(helper, EntityTypes.PARROT, anchor);
+            acceleratedSource = (Parrot) spawnEntity(helper, EntityType.PARROT, anchor);
             acceleratedSource.setDeltaMovement(Vec3.ZERO);
             CollisionFrame.begin(level);
             ((LivingEntityTestInvoker) acceleratedSource).entityCollisionOptimizer$invokePushEntities();
@@ -136,7 +136,7 @@ final class CollisionPushParity {
         Zombie vanillaSource = spawnZombie(helper, anchor);
         Zombie acceleratedSource = null;
         try {
-            helper.assertValueEqual(player.gameMode(), gameType, "player mode setup: " + gameType);
+            helper.assertValueEqual(((net.minecraft.server.level.ServerPlayer) player).gameMode.getGameModeForPlayer(), gameType, "player mode setup: " + gameType);
             zeroVelocities(List.of(player, vanillaSource));
             CollisionFrame.end(level);
             VanillaReference.pushEntities(vanillaSource);

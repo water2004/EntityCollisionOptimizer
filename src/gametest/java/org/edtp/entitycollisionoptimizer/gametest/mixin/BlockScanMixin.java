@@ -23,8 +23,8 @@ public abstract class BlockScanMixin {
     @Unique private MovementScanDiagnostics.Probe eco$probe;
     @Unique private boolean eco$step;
 
-    @Inject(method = "<init>(Lnet/minecraft/world/level/CollisionGetter;Lnet/minecraft/world/phys/shapes/CollisionContext;Lnet/minecraft/world/phys/AABB;ZLjava/util/function/BiFunction;)V", at = @At("RETURN"))
-    private void eco$measureScan(CollisionGetter level, CollisionContext context, AABB box,
+    @Inject(method = "<init>(Lnet/minecraft/world/level/CollisionGetter;Lnet/minecraft/world/entity/Entity;Lnet/minecraft/world/phys/AABB;ZLjava/util/function/BiFunction;)V", at = @At("RETURN"))
+    private void eco$measureScan(CollisionGetter level, net.minecraft.world.entity.Entity entity, AABB box,
                                  boolean suffocating, BiFunction<?, ?, ?> provider, CallbackInfo ci) {
         eco$probe = MovementScanDiagnostics.current();
         if (eco$probe != null) {

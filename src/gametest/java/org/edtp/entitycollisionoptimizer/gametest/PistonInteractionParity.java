@@ -4,7 +4,6 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.entity.EntityType;
-import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.piston.PistonMovingBlockEntity;
@@ -22,8 +21,8 @@ final class PistonInteractionParity {
         for (Direction direction : Direction.values()) {
             for (boolean extending : new boolean[]{true, false}) {
                 for (Block block : List.of(Blocks.STONE, Blocks.SLIME_BLOCK, Blocks.HONEY_BLOCK)) {
-                    for (var type : List.of(EntityTypes.ZOMBIE, EntityTypes.ITEM, EntityTypes.PLAYER,
-                            EntityTypes.OAK_BOAT, EntityTypes.SULFUR_CUBE, EntityTypes.TNT)) {
+                    for (var type : List.of(EntityType.ZOMBIE, EntityType.ITEM, EntityType.PLAYER,
+                            EntityType.BOAT, EntityType.MAGMA_CUBE, EntityType.TNT)) {
                         var expected = run(helper, false, direction, extending, block, type, false);
                         var actual = run(helper, true, direction, extending, block, type, false);
                         actual.after.compare(helper, expected.after, "piston " + direction + " " + extending + " " + block + " " + type);
@@ -33,7 +32,7 @@ final class PistonInteractionParity {
                 }
             }
         }
-        for (var type : List.of(EntityTypes.ZOMBIE, EntityTypes.ITEM, EntityTypes.PLAYER)) {
+        for (var type : List.of(EntityType.ZOMBIE, EntityType.ITEM, EntityType.PLAYER)) {
             var expected = run(helper, false, Direction.EAST, true, Blocks.HONEY_BLOCK, type, true);
             var actual = run(helper, true, Direction.EAST, true, Blocks.HONEY_BLOCK, type, true);
             actual.after.compare(helper, expected.after, "honey passenger " + type);
@@ -53,7 +52,7 @@ final class PistonInteractionParity {
             var piston = new PistonMovingBlockEntity(pos, moving, block.defaultBlockState(), facing, extending, false);
             helper.getLevel().setBlockEntity(piston);
             var entity = scene.spawn(type, new Vec3(7.5, 4, 4.5));
-            Vec3 direction = facing.getUnitVec3();
+            Vec3 direction = Vec3.atLowerCornerOf(facing.getNormal());
             Vec3 center = Vec3.atCenterOf(pos).add(direction.scale(extending ? -0.1 : 0.1));
             entity.setPos(center.x, center.y - entity.getBbHeight() / 2.0, center.z);
             if (ridingHoney) {

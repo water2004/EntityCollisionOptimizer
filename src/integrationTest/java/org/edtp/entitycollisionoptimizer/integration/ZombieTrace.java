@@ -1,7 +1,7 @@
 package org.edtp.entitycollisionoptimizer.integration;
 
 import net.minecraft.world.entity.EquipmentSlot;
-import net.minecraft.world.entity.monster.zombie.Zombie;
+import net.minecraft.world.entity.monster.Zombie;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
@@ -42,7 +42,7 @@ final class ZombieTrace {
         zombie.hurtDuration = 0;
         zombie.deathTime = 0;
         zombie.invulnerableTime = 0;
-        zombie.fallDistance = 0.0;
+        zombie.fallDistance = 0.0F;
         zombie.tickCount = 0;
         for (EquipmentSlot slot : EquipmentSlot.values()) {
             zombie.setItemSlot(slot, ItemStack.EMPTY);

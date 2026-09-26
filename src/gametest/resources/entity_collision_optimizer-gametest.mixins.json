@@ -3,7 +3,7 @@
   "minVersion": "0.8",
   "package": "org.edtp.entitycollisionoptimizer.gametest.mixin",
   "plugin": "org.edtp.entitycollisionoptimizer.gametest.mixin.GameTestMixinPlugin",
-  "compatibilityLevel": "JAVA_25",
+  "compatibilityLevel": "JAVA_22",
   "mixins": [
     "TestBodyFieldConsumersMixin",
     "BoatPushBoundaryMixin",
@@ -20,7 +20,10 @@
     "BlockScanMixin",
     "OwnedMovementScanMixin",
     "OwnedBlockScanMixin",
-    "MovementCoverageMixin"
+    "MovementCoverageMixin",
+    "PiglinTestAccessor",
+    "HoglinTestAccessor",
+    "CubeShapeTestInvoker"
   ],
   "injectors": {
     "defaultRequire": 1
