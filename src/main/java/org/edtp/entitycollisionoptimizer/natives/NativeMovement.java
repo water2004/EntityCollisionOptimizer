@@ -29,7 +29,7 @@ public final class NativeMovement implements AutoCloseable {
         set(30, 0); set(31, 0); set(32, 0); set(33, stepping ? 1 : 0);
         try {
             FFMBackend.prepareMovement(bounds, packet);
-        } catch (RuntimeException | Error failure) {
+        } catch (RuntimeException failure) {
             close();
             throw failure;
         }

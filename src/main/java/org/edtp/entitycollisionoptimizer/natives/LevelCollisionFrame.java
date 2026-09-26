@@ -326,7 +326,7 @@ final class LevelCollisionFrame {
         try {
             batch.prepare(result);
             return batch;
-        } catch (RuntimeException | Error failure) {
+        } catch (RuntimeException failure) {
             batch.close();
             throw failure;
         }

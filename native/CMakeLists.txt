@@ -98,6 +98,7 @@ else()
 endif()
 
 set(ECO_COMMON_SOURCES
+        src/native_error.cpp
         src/state/context_api.cpp
         src/state/metadata_api.cpp
         src/state/persistent_index.cpp

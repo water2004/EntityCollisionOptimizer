@@ -214,7 +214,7 @@ public final class CollisionStateTable implements AutoCloseable {
         try {
             next = nextArena.allocate((long) capacity * STRIDE_BYTES, Double.BYTES);
             if (arena != null) MemorySegment.copy(memory, 0, next, 0, memory.byteSize());
-        } catch (RuntimeException | Error failure) {
+        } catch (RuntimeException failure) {
             nextArena.close();
             throw failure;
         }

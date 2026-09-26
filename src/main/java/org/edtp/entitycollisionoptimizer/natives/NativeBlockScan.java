@@ -69,7 +69,10 @@ public final class NativeBlockScan implements AutoCloseable {
                     storage.pointers.set(ADDRESS, index * 8L, rows);
                 }
             }
-        } catch (RuntimeException | Error failure) { close(); throw failure; }
+        } catch (RuntimeException failure) {
+            close();
+            throw failure;
+        }
     }
 
     public int next() {
