@@ -1,13 +1,18 @@
 param(
-    [string]$Branch = $env:GITHUB_REF_NAME,
+    [string]$RefName = $env:GITHUB_REF_NAME,
+    [string]$RefType = $env:GITHUB_REF_TYPE,
     [string]$Commit = $env:GITHUB_SHA
 )
 
 $ErrorActionPreference = 'Stop'
 $PSNativeCommandUseErrorActionPreference = $false
-$metadata = & "$PSScriptRoot/release-metadata.ps1" -Branch $Branch
+$metadata = & "$PSScriptRoot/release-metadata.ps1" -RefName $RefName -RefType $RefType
 $repository = $env:GITHUB_REPOSITORY
 $tag = $metadata.Tag
+# Resolve annotated and lightweight tags to the exact commit that was built.
+$tagCommit = & gh api "repos/$repository/commits/$($metadata.SourceTag)" --jq .sha
+if ($LASTEXITCODE -ne 0) { throw "Cannot resolve source tag $($metadata.SourceTag)." }
+if ($tagCommit -ne $Commit) { throw 'The pushed tag does not match the built commit.' }
 
 function Get-Release {
     $response = & gh api "repos/$repository/releases/tags/$tag" 2>&1
@@ -25,13 +30,13 @@ foreach ($asset in $assets) {
 }
 # GitHub asset labels replace filenames in the download UI; always upload plain paths.
 $release = Get-Release
-if ($Branch -eq 'main') {
+if ($metadata.CreatesRelease) {
     if ($null -eq $release) {
         if (-not (Test-Path -LiteralPath $metadata.NotesFile -PathType Leaf)) {
             throw "Missing release notes: $($metadata.NotesFile)"
         }
         $arguments = @('release', 'create', $tag) + $assets + @(
-            '--repo', $repository, '--target', $Commit,
+            '--repo', $repository, '--verify-tag',
             '--title', "Entity Collision Optimizer $($metadata.ReleaseVersion)",
             '--notes-file', $metadata.NotesFile
         )
@@ -41,13 +46,8 @@ if ($Branch -eq 'main') {
         if ($LASTEXITCODE -ne 0) { throw 'GitHub Release creation failed.' }
         exit 0
     }
-    $tagCommit = & gh api "repos/$repository/commits/$tag" --jq .sha
-    if ($LASTEXITCODE -ne 0) { throw "Cannot resolve release tag $tag." }
-    if ($tagCommit -ne $Commit) {
-        throw "Release $tag already belongs to another main commit; increment mod_version."
-    }
 } else {
-    # Branch builds may finish before main; wait for its release, never create one here.
+    # Version tags may finish before the common tag; wait for its release, never create one here.
     for ($attempt = 0; $null -eq $release -and $attempt -lt 40; $attempt++) {
         Write-Host "Waiting for main to publish $tag..."
         Start-Sleep -Seconds 30
