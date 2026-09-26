@@ -56,18 +56,27 @@ Push-Location $fixture
 try {
     foreach ($mc in @('26.1', '26.2', '26.3')) {
         Properties $mc "1.0.0-mc$mc-alpha.8"
-        $metadata = & "$scripts/release-metadata.ps1" -Branch $mc
-        Assert ($metadata.Tag -eq 'v1.0.0-alpha.8' -and $metadata.Prerelease) 'Shared alpha tag.'
+        $metadata = & "$scripts/release-metadata.ps1" -RefName "v1.0.0-mc$mc-alpha.8" -RefType tag
+        Assert ($metadata.Tag -eq 'v1.0.0-alpha.8' -and $metadata.Prerelease -and $metadata.Branch -eq $mc -and -not $metadata.CreatesRelease) 'Version alpha tag appends to shared prerelease.'
+        $metadata = & "$scripts/release-metadata.ps1" -RefName 'v1.0.0-alpha.8' -RefType tag
+        Assert ($metadata.Branch -eq 'main' -and $metadata.CreatesRelease) 'Common alpha tag creates release from main.'
+        Properties $mc "1.0.0+mc$mc"
+        $metadata = & "$scripts/release-metadata.ps1" -RefName "v1.0.0+mc$mc" -RefType tag
+        Assert ($metadata.Tag -eq 'v1.0.0' -and -not $metadata.Prerelease -and $metadata.Branch -eq $mc -and -not $metadata.CreatesRelease) 'Version stable tag appends to shared stable release.'
     }
     Properties '26.3' '1.0.0+mc26.3'
-    $metadata = & "$scripts/release-metadata.ps1" -Branch main
-    Assert ($metadata.Tag -eq 'v1.0.0' -and -not $metadata.Prerelease) 'Stable tag.'
-    Expect-Failure { & "$scripts/release-metadata.ps1" -Branch '26.1' }
-    Expect-Failure { & "$scripts/release-metadata.ps1" -Branch 'feature' }
+    $metadata = & "$scripts/release-metadata.ps1" -RefName 'v1.0.0' -RefType tag
+    Assert ($metadata.Tag -eq 'v1.0.0' -and -not $metadata.Prerelease -and $metadata.CreatesRelease) 'Common stable tag.'
+    Expect-Failure { & "$scripts/release-metadata.ps1" -RefName 'v1.0.0+mc26.1' -RefType tag }
+    Expect-Failure { & "$scripts/release-metadata.ps1" -RefName 'main' -RefType branch }
+    Expect-Failure { & "$scripts/release-metadata.ps1" -RefName 'v1.0.0' -RefType branch }
+    Expect-Failure { & "$scripts/release-metadata.ps1" -RefName 'feature' -RefType tag }
+    Expect-Failure { & "$scripts/release-metadata.ps1" -RefName 'v1.0.1' -RefType tag }
+    Expect-Failure { & "$scripts/release-metadata.ps1" -RefName 'v1.0.0-alpha.8' -RefType tag }
     Properties '26.3' '1.0.0-mc26.2-alpha.8'
-    Expect-Failure { & "$scripts/release-metadata.ps1" -Branch main }
+    Expect-Failure { & "$scripts/release-metadata.ps1" -RefName 'v1.0.0-alpha.8' -RefType tag }
     Properties '26.3' '1.0.0-mc26.3-alpha.08'
-    Expect-Failure { & "$scripts/release-metadata.ps1" -Branch main }
+    Expect-Failure { & "$scripts/release-metadata.ps1" -RefName 'v1.0.0-alpha.08' -RefType tag }
 
     Properties '26.1' '1.0.0-mc26.1-alpha.8'
     New-Item -ItemType Directory build/libs, .github/release-notes | Out-Null
@@ -98,33 +107,56 @@ try {
     Expect-Failure { & "$scripts/stage-release.ps1" -Version '1.0.0-mc26.1-alpha.8' -Minecraft '26.3' -Commit $commit }
     Expect-Failure { & "$scripts/stage-release.ps1" -Version '1.0.0-mc26.1-alpha.8' -Minecraft '26.1' -Commit '' }
 
-    & "$scripts/publish-release.ps1" -Branch main -Commit $commit
+    Expect-Failure { & "$scripts/publish-release.ps1" -RefName 'main' -RefType branch -Commit $commit }
+    Assert ($state.calls.Count -eq 0) 'Branch publishing is rejected before contacting GitHub.'
+    & "$scripts/publish-release.ps1" -RefName 'v1.0.0-alpha.8' -RefType tag -Commit $commit
     Assert ($state.calls.Where({ $_[0] -eq 'release' -and $_[1] -eq 'create' }).Count -eq 1) 'Main creates release.'
     $createCall = $state.calls.Where({ $_[0] -eq 'release' -and $_[1] -eq 'create' })[0]
     Assert ($createCall -contains 'dist/entity_collision_optimizer-1.0.0-mc26.1-alpha.8.jar') 'Creation uses the original filename.'
     Assert (@($createCall | Where-Object { $_ -like '*#*' }).Count -eq 0) 'Creation must not set display labels.'
     Assert (@($createCall | Where-Object { $_ -like '*.json*' }).Count -eq 0) 'Creation does not upload JSON.'
+    Assert ($createCall -contains '--prerelease' -and $createCall -contains '--latest=false' -and $createCall -notcontains '--latest') 'Alpha releases never replace Latest.'
+    Assert ($createCall -contains '--verify-tag' -and $createCall -notcontains '--target') 'CD uses the existing pushed tag, never creates a tag.'
     $state.calls.Clear()
     $state.mode = 'existing'
-    & "$scripts/publish-release.ps1" -Branch '26.1' -Commit $commit
+    & "$scripts/publish-release.ps1" -RefName 'v1.0.0-mc26.1-alpha.8' -RefType tag -Commit $commit
     Assert ($state.calls.Where({ $_[0] -eq 'release' -and $_[1] -eq 'upload' }).Count -eq 1) 'Version branch appends assets.'
     Assert ($state.calls.Where({ $_[0] -eq 'release' -and $_[1] -eq 'create' }).Count -eq 0) 'Version branch never creates release.'
     $uploadCall = $state.calls.Where({ $_[0] -eq 'release' -and $_[1] -eq 'upload' })[0]
     Assert ($uploadCall -contains 'dist/entity_collision_optimizer-1.0.0-mc26.1-alpha.8.jar') 'Upload uses the original filename.'
     Assert (@($uploadCall | Where-Object { $_ -like '*#*' }).Count -eq 0) 'Upload must not set display labels.'
     Assert (@($uploadCall | Where-Object { $_ -like '*.json*' }).Count -eq 0) 'Upload does not include JSON.'
+    Assert ($uploadCall[2] -eq 'v1.0.0-alpha.8') 'Version alpha assets never enter a stable release.'
     $state.mode = 'legacy'
-    & "$scripts/publish-release.ps1" -Branch '26.1' -Commit $commit
+    & "$scripts/publish-release.ps1" -RefName 'v1.0.0-mc26.1-alpha.8' -RefType tag -Commit $commit
     $state.mode = 'source'
-    & "$scripts/publish-release.ps1" -Branch '26.1' -Commit $commit
+    & "$scripts/publish-release.ps1" -RefName 'v1.0.0-mc26.1-alpha.8' -RefType tag -Commit $commit
     $state.assetCommit = 'b' * 40
-    Expect-Failure { & "$scripts/publish-release.ps1" -Branch '26.1' -Commit $commit }
+    Expect-Failure { & "$scripts/publish-release.ps1" -RefName 'v1.0.0-mc26.1-alpha.8' -RefType tag -Commit $commit }
     $state.tagCommit = 'b' * 40
-    Expect-Failure { & "$scripts/publish-release.ps1" -Branch main -Commit $commit }
+    Expect-Failure { & "$scripts/publish-release.ps1" -RefName 'v1.0.0-alpha.8' -RefType tag -Commit $commit }
+    Expect-Failure { & "$scripts/publish-release.ps1" -RefName 'v1.0.0-mc26.1-alpha.8' -RefType tag -Commit $commit }
+    $state.tagCommit = $commit
     $state.mode = 'missing'
     $state.calls.Clear()
-    Expect-Failure { & "$scripts/publish-release.ps1" -Branch '26.1' -Commit $commit }
+    Expect-Failure { & "$scripts/publish-release.ps1" -RefName 'v1.0.0-mc26.1-alpha.8' -RefType tag -Commit $commit }
     Assert ($state.calls.Where({ $_[0] -eq 'release' }).Count -eq 0) 'Missing main release cannot be created by version branch.'
+
+    # Stable releases use separate tags and explicitly become Latest.
+    Properties '26.1' '1.0.0+mc26.1'
+    Expect-Failure { & "$scripts/publish-release.ps1" -RefName 'v1.0.0-alpha.8' -RefType tag -Commit $commit }
+    Copy-Item 'dist/entity_collision_optimizer-1.0.0-mc26.1-alpha.8.jar' 'dist/entity_collision_optimizer-1.0.0+mc26.1.jar'
+    'Stable release fixture' | Set-Content .github/release-notes/1.0.0.md
+    $state.calls.Clear()
+    & "$scripts/publish-release.ps1" -RefName 'v1.0.0' -RefType tag -Commit $commit
+    $stableCall = $state.calls.Where({ $_[0] -eq 'release' -and $_[1] -eq 'create' })[0]
+    Assert ($stableCall[2] -eq 'v1.0.0' -and $stableCall -contains '--latest' -and $stableCall -notcontains '--prerelease' -and $stableCall -notcontains '--latest=false') 'Stable release is public Latest, not prerelease.'
+    $state.calls.Clear()
+    $state.mode = 'existing'
+    & "$scripts/publish-release.ps1" -RefName 'v1.0.0+mc26.1' -RefType tag -Commit $commit
+    $stableUpload = $state.calls.Where({ $_[0] -eq 'release' -and $_[1] -eq 'upload' })[0]
+    Assert ($stableUpload[2] -eq 'v1.0.0') 'Stable version assets go to the stable release.'
+    Assert ($state.calls.Where({ $_[0] -eq 'release' -and $_[1] -eq 'create' }).Count -eq 0) 'Stable version tag cannot create a release.'
     Write-Host 'Release metadata, staging, publication routing and retry checks passed.'
 } finally {
     Pop-Location
