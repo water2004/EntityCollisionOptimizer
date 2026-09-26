@@ -35,11 +35,16 @@ Set-Item Function:gh -Value ({
             return 'Not Found (HTTP 404)'
         }
         $assets = @()
-        if ($state.mode -eq 'source') { $assets = @(@{ id = 42; name = 'source-mc26.1.json' }) }
+        if ($state.mode -in @('labeled', 'unlabeled')) {
+            $assets = @(@{
+                id = 42
+                name = 'entity_collision_optimizer-1.0.0-mc26.1-alpha.8.jar'
+                label = $(if ($state.mode -eq 'labeled') { "commit:$($state.assetCommit)" } else { $null })
+            })
+        }
         return (@{ draft = $false; immutable = $false; assets = $assets } | ConvertTo-Json -Depth 5)
     }
     if ($route -like '*/commits/*') { return $state.tagCommit }
-    if ($route -like '*/releases/assets/*') { return (@{ commit = $state.assetCommit } | ConvertTo-Json) }
     throw "Unexpected GitHub route $route."
 }.GetNewClosure())
 function Start-Sleep { param([int]$Seconds) }
@@ -80,18 +85,27 @@ try {
             } finally { $writer.Dispose() }
         }
     } finally { $archive.Dispose() }
-    & "$scripts/stage-release.ps1" -Version '1.0.0-mc26.1-alpha.8' -Minecraft '26.1' -Branch '26.1' -Commit $commit
-    Assert ((Get-ChildItem dist -File).Count -eq 3) 'Only per-version installable assets are staged.'
+    & "$scripts/stage-release.ps1" -Version '1.0.0-mc26.1-alpha.8' -Minecraft '26.1'
+    Assert ((Get-ChildItem dist -File).Count -eq 2) 'Only the JAR and checksum are staged.'
+    Assert (-not (Test-Path 'dist/source-mc26.1.json')) 'No source JSON download.'
     Expect-Failure { & "$scripts/stage-release.ps1" -Version '1.0.0-mc26.1-alpha.8' -Minecraft '26.3' }
 
     & "$scripts/publish-release.ps1" -Branch main -Commit $commit
     Assert ($state.calls.Where({ $_[0] -eq 'release' -and $_[1] -eq 'create' }).Count -eq 1) 'Main creates release.'
+    $createCall = $state.calls.Where({ $_[0] -eq 'release' -and $_[1] -eq 'create' })[0]
+    Assert ($createCall -contains "dist/entity_collision_optimizer-1.0.0-mc26.1-alpha.8.jar#commit:$commit") 'Creation labels the JAR with its source commit.'
+    Assert (@($createCall | Where-Object { $_ -like '*.json*' }).Count -eq 0) 'Creation does not upload JSON.'
     $state.calls.Clear()
     $state.mode = 'existing'
     & "$scripts/publish-release.ps1" -Branch '26.1' -Commit $commit
     Assert ($state.calls.Where({ $_[0] -eq 'release' -and $_[1] -eq 'upload' }).Count -eq 1) 'Version branch appends assets.'
     Assert ($state.calls.Where({ $_[0] -eq 'release' -and $_[1] -eq 'create' }).Count -eq 0) 'Version branch never creates release.'
-    $state.mode = 'source'
+    $uploadCall = $state.calls.Where({ $_[0] -eq 'release' -and $_[1] -eq 'upload' })[0]
+    Assert ($uploadCall -contains "dist/entity_collision_optimizer-1.0.0-mc26.1-alpha.8.jar#commit:$commit") 'Upload labels the JAR with its source commit.'
+    Assert (@($uploadCall | Where-Object { $_ -like '*.json*' }).Count -eq 0) 'Upload does not include JSON.'
+    $state.mode = 'unlabeled'
+    & "$scripts/publish-release.ps1" -Branch '26.1' -Commit $commit
+    $state.mode = 'labeled'
     & "$scripts/publish-release.ps1" -Branch '26.1' -Commit $commit
     $state.assetCommit = 'b' * 40
     Expect-Failure { & "$scripts/publish-release.ps1" -Branch '26.1' -Commit $commit }
