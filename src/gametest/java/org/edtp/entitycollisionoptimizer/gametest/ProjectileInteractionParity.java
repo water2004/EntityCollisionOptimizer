@@ -3,7 +3,7 @@ package org.edtp.entitycollisionoptimizer.gametest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
-import net.minecraft.world.entity.EntityTypes;
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MoverType;
 import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraft.world.item.Item;
@@ -49,7 +49,7 @@ final class ProjectileInteractionParity {
                     default -> Blocks.STONE;
                 });
             }
-            var player = (ServerPlayer) scene.spawn(EntityTypes.PLAYER, new Vec3(2.5, 1.0, 4.5));
+            var player = (ServerPlayer) scene.spawn(EntityType.PLAYER, new Vec3(2.5, 1.0, 4.5));
             player.setGameMode(GameType.SURVIVAL);
             player.setNoGravity(true);
             player.setOnGround(true);
@@ -57,7 +57,7 @@ final class ProjectileInteractionParity {
             player.setXRot(0);
             player.setDeltaMovement(Vec3.ZERO);
             player.setItemInHand(InteractionHand.MAIN_HAND, new ItemStack(item, 16));
-            var target = scene.spawn(EntityTypes.ZOMBIE, new Vec3(fixture == 4 ? 6.0 : 11.0, 1, 4.5));
+            var target = scene.spawn(EntityType.ZOMBIE, new Vec3(fixture == 4 ? 6.0 : 11.0, 1, 4.5));
             target.setNoGravity(true);
             target.setDeltaMovement(Vec3.ZERO);
             CollisionFrame.begin(helper.getLevel());

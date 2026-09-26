@@ -3,7 +3,7 @@ package org.edtp.entitycollisionoptimizer.gametest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.EntityTypes;
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.monster.zombie.Zombie;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
@@ -26,10 +26,10 @@ final class HardCollisionParity {
         Zombie source = CollisionTestSupport.spawnZombie(helper, anchor);
         List<Entity> extras = new ArrayList<>();
         extras.add(CollisionTestSupport.spawnZombie(helper, anchor.add(0.2, 0.0, 0.0)));
-        extras.add(CollisionTestSupport.spawnEntity(helper, EntityTypes.OAK_BOAT, anchor.add(0.3, 0.0, 0.0)));
-        extras.add(CollisionTestSupport.spawnEntity(helper, EntityTypes.OAK_BOAT, anchor.add(source.getBbWidth() + 0.4, 0.0, 0.0)));
+        extras.add(CollisionTestSupport.spawnEntity(helper, EntityType.OAK_BOAT, anchor.add(0.3, 0.0, 0.0)));
+        extras.add(CollisionTestSupport.spawnEntity(helper, EntityType.OAK_BOAT, anchor.add(source.getBbWidth() + 0.4, 0.0, 0.0)));
         extras.add(CollisionTestSupport.spawnZombie(helper, anchor.add(0.0, 0.0, 3.0)));
-        Entity boatSource = CollisionTestSupport.spawnEntity(helper, EntityTypes.OAK_BOAT, anchor.add(0.0, 0.0, 0.4));
+        Entity boatSource = CollisionTestSupport.spawnEntity(helper, EntityType.OAK_BOAT, anchor.add(0.0, 0.0, 0.4));
         extras.add(boatSource);
         int comparisons = 0;
         try {

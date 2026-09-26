@@ -73,12 +73,4 @@ public abstract class EntityMovementMixin {
         }
     }
 
-    @Inject(method = "collideBoundingBox(Lnet/minecraft/world/phys/shapes/CollisionContext;Lnet/minecraft/world/phys/Vec3;Lnet/minecraft/world/phys/AABB;Lnet/minecraft/world/level/Level;Ljava/util/List;)Lnet/minecraft/world/phys/Vec3;",
-            at = @At("HEAD"), cancellable = true)
-    private static void eco$ownContextBox(CollisionContext context, Vec3 requested, AABB box, Level level,
-                                          List<VoxelShape> entities, CallbackInfoReturnable<Vec3> cir) {
-        if (level instanceof ServerLevel) {
-            cir.setReturnValue(EntityMovementCollision.collideBox(level, context, null, requested, box, entities));
-        }
-    }
 }

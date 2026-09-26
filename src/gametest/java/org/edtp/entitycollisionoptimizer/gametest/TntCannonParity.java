@@ -3,7 +3,7 @@ package org.edtp.entitycollisionoptimizer.gametest;
 import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.EntityTypes;
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.item.PrimedTnt;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
@@ -115,7 +115,7 @@ final class TntCannonParity {
             scene.block(ox + 4, oy + 3, oz + 13, Blocks.REDSTONE_BLOCK);
             var payload = primed(scene, new Vec3(ox + 5.5, oy + 1.0, oz + 10.5), 80);
             var booster = primed(scene, new Vec3(ox + 6.5, oy + 1.0, oz + 10.5), 1);
-            var cart = scene.spawn(EntityTypes.MINECART, new Vec3(ox + 3.5, oy + 2.0625, oz + 10.51));
+            var cart = scene.spawn(EntityType.MINECART, new Vec3(ox + 3.5, oy + 2.0625, oz + 10.51));
             cart.setDeltaMovement(Vec3.ZERO);
             scene.seed(SEED);
             return trace(scene, payload, List.of(booster, cart));
@@ -148,7 +148,7 @@ final class TntCannonParity {
             scene.block(ox + 2, oy + 2, oz + 2, Blocks.SANDSTONE);
             var payload = primed(scene, new Vec3(ox + 1.5, oy, oz + 1.5), 80);
             var booster = primed(scene, new Vec3(ox + 1.5, oy, oz + 0.5), 1);
-            var cart = scene.spawn(EntityTypes.MINECART, new Vec3(ox + 2.5, oy + 2.0625, oz + 1.5));
+            var cart = scene.spawn(EntityType.MINECART, new Vec3(ox + 2.5, oy + 2.0625, oz + 1.5));
             cart.setDeltaMovement(Vec3.ZERO);
             scene.seed(SEED);
             return trace(scene, payload, List.of(booster, cart));
@@ -185,7 +185,7 @@ final class TntCannonParity {
     }
 
     private static PrimedTnt primed(InteractionScene scene, Vec3 position, int fuse) {
-        var tnt = (PrimedTnt) scene.spawn(EntityTypes.TNT, position);
+        var tnt = (PrimedTnt) scene.spawn(EntityType.TNT, position);
         tnt.setFuse(fuse);
         tnt.setDeltaMovement(Vec3.ZERO);
         tnt.setOnGround(true);

@@ -2,7 +2,7 @@ package org.edtp.entitycollisionoptimizer.gametest;
 
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.EntityTypes;
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.scores.Team;
@@ -25,7 +25,7 @@ final class AuthoritativeVelocityParity {
     private static void compare(GameTestHelper helper, int count) {
         try (var scene = new InteractionScene(helper)) {
             List<LivingEntity> entities = new ArrayList<>();
-            for (int i = 0; i < count; i++) entities.add((LivingEntity) scene.spawn(EntityTypes.ZOMBIE,
+            for (int i = 0; i < count; i++) entities.add((LivingEntity) scene.spawn(EntityType.ZOMBIE,
                     new Vec3(4.5 + i % 5 * .03, 1, 4.5 + i / 5 * .04)));
             LivingEntity source = entities.getFirst();
             reset(entities);

@@ -15,6 +15,7 @@
     "EntityVelocityAccessor",
     "EntityBodyTestAccess",
     "EntityCollisionInvoker",
+    "CubeVoxelShapeInvoker",
     "PistonProgressAccessor",
     "MovementScanMixin",
     "BlockScanMixin",

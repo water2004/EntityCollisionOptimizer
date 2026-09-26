@@ -4,7 +4,6 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.entity.EntityType;
-import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.piston.PistonMovingBlockEntity;
@@ -22,8 +21,8 @@ final class PistonInteractionParity {
         for (Direction direction : Direction.values()) {
             for (boolean extending : new boolean[]{true, false}) {
                 for (Block block : List.of(Blocks.STONE, Blocks.SLIME_BLOCK, Blocks.HONEY_BLOCK)) {
-                    for (var type : List.of(EntityTypes.ZOMBIE, EntityTypes.ITEM, EntityTypes.PLAYER,
-                            EntityTypes.OAK_BOAT, EntityTypes.SULFUR_CUBE, EntityTypes.TNT)) {
+                    for (var type : List.of(EntityType.ZOMBIE, EntityType.ITEM, EntityType.PLAYER,
+                            EntityType.OAK_BOAT, EntityType.TNT)) {
                         var expected = run(helper, false, direction, extending, block, type, false);
                         var actual = run(helper, true, direction, extending, block, type, false);
                         actual.after.compare(helper, expected.after, "piston " + direction + " " + extending + " " + block + " " + type);
@@ -33,7 +32,7 @@ final class PistonInteractionParity {
                 }
             }
         }
-        for (var type : List.of(EntityTypes.ZOMBIE, EntityTypes.ITEM, EntityTypes.PLAYER)) {
+        for (var type : List.of(EntityType.ZOMBIE, EntityType.ITEM, EntityType.PLAYER)) {
             var expected = run(helper, false, Direction.EAST, true, Blocks.HONEY_BLOCK, type, true);
             var actual = run(helper, true, Direction.EAST, true, Blocks.HONEY_BLOCK, type, true);
             actual.after.compare(helper, expected.after, "honey passenger " + type);

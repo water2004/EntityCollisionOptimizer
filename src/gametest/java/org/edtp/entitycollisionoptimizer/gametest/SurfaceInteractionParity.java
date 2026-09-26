@@ -3,7 +3,6 @@ package org.edtp.entitycollisionoptimizer.gametest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
-import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.MoverType;
 import net.minecraft.world.level.block.Block;
@@ -19,8 +18,8 @@ import java.util.List;
 final class SurfaceInteractionParity {
     static void verify(GameTestHelper helper) {
         int cases = 0;
-        for (var type : List.of(EntityTypes.ZOMBIE, EntityTypes.ITEM, EntityTypes.PLAYER,
-                EntityTypes.SULFUR_CUBE, EntityTypes.OAK_BOAT, EntityTypes.TNT)) {
+        for (var type : List.of(EntityType.ZOMBIE, EntityType.ITEM, EntityType.PLAYER,
+                EntityType.OAK_BOAT, EntityType.TNT)) {
             for (Block floor : List.of(Blocks.STONE, Blocks.ICE, Blocks.PACKED_ICE, Blocks.BLUE_ICE,
                     Blocks.SLIME_BLOCK, Blocks.HONEY_BLOCK, Blocks.SOUL_SAND, Blocks.MUD)) {
                 for (boolean falling : new boolean[]{false, true}) {
@@ -29,7 +28,7 @@ final class SurfaceInteractionParity {
                     String label = type + " on " + floor + " falling=" + falling;
                     for (int i = 0; i < expected.size(); i++) actual.get(i).compare(helper, expected.get(i), label + " step=" + i);
                     helper.assertTrue(expected.stream().anyMatch(s -> s.velocity().lengthSqr() > 0), label + " must exercise motion");
-                    if (falling && floor == Blocks.SLIME_BLOCK && (type == EntityTypes.ZOMBIE || type == EntityTypes.ITEM || type == EntityTypes.PLAYER)) {
+                    if (falling && floor == Blocks.SLIME_BLOCK && (type == EntityType.ZOMBIE || type == EntityType.ITEM || type == EntityType.PLAYER)) {
                         helper.assertTrue(expected.stream().anyMatch(s -> s.velocity().y > 0.1), label + " must really bounce upward");
                     }
                     cases++;

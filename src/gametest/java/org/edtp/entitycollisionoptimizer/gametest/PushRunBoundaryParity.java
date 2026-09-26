@@ -2,7 +2,7 @@ package org.edtp.entitycollisionoptimizer.gametest;
 
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.EntityTypes;
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.scores.Team;
@@ -35,10 +35,10 @@ public final class PushRunBoundaryParity {
     private static List<State> run(GameTestHelper helper, boolean enabled) {
         try (var scene = new InteractionScene(helper)) {
             List<Entity> entities = new ArrayList<>();
-            entities.add(scene.spawn(EntityTypes.ZOMBIE, new Vec3(4.5, 1, 4.5)));
-            entities.add(scene.spawn(EntityTypes.ZOMBIE, new Vec3(4.6, 1, 4.6)));
-            entities.add(scene.spawn(EntityTypes.OAK_BOAT, new Vec3(4.55, 1, 4.55)));
-            entities.add(scene.spawn(EntityTypes.ZOMBIE, new Vec3(4.65, 1, 4.6)));
+            entities.add(scene.spawn(EntityType.ZOMBIE, new Vec3(4.5, 1, 4.5)));
+            entities.add(scene.spawn(EntityType.ZOMBIE, new Vec3(4.6, 1, 4.6)));
+            entities.add(scene.spawn(EntityType.OAK_BOAT, new Vec3(4.55, 1, 4.55)));
+            entities.add(scene.spawn(EntityType.ZOMBIE, new Vec3(4.65, 1, 4.6)));
             var source = (LivingEntity) entities.getFirst();
             for (int i = 0; i < entities.size(); i++) {
                 entities.get(i).setDeltaMovement(new Vec3(.125 * i, -0.0, -.125 * i));

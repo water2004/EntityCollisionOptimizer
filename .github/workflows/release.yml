@@ -61,9 +61,9 @@ jobs:
           if ($LASTEXITCODE -ne 0) {
             throw "Cannot resolve tag '$tag' to a commit."
           }
-          git merge-base --is-ancestor $tagCommit refs/remotes/origin/main
+          git merge-base --is-ancestor $tagCommit refs/remotes/origin/26.1
           if ($LASTEXITCODE -ne 0) {
-            throw "Tag '$tag' does not point to a commit in main history."
+            throw "Tag '$tag' does not point to a commit in 26.1 history."
           }
 
           "tag=$tag" >> $env:GITHUB_OUTPUT

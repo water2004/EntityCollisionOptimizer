@@ -4,7 +4,7 @@ import org.edtp.entitycollisionoptimizer.EntityCollisionOptimizer;
 import org.edtp.entitycollisionoptimizer.gametest.mixin.ZombieTestInvoker;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.world.entity.EntityTypes;
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.monster.hoglin.Hoglin;
 import net.minecraft.world.entity.monster.piglin.Piglin;
 import net.minecraft.world.entity.monster.zombie.Zombie;
@@ -14,7 +14,7 @@ import net.minecraft.world.phys.Vec3;
 public final class CollisionContractGameTests {
     @GameTest(maxTicks = 20)
     public void piglinConversionLifecycle(GameTestHelper helper) {
-        Piglin piglin = helper.spawn(EntityTypes.PIGLIN, new Vec3(1.5, 2.0, 1.5));
+        Piglin piglin = helper.spawn(EntityType.PIGLIN, new Vec3(1.5, 2.0, 1.5));
         piglin.setTimeInOverworld(300);
         helper.runAfterDelay(5, () -> {
             helper.assertTrue(piglin.isRemoved(), "piglin must complete its overworld conversion");
@@ -24,7 +24,7 @@ public final class CollisionContractGameTests {
 
     @GameTest(maxTicks = 20)
     public void zombieDrownedConversionLifecycle(GameTestHelper helper) {
-        Zombie zombie = helper.spawn(EntityTypes.ZOMBIE, new Vec3(1.5, 2.0, 1.5));
+        Zombie zombie = helper.spawn(EntityType.ZOMBIE, new Vec3(1.5, 2.0, 1.5));
         ((ZombieTestInvoker) zombie).entityCollisionOptimizer$startUnderWaterConversion(0);
         helper.runAfterDelay(5, () -> {
             helper.assertTrue(zombie.isRemoved(), "zombie must complete its drowned conversion");
@@ -34,7 +34,7 @@ public final class CollisionContractGameTests {
 
     @GameTest(maxTicks = 20)
     public void hoglinConversionLifecycle(GameTestHelper helper) {
-        Hoglin hoglin = helper.spawn(EntityTypes.HOGLIN, new Vec3(1.5, 2.0, 1.5));
+        Hoglin hoglin = helper.spawn(EntityType.HOGLIN, new Vec3(1.5, 2.0, 1.5));
         hoglin.setTimeInOverworld(300);
         helper.runAfterDelay(5, () -> {
             helper.assertTrue(hoglin.isRemoved(), "hoglin must complete its overworld conversion");
@@ -210,7 +210,7 @@ public final class CollisionContractGameTests {
     public void lowDensityVanillaParity(GameTestHelper helper) {
         CollisionParity.verifyLowDensity(helper);
         EntityCollisionOptimizer.LOGGER.info(
-                "ECO_PARITY_RESULT density=low dispatch_pairs=34 state_transitions=11 repeated_frames=4 result=passed"
+                "ECO_PARITY_RESULT density=low dispatch_pairs=32 state_transitions=11 repeated_frames=4 result=passed"
         );
         helper.succeed();
     }

@@ -2,7 +2,7 @@ package org.edtp.entitycollisionoptimizer.gametest;
 
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.EntityTypes;
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.MoverType;
 import net.minecraft.world.phys.Vec3;
@@ -22,7 +22,7 @@ final class PositionWriteParity {
                 List<LivingEntity> entities = new ArrayList<>();
                 List<Vec3> homes = new ArrayList<>();
                 for (int i = 0; i < count; i++) {
-                    var entity = (LivingEntity) scene.spawn(EntityTypes.ZOMBIE,
+                    var entity = (LivingEntity) scene.spawn(EntityType.ZOMBIE,
                             new Vec3(4.5 + i % 5 * .025, 1, 4.5 + i / 5 * .025));
                     entities.add(entity);
                     homes.add(entity.position());

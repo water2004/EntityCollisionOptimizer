@@ -4,7 +4,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.EntityTypes;
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -97,8 +97,8 @@ final class BlockMovementParity {
 
     private static int contexts(GameTestHelper helper) {
         var player = CollisionTestSupport.spawnPlayer(helper, new Vec3(3.5, 1, 3.5));
-        Entity strider = CollisionTestSupport.spawnEntity(helper, EntityTypes.STRIDER, new Vec3(3.5, 1, 3.5));
-        Entity boat = CollisionTestSupport.spawnEntity(helper, EntityTypes.OAK_BOAT, new Vec3(4.5, 1, 4.5));
+        Entity strider = CollisionTestSupport.spawnEntity(helper, EntityType.STRIDER, new Vec3(3.5, 1, 3.5));
+        Entity boat = CollisionTestSupport.spawnEntity(helper, EntityType.OAK_BOAT, new Vec3(4.5, 1, 4.5));
         int count = 0;
         try {
             for (Block block : List.of(Blocks.POWDER_SNOW, Blocks.SCAFFOLDING, Blocks.LAVA, Blocks.WATER)) {
@@ -125,7 +125,7 @@ final class BlockMovementParity {
         List<Entity> entities = new ArrayList<>();
         try {
             for (int i = 0; i < 24; i++) entities.add(CollisionTestSupport.spawnEntity(helper,
-                    i < 20 ? EntityTypes.ZOMBIE : EntityTypes.OAK_BOAT,
+                    i < 20 ? EntityType.ZOMBIE : EntityType.OAK_BOAT,
                     new Vec3(2.3 + (i % 6) * 0.65, 1, 2.3 + (i / 6) * 0.65)));
             for (Entity entity : entities) for (Vec3 movement : MOVEMENTS) compare(helper, entity, movement, "medium movement");
             return entities.size() * MOVEMENTS.length;

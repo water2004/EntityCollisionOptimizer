@@ -7,10 +7,10 @@ import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.BitSetDiscreteVoxelShape;
-import net.minecraft.world.phys.shapes.CubeVoxelShape;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import org.edtp.entitycollisionoptimizer.collision.blocks.NativeVoxelAccess;
 import org.edtp.entitycollisionoptimizer.gametest.mixin.EntityCollisionInvoker;
+import org.edtp.entitycollisionoptimizer.gametest.mixin.CubeVoxelShapeInvoker;
 import org.edtp.entitycollisionoptimizer.natives.NativeMovement;
 import org.edtp.entitycollisionoptimizer.natives.NativeShapeBatch;
 
@@ -24,7 +24,7 @@ final class SingleCellParity {
         VoxelShape cell = new SingleCell();
         helper.assertTrue((((NativeVoxelAccess) cell).eco$nativeGeometry().get(JAVA_INT, 12) & 4) != 0,
                 "simple cell uses interval solver");
-        VoxelShape subdivided = new CubeVoxelShape(BitSetDiscreteVoxelShape.withFilledBounds(4, 4, 4, 0, 0, 0, 4, 4, 4));
+        VoxelShape subdivided = CubeVoxelShapeInvoker.eco$create(BitSetDiscreteVoxelShape.withFilledBounds(4, 4, 4, 0, 0, 0, 4, 4, 4));
         helper.assertTrue((((NativeVoxelAccess) subdivided).eco$nativeGeometry().get(JAVA_INT, 12) & 4) == 0,
                 "a solid box with internal grid planes must keep its voxel semantics");
         NativeVoxelParity.compare(helper, subdivided, "internal voxel planes");

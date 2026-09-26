@@ -4,7 +4,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.EntityTypes;
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.MoverType;
 import net.minecraft.world.entity.ai.attributes.Attributes;
@@ -46,8 +46,8 @@ final class ExplosionInteractionParity {
                 if (shielded) scene.block(8, y, z, Blocks.OBSIDIAN);
             }
             List<Entity> targets = new ArrayList<>();
-            var types = List.of(EntityTypes.ZOMBIE, EntityTypes.PLAYER, EntityTypes.ITEM,
-                    EntityTypes.TNT, EntityTypes.SULFUR_CUBE);
+            var types = List.of(EntityType.ZOMBIE, EntityType.PLAYER, EntityType.ITEM,
+                    EntityType.TNT);
             for (int i = 0; i < count; i++) {
                 var entity = scene.spawn(types.get(i % types.size()), new Vec3(9.1 + (i % 4) * 0.12, 1.05, 4.1 + (i / 4) * 0.12));
                 if (entity instanceof LivingEntity living) {
@@ -58,7 +58,7 @@ final class ExplosionInteractionParity {
                 entity.setOnGround(true);
                 targets.add(entity);
             }
-            var actor = scene.spawn(kind == 0 ? EntityTypes.TNT : kind == 1 ? EntityTypes.WIND_CHARGE : EntityTypes.BREEZE_WIND_CHARGE,
+            var actor = scene.spawn(kind == 0 ? EntityType.TNT : kind == 1 ? EntityType.WIND_CHARGE : EntityType.BREEZE_WIND_CHARGE,
                     new Vec3(7.5, 1.1, 4.5));
             actor.setNoGravity(true);
             actor.setDeltaMovement(Vec3.ZERO);

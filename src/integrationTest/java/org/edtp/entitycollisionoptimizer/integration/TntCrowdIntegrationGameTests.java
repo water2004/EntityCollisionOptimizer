@@ -3,7 +3,7 @@ package org.edtp.entitycollisionoptimizer.integration;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.entity.EntityTypes;
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.item.PrimedTnt;
 import net.minecraft.world.entity.monster.zombie.Zombie;
 import net.minecraft.world.phys.AABB;
@@ -115,7 +115,7 @@ public final class TntCrowdIntegrationGameTests {
             level.getRandom().setSeed(LEVEL_SEED);
             Random spawnRandom = new Random(SPAWN_SEED);
             for (int index = 0; index < ENTITY_COUNT; index++) {
-                Zombie zombie = arena.spawn(EntityTypes.ZOMBIE, spawnPosition(sceneOrigin, spawnRandom));
+                Zombie zombie = arena.spawn(EntityType.ZOMBIE, spawnPosition(sceneOrigin, spawnRandom));
                 ZombieTrace.normalize(
                         zombie,
                         LEVEL_SEED + ENTITY_SEED_STEP * index
@@ -123,7 +123,7 @@ public final class TntCrowdIntegrationGameTests {
                 zombies.add(zombie);
             }
 
-            tnt = arena.spawn(EntityTypes.TNT, roomCenter(sceneOrigin));
+            tnt = arena.spawn(EntityType.TNT, roomCenter(sceneOrigin));
             tnt.setOldPosAndRot();
             tnt.setDeltaMovement(Vec3.ZERO);
             tnt.setOnGround(true);

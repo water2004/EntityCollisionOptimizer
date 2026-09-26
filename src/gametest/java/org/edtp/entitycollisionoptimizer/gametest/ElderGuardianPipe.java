@@ -8,7 +8,7 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.TicketType;
 import net.minecraft.world.entity.EntitySpawnReason;
-import net.minecraft.world.entity.EntityTypes;
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.ChunkPos;
@@ -96,7 +96,7 @@ final class ElderGuardianPipe extends BenchmarkScenario {
     @Override void tick(int tick) {
         observe();
         for (int i = 0; i < SPAWN_PER_TICK; i++) {
-            var entity = EntityTypes.ELDER_GUARDIAN.create(level, EntitySpawnReason.COMMAND);
+            var entity = EntityType.ELDER_GUARDIAN.create(level, EntitySpawnReason.COMMAND);
             if (entity == null) throw new IllegalStateException("Failed to create elder guardian");
             entity.setPos(0.5 + (random.nextDouble() - 0.5) * 0.04, SPAWN_Y,
                     0.5 + (random.nextDouble() - 0.5) * 0.04);

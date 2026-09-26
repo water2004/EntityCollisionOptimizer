@@ -7,7 +7,7 @@ import net.minecraft.world.scores.Team;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * Minecraft 26.2's EntitySelector.pushableBy predicate, expressed directly so
+ * Minecraft 26.1's EntitySelector.pushableBy predicate, expressed directly so
  * the FFM path owns collision selection without invoking another mod's query
  * or predicate replacement.
  */
