@@ -10,7 +10,6 @@
 int updateCollisionEntityState(
         void* contextPointer,
         int nativeId,
-        const double* entityBounds,
         int selectable,
         int passenger,
         int vanillaEntityPush,
@@ -28,16 +27,6 @@ int updateCollisionEntityState(
         auto& context = *static_cast<eco::CollisionContext*>(contextPointer);
         if (static_cast<std::size_t>(nativeId) >= context.metadata.size()) {
             return -1;
-        }
-        if (entityBounds != nullptr) {
-            eco::updateEntityBounds(
-                    context,
-                    nativeId,
-                    eco::makeAabb(
-                            entityBounds[0], entityBounds[1], entityBounds[2],
-                            entityBounds[3], entityBounds[4], entityBounds[5]
-                    )
-            );
         }
         eco::EntityMetadata& metadata = context.metadata[nativeId];
         const bool wasQueryable = !metadata.selectableValid || metadata.selectable;

@@ -41,6 +41,7 @@ public final class FFMBackend {
     private static MethodHandle lastNativeExceptionHandle;
     private static MethodHandle insertEntity, removeEntity, updateEntitySection;
     private static MethodHandle updateEntityState;
+    private static MethodHandle updateEntityBounds;
     private static MethodHandle invalidateEntityPushEligibilityCache;
     private static MethodHandle invalidatePushEligibilityCacheFields;
     private static MethodHandle queryHard;
@@ -154,7 +155,6 @@ public final class FFMBackend {
     public static void updateEntityState(
             Context nativeContext,
             int nativeId,
-            MemorySegment entityBounds,
             boolean selectable,
             boolean passenger,
             boolean vanillaEntityPush,
@@ -170,7 +170,6 @@ public final class FFMBackend {
                 int status = (int) updateEntityState.invokeExact(
                         nativeContext.address,
                         nativeId,
-                        entityBounds,
                         selectable ? 1 : 0,
                         passenger ? 1 : 0,
                         vanillaEntityPush ? 1 : 0,
@@ -183,6 +182,18 @@ public final class FFMBackend {
                 checkStatus("update native entity", status);
             } catch (Throwable failure) {
                 throw callFailure("FFM updateEntityState call failed", failure);
+            }
+        }
+    }
+
+    public static void updateEntityBounds(Context nativeContext, int nativeId, AABB entityBounds) {
+        synchronized (nativeContext) {
+            MemorySegment boundsBuffer = prepareEntityBounds(nativeContext, nativeId, entityBounds);
+            try {
+                checkStatus("update entity bounds", (int) updateEntityBounds.invokeExact(
+                        nativeContext.address, nativeId, boundsBuffer));
+            } catch (Throwable failure) {
+                throw callFailure("Persistent entity bounds update failed", failure);
             }
         }
     }
@@ -532,7 +543,6 @@ public final class FFMBackend {
                         JAVA_INT,
                         ADDRESS,
                         JAVA_INT,
-                        ADDRESS,
                         JAVA_INT,
                         JAVA_INT,
                         JAVA_INT,
@@ -545,6 +555,9 @@ public final class FFMBackend {
         updateEntityState = linker.downcallHandle(
                 library.find("updateCollisionEntityState")
                         .orElseThrow(() -> missingSymbol("updateCollisionEntityState")), updateEntityDescriptor);
+        updateEntityBounds = linker.downcallHandle(
+                library.find("updateCollisionEntityBounds").orElseThrow(),
+                FunctionDescriptor.of(JAVA_INT, ADDRESS, JAVA_INT, ADDRESS));
         invalidateEntityPushEligibilityCache = linker.downcallHandle(
                 library.find("invalidateEntityPushEligibilityCache")
                         .orElseThrow(() -> missingSymbol("invalidateEntityPushEligibilityCache")),
@@ -680,6 +693,7 @@ public final class FFMBackend {
         lastNativeExceptionHandle = null;
         insertEntity = removeEntity = updateEntitySection = null;
         updateEntityState = null;
+        updateEntityBounds = null;
         invalidateEntityPushEligibilityCache = null;
         invalidatePushEligibilityCacheFields = null;
         queryHard = null;

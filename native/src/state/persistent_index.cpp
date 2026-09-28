@@ -38,6 +38,23 @@ int insertCollisionEntity(
     } catch (...) { return eco::recordNativeException(); }
 }
 
+int updateCollisionEntityBounds(void* contextPointer, int nativeId, const double* entityBounds) {
+    if (!contextPointer || !entityBounds || nativeId < 0) return -1;
+    try {
+        auto& context = *static_cast<eco::CollisionContext*>(contextPointer);
+        if (static_cast<std::size_t>(nativeId) >= context.metadata.size()) return -1;
+        eco::updateEntityBounds(context, nativeId, eco::makeAabb(
+                entityBounds[0], entityBounds[1], entityBounds[2],
+                entityBounds[3], entityBounds[4], entityBounds[5]));
+        auto& metadata = context.metadata[nativeId];
+        if (metadata.selectableValid && !metadata.selectable) {
+            eco::updateEntityQueryability(context, nativeId, true);
+        }
+        metadata.selectableValid = false;
+        return 0;
+    } catch (...) { return eco::recordNativeException(); }
+}
+
 int removeCollisionEntity(void* contextPointer, int nativeId) {
     if (!contextPointer || nativeId < 0) return -1;
     try {

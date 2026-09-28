@@ -31,7 +31,6 @@ ECO_EXPORT int insertCollisionEntity(
 ECO_EXPORT int updateCollisionEntityState(
         void* contextPointer,
         int nativeId,
-        const double* entityBounds,
         int selectable,
         int passenger,
         int vanillaEntityPush,
@@ -41,6 +40,8 @@ ECO_EXPORT int updateCollisionEntityState(
         int bodySlot,
         int hardCollidable
 );
+// Publish geometry and invalidate push eligibility without evaluating Java entity predicates.
+ECO_EXPORT int updateCollisionEntityBounds(void* contextPointer, int nativeId, const double* entityBounds);
 ECO_EXPORT int updateCollisionEntitySection(
         void* contextPointer,
         int nativeId,

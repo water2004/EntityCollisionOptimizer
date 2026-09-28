@@ -13,6 +13,12 @@ import net.minecraft.world.phys.Vec3;
 
 /** Deterministic component and contract checks that may inspect optimizer internals. */
 public final class CollisionContractGameTests implements FabricGameTest {
+    @GameTest(template = "entity_collision_optimizer:empty_128", timeoutTicks = 100)
+    public void indexPublicationDoesNotLoadChunks(GameTestHelper helper) {
+        org.edtp.entitycollisionoptimizer.natives.IndexPublicationChecks.verify(helper);
+        helper.succeed();
+    }
+
     @GameTest(template = "entity_collision_optimizer:empty_128", timeoutTicks = 20)
     public void piglinConversionLifecycle(GameTestHelper helper) {
         Piglin piglin = helper.spawn(EntityType.PIGLIN, new Vec3(1.5, 2.0, 1.5));

@@ -2,8 +2,6 @@ package org.edtp.entitycollisionoptimizer.natives;
 
 import net.minecraft.world.phys.AABB;
 
-import java.lang.foreign.MemorySegment;
-
 /** Test-only geometry source for query fixtures without live Minecraft entities. */
 final class IndexUpdateFixture {
     private static final AABB EMPTY = new AABB(0, 0, 0, 0, 0, 0);
@@ -25,10 +23,8 @@ final class IndexUpdateFixture {
                        boolean vanillaEntityPush, boolean allowsDeferredVelocityWrites,
                        int team, int rule, int bodySlot,
                        boolean hardCollidable) {
-        var bounds = new CollisionBounds();
-        bounds.capacity(1);
-        bounds.set(0, box);
-        FFMBackend.updateEntityState(context, id, bounds.row(0), selectable, passenger,
+        FFMBackend.updateEntityBounds(context, id, box);
+        FFMBackend.updateEntityState(context, id, selectable, passenger,
                 vanillaEntityPush, allowsDeferredVelocityWrites, team, rule, bodySlot, hardCollidable);
         FFMBackend.updateEntitySection(context, id, sectionX, sectionY, sectionZ);
     }
@@ -38,7 +34,7 @@ final class IndexUpdateFixture {
                          boolean vanillaEntityPush, boolean allowsDeferredVelocityWrites,
                          int team, int rule, int bodySlot,
                          boolean hardCollidable) {
-        FFMBackend.updateEntityState(context, id, MemorySegment.NULL, selectable, passenger,
+        FFMBackend.updateEntityState(context, id, selectable, passenger,
                 vanillaEntityPush, allowsDeferredVelocityWrites, team, rule, bodySlot, hardCollidable);
     }
 }

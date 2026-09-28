@@ -22,6 +22,19 @@ public abstract class EntityMixin implements CollisionCacheState {
     private long entityCollisionOptimizer$collisionRevision;
 
     @Unique
+    private volatile boolean entityCollisionOptimizer$indexed;
+
+    @Override
+    public boolean entityCollisionOptimizer$isIndexed() {
+        return entityCollisionOptimizer$indexed;
+    }
+
+    @Override
+    public void entityCollisionOptimizer$setIndexed(boolean indexed) {
+        entityCollisionOptimizer$indexed = indexed;
+    }
+
+    @Unique
     private long entityCollisionOptimizer$pushableEntityRevision = Long.MIN_VALUE;
 
     @Unique

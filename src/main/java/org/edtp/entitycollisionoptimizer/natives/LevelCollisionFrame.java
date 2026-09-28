@@ -16,7 +16,6 @@ import net.minecraft.world.phys.shapes.VoxelShape;
 import net.minecraft.world.scores.PlayerTeam;
 import net.minecraft.world.scores.Team;
 
-import java.lang.foreign.MemorySegment;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -76,6 +75,7 @@ final class LevelCollisionFrame {
         for (PushBatch batch : batchPool) batch.destroy();
         batchPool.clear();
         bodies.close();
+        ids.clear();
         nativeContext.close();
     }
 
@@ -100,7 +100,7 @@ final class LevelCollisionFrame {
         selectableEntityRevisions[nativeId] = UNCACHED;
         teamRevisions[nativeId] = UNCACHED;
         if (!VanillaMethodDetector.usesVanillaCanBeCollidedWith(entity)) {
-            refreshNativeMetadata(nativeId, entity, MemorySegment.NULL);
+            refreshNativeMetadata(nativeId, entity);
         }
     }
 
@@ -109,8 +109,9 @@ final class LevelCollisionFrame {
             return;
         }
         int nativeId = ids.getNativeId(entity);
-        int slot = bodies.bindBody(entity);
-        refreshNativeMetadata(nativeId, entity, bodies.movementRow(slot));
+        // Publishing bounds must not evaluate isPushable(): it may load a chunk while
+        // teleporting. Refresh semantic metadata lazily at the next collision query.
+        FFMBackend.updateEntityBounds(nativeContext, nativeId, entity.getBoundingBox());
     }
 
     synchronized void invalidateEntity(Entity entity) {
@@ -277,7 +278,7 @@ final class LevelCollisionFrame {
         // Derived teams can change without any scoreboard mutation (taming, owner resolution).
         // This is a semantic dependency, not an entity/mod whitelist or a density-dependent path.
         for (Entity target : derivedTeams) {
-            refreshNativeMetadata(ids.getNativeId(target), target, MemorySegment.NULL);
+            refreshNativeMetadata(ids.getNativeId(target), target);
         }
 
         int sourceNativeId = ids.getNativeId(source);
@@ -309,7 +310,7 @@ final class LevelCollisionFrame {
                             "Native collision metadata requested an unknown entity " + targetNativeId
                     );
                 }
-                refreshNativeMetadata(targetNativeId, target, MemorySegment.NULL);
+                refreshNativeMetadata(targetNativeId, target);
             }
             refreshPasses++;
         } while (refreshPasses <= 2);
@@ -382,12 +383,11 @@ final class LevelCollisionFrame {
         }
     }
 
-    private void refreshNativeMetadata(int nativeId, Entity entity, MemorySegment boundsOrNull) {
+    private void refreshNativeMetadata(int nativeId, Entity entity) {
         PlayerTeam targetTeam = teamCached(nativeId, entity);
         FFMBackend.updateEntityState(
                 nativeContext,
                 nativeId,
-                boundsOrNull,
                 isSelectableCached(nativeId, entity),
                 entity.isPassenger(),
                 VanillaMethodDetector.usesVanillaEntityPush(entity),

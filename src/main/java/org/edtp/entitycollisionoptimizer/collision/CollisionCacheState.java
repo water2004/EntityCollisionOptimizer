@@ -13,6 +13,11 @@ public interface CollisionCacheState {
 
     long entityCollisionOptimizer$collisionRevision();
 
+    /** Published index membership; construction callbacks must not acquire a level's index lock. */
+    boolean entityCollisionOptimizer$isIndexed();
+
+    void entityCollisionOptimizer$setIndexed(boolean indexed);
+
     void entityCollisionOptimizer$invalidateCollisionCache();
 
     boolean entityCollisionOptimizer$isPushableCached();

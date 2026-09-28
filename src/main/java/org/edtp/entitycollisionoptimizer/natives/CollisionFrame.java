@@ -10,6 +10,7 @@ import net.minecraft.world.phys.shapes.VoxelShape;
 import net.minecraft.world.scores.PlayerTeam;
 import net.minecraft.world.scores.Team;
 import org.edtp.entitycollisionoptimizer.collision.EntitySectionStorageLevelBinding;
+import org.edtp.entitycollisionoptimizer.collision.CollisionCacheState;
 import org.edtp.entitycollisionoptimizer.mixin.PersistentEntitySectionManagerAccessor;
 import org.edtp.entitycollisionoptimizer.mixin.ServerLevelAccessor;
 
@@ -96,6 +97,7 @@ public final class CollisionFrame {
     }
 
     public static void trackingEnded(ServerLevel level, Entity entity) {
+        if (!((CollisionCacheState) entity).entityCollisionOptimizer$isIndexed()) return;
         LevelCollisionFrame frame = LEVEL_FRAMES.get(level);
         if (frame != null) frame.removeEntity(entity);
     }
@@ -106,6 +108,9 @@ public final class CollisionFrame {
     }
 
     public static void updateBoundingBox(Entity entity) {
+        // Chunk-generation workers construct entities before they enter the index. Do not
+        // wait for a frame lock held by the level thread while it awaits that same chunk.
+        if (!((CollisionCacheState) entity).entityCollisionOptimizer$isIndexed()) return;
         if (!(entity.level() instanceof ServerLevel level)) {
             return;
         }
@@ -116,6 +121,7 @@ public final class CollisionFrame {
     }
 
     public static void invalidateEntity(Entity entity) {
+        if (!((CollisionCacheState) entity).entityCollisionOptimizer$isIndexed()) return;
         if (!(entity.level() instanceof ServerLevel level)) {
             return;
         }

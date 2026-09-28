@@ -3,6 +3,7 @@ package org.edtp.entitycollisionoptimizer.natives;
 import it.unimi.dsi.fastutil.ints.IntArrayFIFOQueue;
 import it.unimi.dsi.fastutil.objects.Reference2IntOpenHashMap;
 import net.minecraft.world.entity.Entity;
+import org.edtp.entitycollisionoptimizer.collision.CollisionCacheState;
 
 import java.util.Arrays;
 
@@ -24,6 +25,7 @@ final class PersistentEntityIds {
         if (size > entities.length) entities = Arrays.copyOf(entities, size + (size >> 1));
         entities[nativeId] = entity;
         ids.put(entity, nativeId);
+        ((CollisionCacheState) entity).entityCollisionOptimizer$setIndexed(true);
         return nativeId;
     }
     int removeEntity(Entity entity) {
@@ -31,7 +33,17 @@ final class PersistentEntityIds {
         if (nativeId < 0) return -1;
         entities[nativeId] = null;
         free.enqueue(nativeId);
+        ((CollisionCacheState) entity).entityCollisionOptimizer$setIndexed(false);
         return nativeId;
+    }
+    void clear() {
+        for (Entity entity : entities) {
+            if (entity != null) ((CollisionCacheState) entity).entityCollisionOptimizer$setIndexed(false);
+        }
+        Arrays.fill(entities, null);
+        ids.clear();
+        free.clear();
+        size = 0;
     }
     Entity getEntity(int nativeId) {
         return nativeId < 0 || nativeId >= size ? null : entities[nativeId];

@@ -8,6 +8,7 @@
         createCollisionContext;
         destroyCollisionContext;
         updateCollisionEntityState;
+        updateCollisionEntityBounds;
         invalidateEntityPushEligibilityCache;
         invalidatePushEligibilityCacheFields;
         queryHardCollisionEntities;
