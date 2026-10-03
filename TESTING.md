@@ -42,3 +42,7 @@ under `vanilla-gametest/src/main/resources`.
 
 Benchmarks measure workloads and validate only the benchmark fixture itself. They are not counted
 as correctness tests and use the entrypoint manifest under `src/benchmarkTest`.
+
+Minecraft 26.3's GameTest server selects `minecraft:flat_all_dimensions`, so the world-preset
+override uses `flat_all_dimensions.json` to include the empty-layer `benchmark_void` dimension.
+Minecraft 26.2 selects `minecraft:flat`; its branch must retain `flat.json` instead.
