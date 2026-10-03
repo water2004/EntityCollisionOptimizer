@@ -17,13 +17,21 @@ struct alignas(32) EntityMetadata {
     std::uint32_t hardCollidable : 1 = false;
     std::uint32_t selectableValid : 1 = false;
     std::uint32_t teamValid : 1 = false;
+    std::uint32_t derivedTeam : 1 = false;
+    // Owner-derived teams are resolved only for spatial hits, once per Java query.
+    std::uint64_t teamQueryEpoch = 0;
 };
 static_assert(sizeof(EntityMetadata) == 32);
 
-inline constexpr int METADATA_SELECTABLE = 1;
+inline constexpr int METADATA_STATE = 1;
 inline constexpr int METADATA_TEAM = 2;
 inline constexpr int COLLISION_ALWAYS = 0;
 inline constexpr int COLLISION_NEVER = 1;
 inline constexpr int COLLISION_PUSH_OWN_TEAM = 2;
 inline constexpr int COLLISION_PUSH_OTHER_TEAMS = 3;
+
+struct MetadataRequest {
+    int nativeId;
+    int requiredFields;
+};
 } // namespace eco

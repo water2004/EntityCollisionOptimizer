@@ -51,13 +51,14 @@ public abstract class EntityMixin implements CollisionCacheState {
     @Override
     public int entityCollisionOptimizer$pushState() {
         long blocks = CollisionCacheEpochs.blockRevision();
-        if (entityCollisionOptimizer$pushableEntityRevision != entityCollisionOptimizer$collisionRevision
+        long entityRevision = entityCollisionOptimizer$collisionRevision;
+        if (entityCollisionOptimizer$pushableEntityRevision != entityRevision
                 || entityCollisionOptimizer$pushableBlockRevision != blocks) {
             Entity self = (Entity) (Object) this;
             entityCollisionOptimizer$pushState = (self.isPushable() ? PUSHABLE : 0)
                     | (self.isVehicle() ? VEHICLE : 0) | (self.isPassenger() ? PASSENGER : 0)
                     | (self instanceof LivingEntity living && living.isSleeping() ? SLEEPING : 0);
-            entityCollisionOptimizer$pushableEntityRevision = entityCollisionOptimizer$collisionRevision;
+            entityCollisionOptimizer$pushableEntityRevision = entityRevision;
             entityCollisionOptimizer$pushableBlockRevision = blocks;
         }
         return entityCollisionOptimizer$pushState;

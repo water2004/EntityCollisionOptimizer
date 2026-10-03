@@ -22,6 +22,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import static java.lang.foreign.ValueLayout.ADDRESS;
 import static java.lang.foreign.ValueLayout.JAVA_DOUBLE;
 import static java.lang.foreign.ValueLayout.JAVA_INT;
+import static java.lang.foreign.ValueLayout.JAVA_LONG;
 
 /**
  * FFM bindings for the live native spatial index. There is deliberately no
@@ -40,7 +41,7 @@ public final class FFMBackend {
     private static MethodHandle destroyContextHandle;
     private static MethodHandle lastNativeExceptionHandle;
     private static MethodHandle insertEntity, removeEntity, updateEntitySection;
-    private static MethodHandle updateEntityState;
+    private static MethodHandle updateEntityState, updateEntityTeam;
     private static MethodHandle updateEntityBounds;
     private static MethodHandle invalidateEntityPushEligibilityCache;
     private static MethodHandle invalidatePushEligibilityCacheFields;
@@ -159,8 +160,6 @@ public final class FFMBackend {
             boolean passenger,
             boolean vanillaEntityPush,
             boolean allowsDeferredVelocityWrites,
-            int teamId,
-            int collisionRule,
             int bodySlot,
             boolean hardCollidable
     ) {
@@ -174,14 +173,25 @@ public final class FFMBackend {
                         passenger ? 1 : 0,
                         vanillaEntityPush ? 1 : 0,
                         allowsDeferredVelocityWrites ? 1 : 0,
-                        teamId,
-                        collisionRule,
                         bodySlot,
                         hardCollidable ? 1 : 0
                 );
                 checkStatus("update native entity", status);
             } catch (Throwable failure) {
                 throw callFailure("FFM updateEntityState call failed", failure);
+            }
+        }
+    }
+
+    public static void updateEntityTeam(Context nativeContext, int nativeId,
+                                       int teamId, int collisionRule, long queryEpoch) {
+        synchronized (nativeContext) {
+            nativeContext.ensureOpen();
+            try {
+                checkStatus("update native entity team", (int) updateEntityTeam.invokeExact(
+                        nativeContext.address, nativeId, teamId, collisionRule, queryEpoch));
+            } catch (Throwable failure) {
+                throw callFailure("FFM updateEntityTeam call failed", failure);
             }
         }
     }
@@ -204,7 +214,9 @@ public final class FFMBackend {
             AABB entityBounds,
             int sectionX,
             int sectionY,
-            int sectionZ
+            int sectionZ,
+            boolean hardCollidable,
+            boolean derivedTeam
     ) {
         synchronized (nativeContext) {
             MemorySegment boundsBuffer = prepareEntityBounds(nativeContext, nativeId, entityBounds);
@@ -214,7 +226,9 @@ public final class FFMBackend {
                     boundsBuffer,
                     sectionX,
                     sectionY,
-                    sectionZ
+                    sectionZ,
+                    hardCollidable ? 1 : 0,
+                    derivedTeam ? 1 : 0
             )); }
             catch (Throwable failure) { throw callFailure("Persistent entity insertion failed", failure); }
         }
@@ -383,6 +397,7 @@ public final class FFMBackend {
             int sourceTeamId,
             int sourceCollisionRule,
             boolean sourceNativePushEligible,
+            long queryEpoch,
             int nativeIdCapacity
     ) {
         synchronized (nativeContext) {
@@ -397,6 +412,7 @@ public final class FFMBackend {
                         sourceTeamId,
                         sourceCollisionRule,
                         sourceNativePushEligible ? 1 : 0,
+                        queryEpoch,
                         nativeContext.outputBuffer,
                         nativeContext.nativePushBuffer,
                         nativeContext.outputCapacity
@@ -530,7 +546,7 @@ public final class FFMBackend {
         insertEntity = linker.downcallHandle(
                 library.find("insertCollisionEntity").orElseThrow(),
                 FunctionDescriptor.of(JAVA_INT, ADDRESS, JAVA_INT, ADDRESS,
-                        JAVA_INT, JAVA_INT, JAVA_INT)
+                        JAVA_INT, JAVA_INT, JAVA_INT, JAVA_INT, JAVA_INT)
         );
         removeEntity = linker.downcallHandle(library.find("removeCollisionEntity").orElseThrow(),
                 FunctionDescriptor.of(JAVA_INT, ADDRESS, JAVA_INT));
@@ -540,21 +556,14 @@ public final class FFMBackend {
                         JAVA_INT, JAVA_INT, JAVA_INT)
         );
         FunctionDescriptor updateEntityDescriptor = FunctionDescriptor.of(
-                        JAVA_INT,
-                        ADDRESS,
-                        JAVA_INT,
-                        JAVA_INT,
-                        JAVA_INT,
-                        JAVA_INT,
-                        JAVA_INT,
-                        JAVA_INT,
-                        JAVA_INT,
-                        JAVA_INT,
-                        JAVA_INT
-                );
+                JAVA_INT, ADDRESS, JAVA_INT, JAVA_INT, JAVA_INT,
+                JAVA_INT, JAVA_INT, JAVA_INT, JAVA_INT);
         updateEntityState = linker.downcallHandle(
                 library.find("updateCollisionEntityState")
                         .orElseThrow(() -> missingSymbol("updateCollisionEntityState")), updateEntityDescriptor);
+        updateEntityTeam = linker.downcallHandle(
+                library.find("updateCollisionEntityTeam").orElseThrow(() -> missingSymbol("updateCollisionEntityTeam")),
+                FunctionDescriptor.of(JAVA_INT, ADDRESS, JAVA_INT, JAVA_INT, JAVA_INT, JAVA_LONG));
         updateEntityBounds = linker.downcallHandle(
                 library.find("updateCollisionEntityBounds").orElseThrow(),
                 FunctionDescriptor.of(JAVA_INT, ADDRESS, JAVA_INT, ADDRESS));
@@ -613,6 +622,7 @@ public final class FFMBackend {
                         JAVA_INT,
                         JAVA_INT,
                         JAVA_INT,
+                        JAVA_LONG,
                         ADDRESS,
                         ADDRESS,
                         JAVA_INT
@@ -692,7 +702,7 @@ public final class FFMBackend {
         destroyContextHandle = null;
         lastNativeExceptionHandle = null;
         insertEntity = removeEntity = updateEntitySection = null;
-        updateEntityState = null;
+        updateEntityState = updateEntityTeam = null;
         updateEntityBounds = null;
         invalidateEntityPushEligibilityCache = null;
         invalidatePushEligibilityCacheFields = null;
@@ -810,6 +820,10 @@ public final class FFMBackend {
                 throw new IndexOutOfBoundsException(index);
             }
             return output.get(JAVA_INT, (long) (offset + index) * Integer.BYTES);
+        }
+
+        int requiredFields(int index) {
+            return output.get(JAVA_INT, (long) (bodyOffset + index) * Integer.BYTES);
         }
 
         void copyBodiesTo(int[] bodySlots, int[] nativePushFlags) {

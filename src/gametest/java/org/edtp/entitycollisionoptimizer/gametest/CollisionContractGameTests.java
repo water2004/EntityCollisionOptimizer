@@ -174,6 +174,12 @@ public final class CollisionContractGameTests implements FabricGameTest {
     }
 
     @GameTest(template = "entity_collision_optimizer:empty_128", timeoutTicks = 200)
+    public void metadataReentryContract(GameTestHelper helper) {
+        org.edtp.entitycollisionoptimizer.natives.MetadataRefreshChecks.verify(helper);
+        helper.succeed();
+    }
+
+    @GameTest(template = "entity_collision_optimizer:empty_128", timeoutTicks = 200)
     public void orderedEntityContract(GameTestHelper helper) {
         CollisionContractParity.order(helper);
         helper.succeed();
