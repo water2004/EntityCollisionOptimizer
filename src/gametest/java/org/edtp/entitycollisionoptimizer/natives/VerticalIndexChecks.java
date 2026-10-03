@@ -59,7 +59,7 @@ public final class VerticalIndexChecks {
                                     + " phase=" + phase + " source=" + source;
                             equalSet(helper, FFMBackend.queryEntities(context, box, count), overlaps, label);
                             helper.assertValueEqual(ids(FFMBackend.queryPushable(
-                                            context, box, source, -1, 0, true, count)),
+                                            context, box, source, -1, 0, true, 0, count)),
                                     pushable, "ordered vertical push " + label);
                             for (boolean hardOnly : new boolean[]{false, true}) {
                                 AABB scan = box.expandTowards(0, phase % 2 == 0 ? 4 : -4, 0);

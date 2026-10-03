@@ -23,7 +23,7 @@ struct CollisionContext {
     std::deque<CellMembers> sectionMembersPool;
     CellMembers* freeSectionMembers = nullptr;
     std::vector<CellSlot> sectionSlots;
-    std::vector<int> metadataMisses;
+    std::vector<MetadataRequest> metadataMisses;
     // Exact live hard-collidable population; hard-only queries exit early at zero.
     std::size_t hardEntityCount = 0;
 

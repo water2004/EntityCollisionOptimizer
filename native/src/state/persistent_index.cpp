@@ -10,7 +10,9 @@ int insertCollisionEntity(
         const double* entityBounds,
         int sectionX,
         int sectionY,
-        int sectionZ
+        int sectionZ,
+        int hardCollidable,
+        int derivedTeam
 ) {
     if (!contextPointer || !entityBounds || nativeId < 0) return -1;
     try {
@@ -25,6 +27,9 @@ int insertCollisionEntity(
         context.metadata[nativeId].sectionX = sectionX;
         context.metadata[nativeId].sectionY = sectionY;
         context.metadata[nativeId].sectionZ = sectionZ;
+        context.metadata[nativeId].hardCollidable = hardCollidable != 0;
+        context.metadata[nativeId].derivedTeam = derivedTeam != 0;
+        if (hardCollidable != 0) ++context.hardEntityCount;
         eco::insertSectionEntity(
                 context,
                 nativeId,

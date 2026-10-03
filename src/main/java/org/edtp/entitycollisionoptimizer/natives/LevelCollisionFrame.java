@@ -26,9 +26,9 @@ import java.util.List;
 final class LevelCollisionFrame {
     // revisions are started at 0, using Long.MIN_VALUE as a sentinel to indicate that the value is uncached.
     private static final long UNCACHED = Long.MIN_VALUE;
-    // 2 bits mask for FFMBackend.invalidatePushEligibilityCacheFields(), which is a bitfield of the fields to invalidate.
-    private static final int INVALIDATE_SELECTABLE = 1;
-    private static final int INVALIDATE_TEAM = 2;
+    // Shared with native metadata requests and invalidation: state and team are independent.
+    private static final int METADATA_STATE = 1;
+    private static final int METADATA_TEAM = 2;
     // Empty list, used as preallocated objects, prevent unnecessary allocations. Shared across levels and threads: callers must never modify it
     private static final int[] EMPTY_IDS = new int[0];
     // Transformer for the native index and the Java entity objects. 
@@ -42,8 +42,8 @@ final class LevelCollisionFrame {
     private final ArrayDeque<PushBatch> batchPool = new ArrayDeque<>();
     // Reusable int[] copies of the native box-query result; the native output buffer is reused by the next query, so ids are copied out before iterating and the array is returned to the pool afterwards.
     private final ArrayDeque<int[]> entityQuerySnapshots = new ArrayDeque<>();
-    // Tracked entities whose getTeam() is overridden (tamed/owner-derived): their team can change without a scoreboard revision, so queryPushable refreshes their metadata before every push query.
-    private final List<Entity> derivedTeams = new ArrayList<>();
+    // Metadata callbacks may load chunks and re-enter this frame. Only miss-path snapshots are leased.
+    private final ArrayDeque<int[]> metadataQuerySnapshots = new ArrayDeque<>();
     private long[] selectableEntityRevisions = new long[0];
     private long[] selectableBlockRevisions = new long[0];
     private byte[] selectableValues = new byte[0];
@@ -51,6 +51,8 @@ final class LevelCollisionFrame {
     private PlayerTeam[] teams = new PlayerTeam[0];
     private long nativeBlockRevision;
     private long nativeTeamRevision;
+    private long membershipRevision;
+    private long pushQueryEpoch;
     private boolean active;
     private boolean initialized;
 
@@ -89,19 +91,18 @@ final class LevelCollisionFrame {
         }
 
         int nativeId = ids.addEntity(entity);
-        if (!VanillaMethodDetector.usesVanillaGetTeam(entity)) derivedTeams.add(entity);
+        membershipRevision++;
         BlockPos position = entity.blockPosition();
         int sectionX = SectionPos.blockToSectionCoord(position.getX());
         int sectionY = SectionPos.blockToSectionCoord(position.getY());
         int sectionZ = SectionPos.blockToSectionCoord(position.getZ());
         FFMBackend.insertEntity(nativeContext, nativeId, entity.getBoundingBox(),
-                sectionX, sectionY, sectionZ);
+                sectionX, sectionY, sectionZ,
+                !entity.isSpectator() && !VanillaMethodDetector.usesVanillaCanBeCollidedWith(entity),
+                !VanillaMethodDetector.usesVanillaGetTeam(entity));
         ensureSemanticCapacity(nativeId + 1);
         selectableEntityRevisions[nativeId] = UNCACHED;
         teamRevisions[nativeId] = UNCACHED;
-        if (!VanillaMethodDetector.usesVanillaCanBeCollidedWith(entity)) {
-            refreshNativeMetadata(nativeId, entity);
-        }
     }
 
     synchronized void updateBoundingBox(Entity entity) {
@@ -135,7 +136,7 @@ final class LevelCollisionFrame {
         if (nativeId < 0) return;
         FFMBackend.removeEntity(nativeContext, nativeId);
         ids.removeEntity(entity);
-        derivedTeams.remove(entity);
+        membershipRevision++;
         teams[nativeId] = null;
         bodies.retire(entity);
     }
@@ -274,47 +275,61 @@ final class LevelCollisionFrame {
             Team.CollisionRule sourceRule,
             boolean sourceUsesVanillaDoPush
     ) {
-        invalidateStalePushEligibility();
-        // Derived teams can change without any scoreboard mutation (taming, owner resolution).
-        // This is a semantic dependency, not an entity/mod whitelist or a density-dependent path.
-        for (Entity target : derivedTeams) {
-            refreshNativeMetadata(ids.getNativeId(target), target);
-        }
-
-        int sourceNativeId = ids.getNativeId(source);
-        if (sourceNativeId >= 0) bodies.bindBody(source);
+        // Ordinary miss retries share an epoch; a changed world restarts with a fresh one.
+        long queryEpoch = ++pushQueryEpoch;
+        AABB sourceBounds = source.getBoundingBox();
         int sourceTeamId = assignTeamId(sourceTeam);
         int sourceRuleCode = collisionRuleCode(sourceRule);
         boolean sourceNativePushEligible = sourceUsesVanillaDoPush
                 && VanillaMethodDetector.allowsDeferredVelocityWrites(source);
-        FFMBackend.QueryResult result;
-        int refreshPasses = 0;
-        do {
-            result = FFMBackend.queryPushable(
+        while (true) {
+            invalidateStalePushEligibility();
+            int sourceNativeId = ids.getNativeId(source);
+            if (sourceNativeId >= 0) bodies.bindBody(source);
+            FFMBackend.QueryResult result = FFMBackend.queryPushable(
                     nativeContext,
-                    source.getBoundingBox(),
+                    sourceBounds,
                     sourceNativeId,
                     sourceTeamId,
                     sourceRuleCode,
                     sourceNativePushEligible,
+                    queryEpoch,
                     ids.nativeIdCapacity()
             );
             if (!result.metadataRequired()) {
                 return result;
             }
-            for (int index = 0; index < result.size(); index++) {
-                int targetNativeId = result.get(index);
-                Entity target = ids.getEntity(targetNativeId);
-                if (target == null) {
-                    throw new IllegalStateException(
-                            "Native collision metadata requested an unknown entity " + targetNativeId
-                    );
+            int count = result.size();
+            int[] requests = metadataSnapshot(result);
+            try {
+                for (int index = 0; index < count; index++) {
+                    int nativeId = requests[index * 2];
+                    Entity target = requireEntity(nativeId);
+                    if (!refreshCandidateMetadata(nativeId, target, requests[index * 2 + 1], queryEpoch)) {
+                        // A real tracking/state callback changed the query; discard its remaining old IDs.
+                        queryEpoch = ++pushQueryEpoch;
+                        break;
+                    }
                 }
-                refreshNativeMetadata(targetNativeId, target);
+            } finally {
+                metadataQuerySnapshots.addFirst(requests);
             }
-            refreshPasses++;
-        } while (refreshPasses <= 2);
-        throw new IllegalStateException("Native collision metadata did not converge");
+        }
+    }
+
+    private int[] metadataSnapshot(FFMBackend.QueryResult result) {
+        int required = result.size() * 2;
+        int[] requests = metadataQuerySnapshots.pollFirst();
+        if (requests == null || requests.length < required) {
+            int capacity = 16;
+            while (capacity < required) capacity = Math.multiplyExact(capacity, 2);
+            requests = new int[capacity];
+        }
+        for (int index = 0; index < result.size(); index++) {
+            requests[index * 2] = result.get(index);
+            requests[index * 2 + 1] = result.requiredFields(index);
+        }
+        return requests;
     }
 
     synchronized PushBatch collectPushable(LivingEntity source, PlayerTeam sourceTeam,
@@ -337,32 +352,49 @@ final class LevelCollisionFrame {
         batchPool.addFirst(batch);
     }
 
-    private boolean isSelectableCached(int nativeId, Entity entity) {
+    private boolean refreshCandidateMetadata(int nativeId, Entity entity, int requiredFields, long queryEpoch) {
         ensureSemanticCapacity(nativeId + 1);
-        long entityRevision = ((CollisionCacheState) entity)
-                .entityCollisionOptimizer$collisionRevision();
-        long blockRevision = CollisionCacheEpochs.blockRevision();
-        if (selectableEntityRevisions[nativeId] != entityRevision
-                || selectableBlockRevisions[nativeId] != blockRevision) {
-            selectableValues[nativeId] = (byte) (
-                    !entity.isRemoved() && !entity.isSpectator()
-                            && ((CollisionCacheState) entity).entityCollisionOptimizer$isPushableCached() ? 1 : 0
-            );
+        long membership = membershipRevision;
+        if ((requiredFields & METADATA_STATE) != 0) {
+            CollisionCacheState state = (CollisionCacheState) entity;
+            long entityRevision = state.entityCollisionOptimizer$collisionRevision();
+            long blockRevision = CollisionCacheEpochs.blockRevision();
+            boolean selectable = selectableEntityRevisions[nativeId] == entityRevision
+                    && selectableBlockRevisions[nativeId] == blockRevision
+                    ? selectableValues[nativeId] != 0
+                    : !entity.isRemoved() && !entity.isSpectator()
+                            && state.entityCollisionOptimizer$isPushableCached();
+            boolean passenger = entity.isPassenger();
+            boolean hardCollidable = !entity.isRemoved() && !entity.isSpectator()
+                    && !VanillaMethodDetector.usesVanillaCanBeCollidedWith(entity);
+            // isPushable can pump chunk tasks. Never publish its old result into a retired/reused slot.
+            if (membership != membershipRevision
+                    || entityRevision != state.entityCollisionOptimizer$collisionRevision()
+                    || blockRevision != CollisionCacheEpochs.blockRevision()) return false;
+            selectableValues[nativeId] = (byte) (selectable ? 1 : 0);
             selectableEntityRevisions[nativeId] = entityRevision;
             selectableBlockRevisions[nativeId] = blockRevision;
+            FFMBackend.updateEntityState(nativeContext, nativeId, selectable, passenger,
+                    VanillaMethodDetector.usesVanillaEntityPush(entity),
+                    VanillaMethodDetector.allowsDeferredVelocityWrites(entity),
+                    bodies.bindBody(entity), hardCollidable);
         }
-        return selectableValues[nativeId] != 0;
-    }
-
-    private PlayerTeam teamCached(int nativeId, Entity entity) {
-        if (!VanillaMethodDetector.usesVanillaGetTeam(entity)) return entity.getTeam();
-        ensureSemanticCapacity(nativeId + 1);
-        long teamRevision = CollisionCacheEpochs.teamRevision();
-        if (teamRevisions[nativeId] != teamRevision) {
-            teams[nativeId] = entity.getTeam();
-            teamRevisions[nativeId] = teamRevision;
+        if ((requiredFields & METADATA_TEAM) != 0 && selectableValues[nativeId] != 0) {
+            long teamRevision = CollisionCacheEpochs.teamRevision();
+            boolean vanillaTeam = VanillaMethodDetector.usesVanillaGetTeam(entity);
+            PlayerTeam team = vanillaTeam && teamRevisions[nativeId] == teamRevision
+                    ? teams[nativeId] : entity.getTeam();
+            if (membership != membershipRevision || teamRevision != CollisionCacheEpochs.teamRevision()) return false;
+            if (vanillaTeam) {
+                teams[nativeId] = team;
+                teamRevisions[nativeId] = teamRevision;
+            }
+            // Team-only refresh never evaluates pushability or reads the entity's block state.
+            FFMBackend.updateEntityTeam(nativeContext, nativeId, assignTeamId(team),
+                    collisionRuleCode(team == null ? Team.CollisionRule.ALWAYS : team.getCollisionRule()),
+                    queryEpoch);
         }
-        return teams[nativeId];
+        return true;
     }
 
     /* setblock() will increment the block revision, causing the selectable values to be invalidated. Team values the same */
@@ -372,33 +404,15 @@ final class LevelCollisionFrame {
         int fieldsToInvalidate = 0;
         if (nativeBlockRevision != blockRevision) {
             nativeBlockRevision = blockRevision;
-            fieldsToInvalidate |= INVALIDATE_SELECTABLE;
+            fieldsToInvalidate |= METADATA_STATE;
         }
         if (nativeTeamRevision != teamRevision) {
             nativeTeamRevision = teamRevision;
-            fieldsToInvalidate |= INVALIDATE_TEAM;
+            fieldsToInvalidate |= METADATA_TEAM;
         }
         if (fieldsToInvalidate != 0) {
             FFMBackend.invalidatePushEligibilityCacheFields(nativeContext, fieldsToInvalidate);
         }
-    }
-
-    private void refreshNativeMetadata(int nativeId, Entity entity) {
-        PlayerTeam targetTeam = teamCached(nativeId, entity);
-        FFMBackend.updateEntityState(
-                nativeContext,
-                nativeId,
-                isSelectableCached(nativeId, entity),
-                entity.isPassenger(),
-                VanillaMethodDetector.usesVanillaEntityPush(entity),
-                VanillaMethodDetector.allowsDeferredVelocityWrites(entity),
-                assignTeamId(targetTeam),
-                collisionRuleCode(targetTeam == null
-                        ? Team.CollisionRule.ALWAYS : targetTeam.getCollisionRule()),
-                bodies.bindBody(entity),
-                !entity.isRemoved() && !entity.isSpectator()
-                        && !VanillaMethodDetector.usesVanillaCanBeCollidedWith(entity)
-        );
     }
 
     private int assignTeamId(PlayerTeam team) {

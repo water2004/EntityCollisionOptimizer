@@ -14,13 +14,10 @@ int updateCollisionEntityState(
         int passenger,
         int vanillaEntityPush,
         int allowsDeferredVelocityWrites,
-        int teamId,
-        int collisionRule,
         int bodySlot,
         int hardCollidable
 ) {
-    if (contextPointer == nullptr || nativeId < 0 || bodySlot < 0
-            || collisionRule < eco::COLLISION_ALWAYS || collisionRule > eco::COLLISION_PUSH_OTHER_TEAMS) {
+    if (contextPointer == nullptr || nativeId < 0 || bodySlot < 0) {
         return -1;
     }
     try {
@@ -45,14 +42,34 @@ int updateCollisionEntityState(
             }
         }
         metadata.hardCollidable = hard;
-        metadata.teamId = teamId;
-        metadata.collisionRule = collisionRule;
         metadata.bodySlot = bodySlot;
         metadata.selectableValid = true;
-        metadata.teamValid = true;
         if (wasQueryable != metadata.selectable) {
             eco::updateEntityQueryability(context, nativeId, metadata.selectable);
         }
+        return 0;
+    } catch (...) {
+        return eco::recordNativeException();
+    }
+}
+
+int updateCollisionEntityTeam(
+        void* contextPointer,
+        int nativeId,
+        int teamId,
+        int collisionRule,
+        std::uint64_t queryEpoch
+) {
+    if (contextPointer == nullptr || nativeId < 0
+            || collisionRule < eco::COLLISION_ALWAYS || collisionRule > eco::COLLISION_PUSH_OTHER_TEAMS) return -1;
+    try {
+        auto& context = *static_cast<eco::CollisionContext*>(contextPointer);
+        if (static_cast<std::size_t>(nativeId) >= context.metadata.size()) return -1;
+        auto& metadata = context.metadata[nativeId];
+        metadata.teamId = teamId;
+        metadata.collisionRule = collisionRule;
+        metadata.teamQueryEpoch = queryEpoch;
+        metadata.teamValid = true;
         return 0;
     } catch (...) {
         return eco::recordNativeException();
@@ -81,14 +98,14 @@ int invalidateEntityPushEligibilityCache(void* contextPointer, int nativeId) {
 
 int invalidatePushEligibilityCacheFields(void* contextPointer, int fieldsToInvalidate) {
     if (contextPointer == nullptr
-            || (fieldsToInvalidate & ~(eco::METADATA_SELECTABLE | eco::METADATA_TEAM)) != 0) {
+            || (fieldsToInvalidate & ~(eco::METADATA_STATE | eco::METADATA_TEAM)) != 0) {
         return -1;
     }
     try {
         auto& context = *static_cast<eco::CollisionContext*>(contextPointer);
         for (std::size_t nativeId = 0; nativeId < context.metadata.size(); ++nativeId) {
             eco::EntityMetadata& metadata = context.metadata[nativeId];
-            if ((fieldsToInvalidate & eco::METADATA_SELECTABLE) != 0) {
+            if ((fieldsToInvalidate & eco::METADATA_STATE) != 0) {
                 if (metadata.selectableValid && !metadata.selectable) {
                     eco::updateEntityQueryability(context, static_cast<int>(nativeId), true);
                 }
