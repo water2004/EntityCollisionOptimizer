@@ -15,6 +15,8 @@ import java.util.Locale;
 /** Serial workload timing; correctness suites never start benchmark scenarios. */
 public final class CollisionBenchmarkRunner {
     static final int DURATION_TICKS = 200;
+    // GameTest clocks include time spent waiting for the other serial scenarios.
+    static final int SUITE_MAX_TICKS = 4000;
     private static BenchmarkRun activeRun;
     private static final ArrayDeque<BenchmarkRun> pending = new ArrayDeque<>();
 

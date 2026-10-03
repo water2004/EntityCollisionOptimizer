@@ -42,3 +42,22 @@ under `vanilla-gametest/src/main/resources`.
 
 Benchmarks measure workloads and validate only the benchmark fixture itself. They are not counted
 as correctness tests and use the entrypoint manifest under `src/benchmarkTest`.
+
+The workloads are falling zombies, an elder-guardian void pipe, unpushable climbing zombies,
+and tamed cats/wolves in separate pens. The pet workload uses 512 cats and 512 wolves in 32
+stone pens for 1000 ticks. Pets retain normal AI/gravity and are ordered to sit; invulnerability
+keeps the population fixed. Half inherit a connected survival owner's `ALWAYS` team and half
+have a UUID-only offline owner. This exercises spatially local derived-team resolution through
+normal entity ticks, not manually repeated collision queries. It is a repeatable workload,
+not a copy of an issue reporter's world or a chunk-unloading/CME reproduction.
+
+Run just the pet workload when profiling it:
+
+```powershell
+.\gradlew.bat runGameTest -Pbenchmark -PgameTestFilter=entity_collision_optimizer-benchmark-gametest:tamed_animal_benchmark_separated_pens
+```
+
+Use `-PcompatModsDir=<directory>` for an optional local mod stack. Timing, measurement-window
+markers, fixture validation and cleanup use the same runner as the other benchmarks. Owner
+connections, scoreboard teams and newly forced chunks are released after the workload; chunks
+already forced by the test framework are preserved.

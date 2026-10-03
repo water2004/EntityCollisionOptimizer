@@ -8,7 +8,8 @@
     "fabric-gametest": [
       "org.edtp.entitycollisionoptimizer.gametest.ZombieCollisionBenchmark",
       "org.edtp.entitycollisionoptimizer.gametest.ElderGuardianBenchmark",
-      "org.edtp.entitycollisionoptimizer.gametest.ClimbingCollisionBenchmark"
+      "org.edtp.entitycollisionoptimizer.gametest.ClimbingCollisionBenchmark",
+      "org.edtp.entitycollisionoptimizer.gametest.TamedAnimalBenchmark"
     ]
   },
   "mixins": ["entity_collision_optimizer-gametest.mixins.json"],

@@ -1,19 +1,9 @@
 package org.edtp.entitycollisionoptimizer.gametest;
 
-import com.mojang.authlib.GameProfile;
-import io.netty.channel.embedded.EmbeddedChannel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.network.Connection;
-import net.minecraft.network.protocol.PacketFlow;
-import net.minecraft.network.protocol.common.ClientboundKeepAlivePacket;
-import net.minecraft.network.protocol.common.ClientboundPingPacket;
-import net.minecraft.network.protocol.common.ServerboundKeepAlivePacket;
-import net.minecraft.network.protocol.common.ServerboundPongPacket;
-import net.minecraft.server.level.ClientInformation;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.server.network.CommonListenerCookie;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityTypes;
@@ -32,7 +22,6 @@ import org.edtp.entitycollisionoptimizer.EntityCollisionOptimizer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
-import java.util.UUID;
 
 /** A one-block spawn pedestal above a real 3x3 chamber and its bottom attacker. */
 final class ZombieBenchmarkChamber extends BenchmarkScenario {
@@ -46,8 +35,7 @@ final class ZombieBenchmarkChamber extends BenchmarkScenario {
     private final List<Zombie> zombies = new ArrayList<>();
     private final Random spawnRandom = new Random(0xEC020026L);
     private ServerPlayer player;
-    private EmbeddedChannel playerChannel;
-    private Connection connection;
+    private BenchmarkPlayer playerSession;
     private Boolean pistonMoving;
     private int removed;
     int spawned, attacks, acceptedAttacks, observedKnockbacks, sweepAttacks, sweepVictims, pistonTransitions;
@@ -95,18 +83,8 @@ final class ZombieBenchmarkChamber extends BenchmarkScenario {
     }
 
     void spawnPlayer() {
-        GameProfile profile = new GameProfile(UUID.randomUUID(), "eco-bench");
-        player = new ServerPlayer(helper.getLevel().getServer(), helper.getLevel(),
-                profile, ClientInformation.createDefault());
-        connection = new Connection(PacketFlow.SERVERBOUND);
-        playerChannel = new EmbeddedChannel(connection);
-        helper.getLevel().getServer().getPlayerList().placeNewPlayer(
-                connection, player, CommonListenerCookie.createInitial(profile, false));
-        // PlayerList admission alone does not register an EmbeddedChannel for connection ticks.
-        // The normal listener tick drives ServerPlayer.doTick, equipment updates and cooldowns.
-        helper.getLevel().getServer().getConnection().getConnections().add(connection);
-        player.setGameMode(GameType.SURVIVAL);
-        player.getAbilities().invulnerable = true;
+        playerSession = new BenchmarkPlayer(helper, "eco-bench", BOTTOM);
+        player = playerSession.player();
         ItemStack sword = new ItemStack(Items.DIAMOND_SWORD);
         var knockback = helper.getLevel().registryAccess().lookupOrThrow(Registries.ENCHANTMENT)
                 .getOrThrow(Enchantments.KNOCKBACK);
@@ -115,10 +93,6 @@ final class ZombieBenchmarkChamber extends BenchmarkScenario {
             throw new IllegalStateException("Failed to equip Knockback II");
         }
         player.setItemInHand(InteractionHand.MAIN_HAND, sword);
-        player.setPos(helper.absoluteVec(BOTTOM));
-        player.setDeltaMovement(Vec3.ZERO);
-        // A stationary server-side player standing on the real floor; no movement packets arrive.
-        player.setOnGround(true);
         player.resetAttackStrengthTicker();
     }
 
@@ -143,15 +117,7 @@ final class ZombieBenchmarkChamber extends BenchmarkScenario {
     }
 
     void tickConnection() {
-        // Consume outbound packets like a client, including replies required for a live connection.
-        Object packet;
-        while ((packet = playerChannel.readOutbound()) != null) {
-            if (packet instanceof ClientboundKeepAlivePacket keepAlive) {
-                player.connection.handleKeepAlive(new ServerboundKeepAlivePacket(keepAlive.getId()));
-            } else if (packet instanceof ClientboundPingPacket ping) {
-                player.connection.handlePong(new ServerboundPongPacket(ping.getId()));
-            }
-        }
+        playerSession.respondToPackets();
     }
 
     void attackIfReady(int tick) {
@@ -228,17 +194,10 @@ final class ZombieBenchmarkChamber extends BenchmarkScenario {
         AABB chamber = new AABB(origin.add(1, 0, 1), origin.add(6, DROP_HEIGHT + 4, 6));
         for (Entity entity : helper.getLevel().getEntities((Entity) null, chamber,
                 e -> e instanceof ItemEntity || e instanceof ExperienceOrb)) entity.discard();
-        if (player != null) {
-            helper.getLevel().getServer().getPlayerList().remove(player);
+        if (playerSession != null) {
+            playerSession.close();
+            playerSession = null;
             player = null;
-        }
-        if (playerChannel != null) {
-            playerChannel.finishAndReleaseAll();
-            playerChannel = null;
-        }
-        if (connection != null) {
-            helper.getLevel().getServer().getConnection().getConnections().remove(connection);
-            connection = null;
         }
     }
 }
