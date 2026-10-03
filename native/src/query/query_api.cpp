@@ -242,6 +242,7 @@ int queryPushableEntities(
         int sourceTeamId,
         int sourceCollisionRule,
         int sourceNativePushEligible,
+        std::uint64_t queryEpoch,
         int* outputBuffer,
         int* nativePushFlags,
         int outputCapacity
@@ -272,9 +273,14 @@ int queryPushableEntities(
         int actionableCount = 0;
         const auto consume = [&](int candidateNativeId) -> int {
             const eco::EntityMetadata& target = context.metadata[candidateNativeId];
-            if (!target.selectableValid || (target.selectable && !target.teamValid)) {
+            int requiredFields = target.selectableValid ? 0 : eco::METADATA_STATE;
+            if ((!target.selectableValid || target.selectable)
+                    && (!target.teamValid || (target.derivedTeam && target.teamQueryEpoch != queryEpoch))) {
+                requiredFields |= eco::METADATA_TEAM;
+            }
+            if (requiredFields != 0) {
                 if (context.metadataMisses.size() >= static_cast<std::size_t>(outputCapacity)) return -2;
-                context.metadataMisses.push_back(candidateNativeId);
+                context.metadataMisses.push_back({candidateNativeId, requiredFields});
                 return 0;
             }
             if (!target.selectable || !teamFilter.accepts(target.teamId, target.collisionRule)) return 0;
@@ -350,7 +356,10 @@ int queryPushableEntities(
         if (!complete) return status == 0 ? -3 : status;
 
         if (!context.metadataMisses.empty()) {
-            std::copy(context.metadataMisses.begin(), context.metadataMisses.end(), outputBuffer + 3);
+            for (std::size_t index = 0; index < context.metadataMisses.size(); ++index) {
+                outputBuffer[3 + index] = context.metadataMisses[index].nativeId;
+                bodySlots[index] = context.metadataMisses[index].requiredFields;
+            }
             outputBuffer[0] = 1;
             outputBuffer[1] = 0;
             outputBuffer[2] = 0;

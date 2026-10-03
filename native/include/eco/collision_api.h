@@ -1,5 +1,4 @@
 #pragma once
-
 #include <cstdint>
 
 #ifdef AR_WINDOWS
@@ -26,8 +25,11 @@ ECO_EXPORT int insertCollisionEntity(
         const double* entityBounds,
         int sectionX,
         int sectionY,
-        int sectionZ
+        int sectionZ,
+        int hardCollidable,
+        int derivedTeam
 );
+// Publish collision state and body binding independently of team metadata.
 ECO_EXPORT int updateCollisionEntityState(
         void* contextPointer,
         int nativeId,
@@ -35,10 +37,16 @@ ECO_EXPORT int updateCollisionEntityState(
         int passenger,
         int vanillaEntityPush,
         int allowsDeferredVelocityWrites,
-        int teamId,
-        int collisionRule,
         int bodySlot,
         int hardCollidable
+);
+// Derived teams are resolved for a logical query; ordinary miss retries share its epoch.
+ECO_EXPORT int updateCollisionEntityTeam(
+        void* contextPointer,
+        int nativeId,
+        int teamId,
+        int collisionRule,
+        std::uint64_t queryEpoch
 );
 // Publish geometry and invalidate push eligibility without evaluating Java entity predicates.
 ECO_EXPORT int updateCollisionEntityBounds(void* contextPointer, int nativeId, const double* entityBounds);
@@ -84,7 +92,7 @@ ECO_EXPORT int queryEntitiesInBox(
 // outputBuffer: [metadataRequired, pushableCount, nonPassengerCount],
 // native IDs[capacity], bodySlots[capacity]. nativePushFlags receives one
 // native-push flag per returned native ID.
-// On a metadata miss, only the header and returned IDs are valid.
+// On a metadata miss, bodySlots contains per-ID required-field masks (state=1, team=2).
 ECO_EXPORT int queryPushableEntities(
         void* contextPointer,
         const double* sourceBounds,
@@ -92,6 +100,7 @@ ECO_EXPORT int queryPushableEntities(
         int sourceTeamId,
         int sourceCollisionRule,
         int sourceNativePushEligible,
+        std::uint64_t queryEpoch,
         int* outputBuffer,
         int* nativePushFlags,
         int outputCapacity

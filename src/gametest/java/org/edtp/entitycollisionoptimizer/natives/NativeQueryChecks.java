@@ -34,7 +34,7 @@ public final class NativeQueryChecks {
                         source.selectable, source.passenger, source.vanillaEntityPush, source.allowsDeferredVelocityWrites,
                         source.team, source.rule, 900, false);
                 var empty = FFMBackend.queryPushable(
-                        context, new AABB(0, 0, 0, 0, 0, 0), 0, -1, 0, true, count);
+                        context, new AABB(0, 0, 0, 0, 0, 0), 0, -1, 0, true, 0, count);
                 helper.assertTrue(empty.size() == 0 && empty.pushableCount() == 0
                         && empty.nonPassengerCount() == 0 && !empty.metadataRequired(), "empty source result");
                 empty.copyBodiesTo(new int[0], new int[0]);
@@ -81,11 +81,11 @@ public final class NativeQueryChecks {
                                 int rule, boolean sourceNative, int capacityHint, int phase) {
         boolean sourceNativePushEligible = sourceNative && bodies[0].allowsDeferredVelocityWrites;
         var result = FFMBackend.queryPushable(
-                context, bodies[0].box, 0, bodies[0].team, rule, sourceNativePushEligible, capacityHint);
+                context, bodies[0].box, 0, bodies[0].team, rule, sourceNativePushEligible, 0, capacityHint);
         if (result.metadataRequired()) {
             for (int i = 0; i < result.size(); i++) metadata(context, result.get(i), bodies[result.get(i)]);
             result = FFMBackend.queryPushable(
-                    context, bodies[0].box, 0, bodies[0].team, rule, sourceNativePushEligible, capacityHint);
+                    context, bodies[0].box, 0, bodies[0].team, rule, sourceNativePushEligible, 0, capacityHint);
         }
         helper.assertTrue(!result.metadataRequired(), "query metadata converged");
         Body source = bodies[0];
