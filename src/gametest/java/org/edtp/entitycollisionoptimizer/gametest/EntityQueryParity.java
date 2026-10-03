@@ -59,8 +59,8 @@ final class EntityQueryParity {
                             && identitySet(expected.typed).equals(identitySet(zombies)),
                     "reference typed query must find all seven zombies and no armor stands");
             helper.assertValueEqual(expected.limited.size(), 2, "reference limited query must not be empty");
-            helper.assertValueEqual(expected.nested.size(), fixtures.size() - 1,
-                    "reference nested query must run and exclude its target");
+            helper.assertValueEqual(expected.nested, List.of(fixtures.getFirst()),
+                    "reference nested query must have fewer spatial hits than the outer query");
 
             CollisionFrame.begin(level);
             QueryTrace actual = trace(level, query, fixtures.getFirst());
@@ -96,7 +96,7 @@ final class EntityQueryParity {
         helper.assertTrue(typed.equals(List.of(fixture)), "unbound typed storage must use its local query");
     }
 
-    private static QueryTrace trace(ServerLevel level, AABB query, Entity nestedExclusion) {
+    private static QueryTrace trace(ServerLevel level, AABB query, Entity nestedAnchor) {
         List<Entity> all = level.getEntities((Entity) null, query, entity -> true);
         List<Zombie> typed = level.getEntities(ZOMBIES, query, entity -> true);
         List<Zombie> limited = new ArrayList<>();
@@ -111,7 +111,7 @@ final class EntityQueryParity {
         List<Entity> outer = level.getEntities((Entity) null, query, entity -> {
             if (!queried[0]) {
                 queried[0] = true;
-                nested.addAll(level.getEntities((Entity) null, query, candidate -> candidate != nestedExclusion));
+                nested.addAll(level.getEntities((Entity) null, nestedAnchor.getBoundingBox(), candidate -> true));
             }
             return true;
         });
@@ -130,14 +130,14 @@ final class EntityQueryParity {
     }
 
     private static void verifyFaultDetection(GameTestHelper helper, ServerLevel level, AABB query,
-                                             Entity excluded, QueryTrace expected) {
+                                             Entity nestedAnchor, QueryTrace expected) {
         for (var fault : NativeEntityQueryFaults.Fault.values()) {
             try (var injection = new NativeEntityQueryFaults(fault)) {
-                QueryTrace reference = VanillaEntityQueries.call(() -> trace(level, query, excluded));
+                QueryTrace reference = VanillaEntityQueries.call(() -> trace(level, query, nestedAnchor));
                 helper.assertValueEqual(injection.calls(), 0, "reference must never invoke native entity query");
                 assertMatches(helper, reference, expected);
 
-                QueryTrace corrupted = trace(level, query, excluded);
+                QueryTrace corrupted = trace(level, query, nestedAnchor);
                 helper.assertTrue(injection.calls() > 0, "actual query must reach injected native handle");
                 boolean rejected = false;
                 try {
