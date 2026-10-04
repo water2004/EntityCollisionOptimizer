@@ -4,13 +4,13 @@
 
 <h1 align="center">Entity Collision Optimizer</h1>
 
-<p align="center">Vanilla-accurate entity collision acceleration for Minecraft 26.1 Fabric servers.</p>
+<p align="center">Vanilla-accurate entity collision acceleration for Minecraft Fabric servers.</p>
 
 <p align="center"><strong>English</strong> | <a href="README_zh.md">简体中文</a></p>
 
 ---
 
-Entity Collision Optimizer is a server-side Fabric mod for Minecraft 26.1 that uses a C++ native backend to accelerate entity queries, pushing, and movement collision while **preserving vanilla entity-collision behavior**. Install it and it works; connecting clients do not need the mod.
+Entity Collision Optimizer is a server-side Fabric mod for Minecraft that uses a C++ native backend to accelerate entity queries, pushing, and movement collision while **preserving vanilla entity-collision behavior**. Install it and it works; connecting clients do not need the mod.
 
 ## Why use Entity Collision Optimizer?
 
@@ -106,21 +106,17 @@ Use `/eco` to check whether the FFM backend initialized successfully. The mod ha
 
 Please report reproducible problems through the [issue tracker](https://github.com/water2004/EntityCollisionOptimizer/issues).
 
-## Building and testing
+## Branch maintainers
 
-Use Java 25 and the included Gradle Wrapper:
+| Minecraft | Branch | Maintainer |
+| --- | --- | --- |
+| 26.3 | [`main`](https://github.com/water2004/EntityCollisionOptimizer/tree/main) | <a href="https://github.com/water2004"><img src="https://avatars.githubusercontent.com/u/64115064?v=4&amp;s=80" width="40" height="40" alt="water2004"></a> [@water2004](https://github.com/water2004) |
+| 26.2 | [`26.2`](https://github.com/water2004/EntityCollisionOptimizer/tree/26.2) | <a href="https://github.com/water2004"><img src="https://avatars.githubusercontent.com/u/64115064?v=4&amp;s=80" width="40" height="40" alt="water2004"></a> [@water2004](https://github.com/water2004) |
+| 26.1.x | [`26.1`](https://github.com/water2004/EntityCollisionOptimizer/tree/26.1) | <a href="https://github.com/water2004"><img src="https://avatars.githubusercontent.com/u/64115064?v=4&amp;s=80" width="40" height="40" alt="water2004"></a> [@water2004](https://github.com/water2004) |
+| 1.21.11 | [`1.21.11`](https://github.com/water2004/EntityCollisionOptimizer/tree/1.21.11) | <a href="https://github.com/Byx070531"><img src="https://avatars.githubusercontent.com/u/178852023?v=4&amp;s=80" width="40" height="40" alt="Byx070531"></a> [@Byx070531](https://github.com/Byx070531) |
+| 1.21.1 | [`1.21.1`](https://github.com/water2004/EntityCollisionOptimizer/tree/1.21.1) | <a href="https://github.com/FishPorridge233"><img src="https://avatars.githubusercontent.com/u/103174984?v=4&amp;s=80" width="40" height="40" alt="FishPorridge233"></a> [@FishPorridge233](https://github.com/FishPorridge233) |
 
-```powershell
-./gradlew.bat build
-./gradlew.bat runGameTest -PunitTest
-./gradlew.bat runGameTest -PintegrationTest
-```
-
-Unit GameTests cover focused collision contracts and deterministic edge cases. Integration GameTests run real scenarios first without the mod and then with it, requiring byte-for-byte identical traces. See [TESTING.md](TESTING.md) for the suite boundaries and commands.
-
-Benchmarks are opt-in through `-Pbenchmark`; a normal build does not start a benchmark server. Use `-PcompatModsDir=<directory>` to add extra mods to a test run.
-
-Building a complete release JAR with all native targets currently requires Windows. On Linux or macOS, use `./gradlew compileJava` to check the Java sources. Build artifacts are written to `build/libs`; version and tag conventions are documented in [RELEASE.md](RELEASE.md).
+For development and contribution guidelines, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
