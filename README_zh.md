@@ -4,13 +4,13 @@
 
 <h1 align="center">实体碰撞优化</h1>
 
-<p align="center">面向 Minecraft 26.2 Fabric 服务器的原版等价实体碰撞加速。</p>
+<p align="center">面向 Minecraft Fabric 服务器的原版等价实体碰撞加速。</p>
 
 <p align="center"><a href="README.md">English</a> | <strong>简体中文</strong></p>
 
 ---
 
-实体碰撞优化是面向 Minecraft 26.2 的服务端 Fabric 模组，通过 C++ native 后端加速实体查询、相互推动和移动碰撞，同时**保持原版实体碰撞行为**。安装即生效，连接服务器的客户端无需安装。
+实体碰撞优化是面向 Minecraft 的服务端 Fabric 模组，通过 C++ native 后端加速实体查询、相互推动和移动碰撞，同时**保持原版实体碰撞行为**。安装即生效，连接服务器的客户端无需安装。
 
 ## 为什么使用实体碰撞优化？
 
@@ -106,21 +106,17 @@ Minecraft 按区段存储实体。一次碰撞查询需要遍历相关区段、�
 
 如遇到可以稳定复现的问题，请通过 [Issue Tracker](https://github.com/water2004/EntityCollisionOptimizer/issues) 报告。
 
-## 构建与测试
+## 分支维护者
 
-使用 Java 25 和仓库内的 Gradle Wrapper：
+| Minecraft | 分支 | 维护者 |
+| --- | --- | --- |
+| 26.3 | [`main`](https://github.com/water2004/EntityCollisionOptimizer/tree/main) | <a href="https://github.com/water2004"><img src="https://avatars.githubusercontent.com/u/64115064?v=4&amp;s=80" width="40" height="40" alt="water2004"></a> [@water2004](https://github.com/water2004) |
+| 26.2 | [`26.2`](https://github.com/water2004/EntityCollisionOptimizer/tree/26.2) | <a href="https://github.com/water2004"><img src="https://avatars.githubusercontent.com/u/64115064?v=4&amp;s=80" width="40" height="40" alt="water2004"></a> [@water2004](https://github.com/water2004) |
+| 26.1.x | [`26.1`](https://github.com/water2004/EntityCollisionOptimizer/tree/26.1) | <a href="https://github.com/water2004"><img src="https://avatars.githubusercontent.com/u/64115064?v=4&amp;s=80" width="40" height="40" alt="water2004"></a> [@water2004](https://github.com/water2004) |
+| 1.21.11 | [`1.21.11`](https://github.com/water2004/EntityCollisionOptimizer/tree/1.21.11) | <a href="https://github.com/Byx070531"><img src="https://avatars.githubusercontent.com/u/178852023?v=4&amp;s=80" width="40" height="40" alt="Byx070531"></a> [@Byx070531](https://github.com/Byx070531) |
+| 1.21.1 | [`1.21.1`](https://github.com/water2004/EntityCollisionOptimizer/tree/1.21.1) | <a href="https://github.com/FishPorridge233"><img src="https://avatars.githubusercontent.com/u/103174984?v=4&amp;s=80" width="40" height="40" alt="FishPorridge233"></a> [@FishPorridge233](https://github.com/FishPorridge233) |
 
-```powershell
-./gradlew.bat build
-./gradlew.bat runGameTest -PunitTest
-./gradlew.bat runGameTest -PintegrationTest
-```
-
-单元 GameTest 覆盖聚焦的碰撞契约和确定性边界条件。集成 GameTest 会先在不加载本模组的进程中运行真实场景，再在加载本模组的进程中运行，并要求两边轨迹逐字节一致。测试职责和命令详见 [TESTING.md](TESTING.md)。
-
-压测必须通过 `-Pbenchmark` 显式启用，普通构建不会启动压测服务器。可以使用 `-PcompatModsDir=<目录>` 为测试运行加入额外模组。
-
-构建包含全部原生平台的完整发布 JAR 目前需要 Windows；Linux 和 macOS 可以使用 `./gradlew compileJava` 检查 Java 源码。构建产物位于 `build/libs`，版本号和 tag 约定见 [RELEASE.md](RELEASE.md)。
+开发与贡献指引见[贡献指南](CONTRIBUTING_zh.md)。
 
 ## 许可证
 
