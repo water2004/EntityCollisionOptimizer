@@ -28,12 +28,14 @@
 ### 1.1 无网络
 这台机器**完全没有外网**（curl 对 meta.fabricmc.net / services.gradle.org / GitHub / bmclapi 全部返回 000），
 本地代理 127.0.0.1:10810 未运行。所有依赖必须用本地缓存。
+GitHub 是例外：TCP 可达但 **HTTPS 被 TLS 拦截**（schannel 报 `SEC_E_NO_CREDENTIALS`，openssl 后端报 `unable to get local issuer certificate`），`ssh.github.com:443` 可以连通。推送前先启动用户的代理（系统代理设置里写着 `127.0.0.1:10810`，但默认 `ProxyEnable=0`），再 `git config --local http.proxy http://127.0.0.1:10810`；脚本 `_eco-work\push-1.21.11.ps1` 已支持 `-Repo` 参数。
 
 ### 1.2 本地工具链
 | 用途 | 路径 |
 | --- | --- |
 | Gradle 发行版 | `E:\Minecraft\MODS\.tools\gradle-9.5.1\bin\gradle.bat`（**wrapper 指向的 9.6.0 没缓存，不能用 `gradlew`**） |
 | Gradle 用户目录（含 loom/MC 缓存） | `E:\Minecraft\MODS\.gradle-home`（必须设 `GRADLE_USER_HOME`） |
+| **本仓库（git 仓库，分支 `1.21.11`）** | `D:\JavaStudy\IDEA\IdeaProjects\EntityCollisionOptimizer-main`（2026-10-04 从 `E:\Minecraft\MODS\` 移入 IDEA 工程目录；`.gradle-home` / `_research` / `_eco-work` 仍在原处） |
 | JDK 21（编译必需） | `D:\JavaStudy\JDK\zulu-jdk-21`（已在 `.gradle-home\gradle.properties` 里通过 `org.gradle.java.installations.paths` 注册） |
 | JDK 25（默认 java） | `D:\JavaStudy\JDK\zulu-jdk-25` |
 | MinGW g++ 15.2（编原生库） | `D:\msys64\ucrt64\bin\g++.exe` |
@@ -44,7 +46,7 @@
 | TravelersBackpack 1.21.11 源码（用户是该作者） | `E:\Minecraft\MODS\_research\wt-1.21.11f` |
 
 ### 1.3 沙箱与脚本注意事项
-* **文件写只允许 `E:\Minecraft\MODS` 之内**。往 `.minecraft` 装 jar 会被拒；需要一次
+* **文件写只允许 `E:\Minecraft\MODS` 之内**（本仓库已移到 `D:\JavaStudy\IDEA\IdeaProjects\EntityCollisionOptimizer-main`，**属工作区之外**：改这些文件、跑构建、`git commit` 都会被拒，同样要一次升级）。往 `.minecraft` 装 jar 会被拒；需要一次
   `sandbox_permissions: danger-full-access` 升级重试（已验证可行，用户会收到审批）。**读** `.minecraft` 不受限。
   * 用户的游戏目录是 `E:\Minecraft\.minecraft\versions\1.21.11test`（PCL 版本隔离：`mods`、`logs`、`saves`、
     `options.txt` 都在这一层），所以**要装的 mods 目录是 `...\versions\1.21.11test\mods`**。
@@ -59,7 +61,7 @@
 ### 1.4 标准构建命令
 ```powershell
 $env:GRADLE_USER_HOME="E:\Minecraft\MODS\.gradle-home"
-Set-Location "E:\Minecraft\MODS\EntityCollisionOptimizer-main"
+Set-Location "D:\JavaStudy\IDEA\IdeaProjects\EntityCollisionOptimizer-main"
 & "E:\Minecraft\MODS\.tools\gradle-9.5.1\bin\gradle.bat" --offline --no-daemon --no-watch-fs `
   remapJar -PnativeWindowsOnly -x compileNativeWin -x compileNativeLinux -x compileNativeMac
 ```
