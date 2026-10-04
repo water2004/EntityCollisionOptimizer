@@ -10,7 +10,11 @@ pluginManagement {
 }
 
 plugins {
-    id 'org.gradle.toolchains.foojay-resolver-convention' version '1.0.0'
+    // The foojay toolchain resolver was only needed to auto-provision the Java 25
+    // toolchain. The 1.21.11 target pins the toolchain to Java 21 (the FFM API is
+    // still preview on 21, so the compiler must be exactly 21), which must be
+    // installed locally / by the CI setup-java step. Removing the resolver keeps
+    // offline builds working.
 }
 
 rootProject.name = 'EntityCollisionOptimizer'

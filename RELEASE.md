@@ -17,6 +17,9 @@
 
 JAR 内版本号与文件名仍带 Minecraft 版本。tag 必须匹配该提交的 `mod_version`，其中 Minecraft 版本必须与 `minecraft_version` 一致。CD 检查统一 tag 的提交属于 `main`，版本 tag 的提交属于对应版本分支，并始终构建 tag 指向的提交，不构建浮动的分支最新提交。主分支提供 `.github/release-notes/<共用版本>.md`，例如 `1.0.0-alpha.9.md` 或 `1.0.0.md`。
 
+> 上表中的 `26.3` / `26.2` / `26.1` 是上游示例。本仓库当前的目标版本是 `minecraft_version=1.21.11`，
+> 对应的 `mod_version` 形式为 `1.0.0-mc1.21.11-alpha.N`。发布流程本身与 Minecraft 版本无关。
+
 每个 Minecraft 版本只上传可安装 JAR 和 `SHA256SUMS-mc<版本>.txt`，附件直接显示文件名。来源提交记录在校验文件的 `# source-commit: <SHA>` 注释行中，不另行上传 JSON，也不设置附件显示标签。不同分支不会覆盖彼此的附件。源码 JAR 不发布。
 
 ## 发布步骤

@@ -20,7 +20,7 @@ public final class NativeFailureChecks {
             MethodHandle originalDetail = (MethodHandle) detail.get(null);
             try {
                 MemorySegment message = arena.allocate(256);
-                message.setString(0, "std::bad_alloc: failure fixture");
+                message.setUtf8String(0, "std::bad_alloc: failure fixture");
                 detail.set(null, MethodHandles.constant(MemorySegment.class, message));
                 movement.set(null, withArguments(MethodHandles.constant(int.class, -100), originalMovement));
                 Error nativeFailure = expectError(helper, NativeFailureChecks::solve);

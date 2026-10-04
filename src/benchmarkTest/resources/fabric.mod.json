@@ -7,6 +7,7 @@
   "entrypoints": {
     "fabric-gametest": [
       "org.edtp.entitycollisionoptimizer.gametest.ZombieCollisionBenchmark",
+      "org.edtp.entitycollisionoptimizer.gametest.MinecartCollisionBenchmark",
       "org.edtp.entitycollisionoptimizer.gametest.ElderGuardianBenchmark",
       "org.edtp.entitycollisionoptimizer.gametest.ClimbingCollisionBenchmark",
       "org.edtp.entitycollisionoptimizer.gametest.TamedAnimalBenchmark"
@@ -16,7 +17,7 @@
   "depends": {
     "fabricloader": ">=0.17.0",
     "fabric-api": "*",
-    "minecraft": "~26.3",
+    "minecraft": "~1.21.11",
     "entity_collision_optimizer": "*"
   }
 }

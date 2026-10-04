@@ -3,7 +3,7 @@ package org.edtp.entitycollisionoptimizer.natives;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.EntityTypes;
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.monster.zombie.Zombie;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
@@ -211,7 +211,7 @@ public final class MetadataRefreshChecks {
         Runnable onPush, onTeam;
 
         Probe(ServerLevel level) {
-            super(EntityTypes.ZOMBIE, level);
+            super(EntityType.ZOMBIE, level);
         }
 
         @Override

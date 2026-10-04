@@ -2,7 +2,7 @@ package org.edtp.entitycollisionoptimizer.natives;
 
 import net.minecraft.core.SectionPos;
 import net.minecraft.gametest.framework.GameTestHelper;
-import net.minecraft.world.entity.EntityTypes;
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.monster.zombie.Zombie;
 import org.edtp.entitycollisionoptimizer.collision.CollisionCacheState;
 
@@ -24,7 +24,7 @@ public final class IndexPublicationChecks {
             registry.setAccessible(true);
             var frame = ((Map<?, LevelCollisionFrame>) registry.get(null)).get(level);
             FutureTask<Zombie> construction = new FutureTask<>(() -> {
-                Zombie entity = new Zombie(EntityTypes.ZOMBIE, level);
+                Zombie entity = new Zombie(EntityType.ZOMBIE, level);
                 entity.setPos(1, 200, 1);
                 return entity;
             });

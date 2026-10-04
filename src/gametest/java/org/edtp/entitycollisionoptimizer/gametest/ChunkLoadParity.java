@@ -8,7 +8,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.TicketType;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.MoverType;
-import net.minecraft.world.entity.EntityTypes;
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.ItemStack;
@@ -138,10 +138,10 @@ final class ChunkLoadParity {
 
         private void ready() {
             if (failed) return;
-            helper.assertTrue(overworld.getChunkSource().getChunkNow(strong.x(), strong.z()) != null, "strong chunk");
-            helper.assertTrue(overworld.getChunkSource().getChunkNow(weak.x(), weak.z()) != null, "weak chunk");
-            helper.assertTrue(overworld.getChunkSource().getChunkNow(loaded.x(), loaded.z()) != null, "loaded chunk");
-            helper.assertTrue(nether().getChunkSource().getChunkNow(netherDest.x(), netherDest.z()) != null, "nether dest");
+            helper.assertTrue(overworld.getChunkSource().getChunkNow(strong.x, strong.z) != null, "strong chunk");
+            helper.assertTrue(overworld.getChunkSource().getChunkNow(weak.x, weak.z) != null, "weak chunk");
+            helper.assertTrue(overworld.getChunkSource().getChunkNow(loaded.x, loaded.z) != null, "loaded chunk");
+            helper.assertTrue(nether().getChunkSource().getChunkNow(netherDest.x, netherDest.z) != null, "nether dest");
             helper.assertTrue(nether().isPositionEntityTicking(netherDest.getWorldPosition()),
                     "nether destination entity ticking ready");
             helper.assertTrue(overworld.isPositionEntityTicking(portalSource.getWorldPosition()), "portal source ready");
@@ -170,7 +170,7 @@ final class ChunkLoadParity {
             blocks.set(overworld, weak.getWorldPosition().offset(0, 73, 3), Blocks.STONE.defaultBlockState(), 3);
             wallItem = item(strong, 15.4, 3.2, 3.5, new Vec3(0.45, 0, 0));
             wallItem.setNoGravity(true);
-            weakBoat = EntityTypes.OAK_BOAT.create(overworld, EntitySpawnReason.COMMAND);
+            weakBoat = EntityType.OAK_BOAT.create(overworld, EntitySpawnReason.COMMAND);
             helper.assertTrue(weakBoat != null, "weak boat fixture");
             weakBoat.setPos(block(weak, 0.5, 3, 10.5));
             weakBoat.setNoGravity(true);

@@ -4,7 +4,6 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
-import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.ItemStack;
@@ -71,7 +70,7 @@ final class InteractionScene implements AutoCloseable {
 
     Entity spawn(EntityType<?> type, Vec3 position) {
         Entity entity;
-        if (type == EntityTypes.ITEM) {
+        if (type == EntityType.ITEM) {
             Vec3 absolute = helper.absoluteVec(position);
             entity = new ItemEntity(helper.getLevel(), absolute.x, absolute.y, absolute.z, new ItemStack(Items.DIAMOND, 7));
             // ItemEntity's low-speed motion is staggered by (tickCount + id) % 4.
@@ -79,7 +78,7 @@ final class InteractionScene implements AutoCloseable {
             entity.setId(-1_000_000_000 + entities.size());
             helper.getLevel().addFreshEntity(entity);
         } else {
-            entity = type == EntityTypes.PLAYER ? CollisionTestSupport.spawnMockServerPlayer(helper, position, net.minecraft.world.level.GameType.SURVIVAL)
+            entity = type == EntityType.PLAYER ? CollisionTestSupport.spawnMockServerPlayer(helper, position, net.minecraft.world.level.GameType.SURVIVAL)
                     : CollisionTestSupport.spawnEntity(helper, type, position);
         }
         if (entity instanceof ItemEntity item) {

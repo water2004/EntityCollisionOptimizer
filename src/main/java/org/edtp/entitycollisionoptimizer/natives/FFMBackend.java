@@ -637,7 +637,9 @@ public final class FFMBackend {
                 FunctionDescriptor.of(JAVA_INT, ADDRESS, ADDRESS, ADDRESS, JAVA_INT, JAVA_INT));
         prepareMovement = linker.downcallHandle(
                 library.find("prepareMovement").orElseThrow(() -> missingSymbol("prepareMovement")),
-                FunctionDescriptor.of(JAVA_INT, ADDRESS, ADDRESS), Linker.Option.critical(false));
+                // Java 21's preview FFM API has no Linker.Option.critical(boolean);
+                // the default downcall is exactly critical(false).
+                FunctionDescriptor.of(JAVA_INT, ADDRESS, ADDRESS));
     }
 
     private static void checkStatus(String operation, int status) {
@@ -652,7 +654,9 @@ public final class FFMBackend {
         try {
             // Called on the same Java thread as the failed downcall, only after failure.
             MemorySegment address = (MemorySegment) lastNativeExceptionHandle.invokeExact();
-            detail = address.reinterpret(NATIVE_ERROR_BYTES).getString(0);
+            // getUtf8String is the Java 21 preview name of the later getString; both
+            // read a NUL-terminated UTF-8 string from the given offset.
+            detail = address.reinterpret(NATIVE_ERROR_BYTES).getUtf8String(0);
         } catch (Throwable diagnosticFailure) {
             return new NativeFailure("Failed to " + operation + "; native exception detail unavailable",
                     diagnosticFailure);

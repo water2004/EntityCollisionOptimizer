@@ -59,10 +59,19 @@ final class IntegrationArena implements AutoCloseable {
         }
     }
 
+    /** Adds one scenario block; the arena restores every touched position on close. */
+    void setBlock(Vec3 scenePosition, BlockState state) {
+        BlockPos position = BlockPos.containing(scenePosition);
+        forceChunk(position);
+        originalBlocks.put(position, level.getBlockState(position));
+        level.setBlockAndUpdate(position, state);
+    }
+
+
     private void forceChunk(BlockPos position) {
         int chunkX = position.getX() >> 4;
         int chunkZ = position.getZ() >> 4;
-        long packed = ChunkPos.pack(chunkX, chunkZ);
+        long packed = ChunkPos.asLong(chunkX, chunkZ);
         requiredChunks.add(packed);
         if (!level.getForceLoadedChunks().contains(packed)) {
             if (!level.setChunkForced(chunkX, chunkZ, true)) {
@@ -75,7 +84,7 @@ final class IntegrationArena implements AutoCloseable {
 
     boolean isReadyForEntityTicks() {
         return !requiredChunks.isEmpty() && requiredChunks.stream()
-                .map(ChunkPos::unpack)
+                .map(ChunkPos::new)
                 .allMatch(level::areEntitiesActuallyLoadedAndTicking);
     }
 
@@ -89,7 +98,7 @@ final class IntegrationArena implements AutoCloseable {
             throw new IllegalStateException("Integration-test room did not become ready within 30 seconds");
         }
         for (long packed : requiredChunks) {
-            level.waitForEntities(ChunkPos.unpack(packed), 0);
+            level.waitForEntities(new ChunkPos(packed), 0);
         }
         if (!isReadyForEntityTicks()) {
             throw new IllegalStateException("Integration-test entities did not become ready");
@@ -118,16 +127,12 @@ final class IntegrationArena implements AutoCloseable {
     }
 
     long defaultClockTime() {
-        return level.getDefaultClockTime();
+        // 1.21.11 has no per-dimension clock manager; the level day time is the shared clock.
+        return level.getLevelData().getDayTime();
     }
 
     void setDefaultClockTime(long ticks) {
-        level.clockManager().setTotalTicks(
-                level.dimensionType().defaultClock().orElseThrow(
-                        () -> new IllegalStateException("Integration-test dimension has no default clock")
-                ),
-                ticks
-        );
+        level.setDayTime(ticks);
     }
 
     long gameTime() {

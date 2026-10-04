@@ -1,5 +1,8 @@
 plugins {
-    id 'net.fabricmc.fabric-loom' version "${loom_version}"
+    // Minecraft 1.21.11 still ships obfuscated, so mods must be published in the
+    // intermediary namespace: the remapping Loom plugin is required. (26.x moved
+    // to Mojang official names at runtime, which is why main used the no-remap id.)
+    id 'net.fabricmc.fabric-loom-remap' version "${loom_version}"
     id 'maven-publish'
 }
 
@@ -59,11 +62,17 @@ loom {
     runs {
         configureEach {
             vmArg "--enable-native-access=ALL-UNNAMED"
+            // Java 21 keeps the FFM API behind --enable-preview, so dev runs need it too.
+            vmArg "--enable-preview"
             if (providers.gradleProperty("gameTestFilter").isPresent()) {
                 vmArg "-Dfabric-api.gametest.filter=${providers.gradleProperty('gameTestFilter').get()}"
             }
             if (benchmarksEnabled) {
                 vmArg "-Dentity_collision_optimizer.runBenchmark=true"
+            }
+            // A/B hook for the benchmark suite: replay the same workload on the vanilla paths.
+            if (providers.gradleProperty("ecoVanillaPaths").isPresent()) {
+                vmArg "-Deco.benchmark.vanillaPaths=true"
             }
             if (providers.gradleProperty("jfrOutput").isPresent()) {
                 vmArg "-XX:StartFlightRecording=filename=${file(providers.gradleProperty("jfrOutput").get()).absolutePath},settings=profile,dumponexit=true"
@@ -95,6 +104,8 @@ if (enabledTestSuites == 1) {
         def recordVanillaIntegrationTrace = tasks.register("recordVanillaIntegrationTrace", GradleBuild) {
             dir = file("vanilla-gametest")
             tasks = ["runGameTest"]
+            // Propagate the offline flag so offline builds do not try to reach the network.
+            startParameter.offline = gradle.startParameter.offline
         }
 
         sourceSets.gametest.java.setSrcDirs(["src/integrationTest/java"])
@@ -126,8 +137,9 @@ if (enabledTestSuites == 1) {
 
 dependencies {
     minecraft "com.mojang:minecraft:${project.minecraft_version}"
-    implementation "net.fabricmc:fabric-loader:${project.loader_version}"
-    implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+    mappings loom.officialMojangMappings()
+    modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
     if (providers.gradleProperty("compatModsDir").isPresent()) {
         runtimeOnly fileTree(
                 dir: providers.gradleProperty("compatModsDir").get(),
@@ -146,12 +158,16 @@ processResources {
     }
 }
 
+// Minecraft 1.21.11 runs on Java 21. The FFM API used by the native backend is
+// still a preview API on 21, so both compilation and the game JVM need
+// --enable-preview on this target.
 tasks.withType(JavaCompile).configureEach {
-    options.release = 25
+    options.release = 21
+    options.compilerArgs += ['--enable-preview']
 }
 
 java {
-    toolchain.languageVersion = JavaLanguageVersion.of(25)
+    toolchain.languageVersion = JavaLanguageVersion.of(21)
     withSourcesJar()
 }
 

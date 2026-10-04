@@ -7,7 +7,6 @@ import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.BitSetDiscreteVoxelShape;
-import net.minecraft.world.phys.shapes.CubeVoxelShape;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import org.edtp.entitycollisionoptimizer.collision.blocks.NativeVoxelAccess;
 import org.edtp.entitycollisionoptimizer.gametest.mixin.EntityCollisionInvoker;
@@ -24,7 +23,7 @@ final class SingleCellParity {
         VoxelShape cell = new SingleCell();
         helper.assertTrue((((NativeVoxelAccess) cell).eco$nativeGeometry().get(JAVA_INT, 12) & 4) != 0,
                 "simple cell uses interval solver");
-        VoxelShape subdivided = new CubeVoxelShape(BitSetDiscreteVoxelShape.withFilledBounds(4, 4, 4, 0, 0, 0, 4, 4, 4));
+        VoxelShape subdivided = new SubdividedBox();
         helper.assertTrue((((NativeVoxelAccess) subdivided).eco$nativeGeometry().get(JAVA_INT, 12) & 4) == 0,
                 "a solid box with internal grid planes must keep its voxel semantics");
         NativeVoxelParity.compare(helper, subdivided, "internal voxel planes");
@@ -65,6 +64,17 @@ final class SingleCellParity {
     private static final class SingleCell extends VoxelShape {
         private final DoubleList coordinates = DoubleArrayList.wrap(new double[]{-0.0, .5});
         SingleCell() { super(BitSetDiscreteVoxelShape.withFilledBounds(1, 1, 1, 0, 0, 0, 1, 1, 1)); }
+        @Override public DoubleList getCoords(Direction.Axis axis) { return coordinates; }
+    }
+
+    /**
+     * A geometrically solid unit box whose voxel grid is subdivided 4x4x4. On 1.21.11
+     * CubeVoxelShape is final with a protected constructor, so the grid is supplied through a
+     * VoxelShape subclass carrying the same evenly spaced coordinates.
+     */
+    private static final class SubdividedBox extends VoxelShape {
+        private final DoubleList coordinates = DoubleArrayList.wrap(new double[]{-0.0, .25, .5, .75, 1.0});
+        SubdividedBox() { super(BitSetDiscreteVoxelShape.withFilledBounds(4, 4, 4, 0, 0, 0, 4, 4, 4)); }
         @Override public DoubleList getCoords(Direction.Axis axis) { return coordinates; }
     }
 }

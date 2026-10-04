@@ -6,7 +6,7 @@ import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntitySelector;
-import net.minecraft.world.entity.EntityTypes;
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.monster.zombie.Zombie;
 import net.minecraft.world.level.GameType;
@@ -37,7 +37,7 @@ final class CollisionPredicateParity {
         Zombie source = spawnZombie(helper, anchor);
         Zombie allied = spawnZombie(helper, anchor);
         Zombie other = spawnZombie(helper, anchor);
-        Entity unpushable = helper.spawn(EntityTypes.END_CRYSTAL, anchor);
+        Entity unpushable = helper.spawn(EntityType.END_CRYSTAL, anchor);
         Entity spectator = helper.makeMockPlayer(GameType.SPECTATOR);
 
         Scoreboard scoreboard = level.getScoreboard();

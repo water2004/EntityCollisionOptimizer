@@ -23,6 +23,9 @@ def cppProjectDir = file("./native")
 def isWindows = System.getProperty("os.name").toLowerCase().contains("windows")
 def nativeSymbols = providers.gradleProperty("nativeSymbols").isPresent() ? "ON" : "OFF"
 def nativeAvx2 = providers.gradleProperty("nativeAvx2").orElse("true").get().toBoolean() ? "ON" : "OFF"
+// Opt-in local build: reuse the native/build-windows-mingw.ps1 (or CI) Windows library
+// and package a Windows-only JAR without the cross-compilation toolchain.
+def nativeWindowsOnly = providers.gradleProperty("nativeWindowsOnly").isPresent()
 
 def registerNativeTask = { String taskName, String targetName, String cmakeScriptName, String description ->
     return tasks.register(taskName, Exec) {
@@ -85,7 +88,8 @@ def prepareNativeResources = tasks.register("prepareNativeResources") {
 
     doLast {
         nativeLibraryFiles.each { nativeLibrary ->
-            if (!nativeLibrary.isFile()) {
+            boolean optional = nativeWindowsOnly && !nativeLibrary.name.endsWith(".dll")
+            if (!nativeLibrary.isFile() && !optional) {
                 throw new GradleException("Native build did not produce ${nativeLibrary}")
             }
         }

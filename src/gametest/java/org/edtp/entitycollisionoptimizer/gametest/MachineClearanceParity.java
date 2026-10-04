@@ -3,7 +3,6 @@ package org.edtp.entitycollisionoptimizer.gametest;
 import net.minecraft.core.Direction;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.entity.EntityType;
-import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.MoverType;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
@@ -20,11 +19,11 @@ final class MachineClearanceParity {
     static void verify(GameTestHelper helper) {
         int cases = 0;
         var topSlab = Blocks.STONE_SLAB.defaultBlockState().setValue(BlockStateProperties.SLAB_TYPE, SlabType.TOP);
-        for (var type : List.of(EntityTypes.ITEM, EntityTypes.ZOMBIE, EntityTypes.PLAYER)) {
+        for (var type : List.of(EntityType.ITEM, EntityType.ZOMBIE, EntityType.PLAYER)) {
             var expected = trace(helper, false, type, topSlab, new Vec3(4, 1.01, 4.5), new Vec3(0.12, 0, 0), 0);
             compare(helper, trace(helper, true, type, topSlab, new Vec3(4, 1.01, 4.5), new Vec3(0.12, 0, 0), 0), expected, "half-block filter " + type);
             double exit = helper.absoluteVec(new Vec3(6, 0, 0)).x;
-            helper.assertValueEqual(expected.getLast().position().x > exit, type == EntityTypes.ITEM,
+            helper.assertValueEqual(expected.getLast().position().x > exit, type == EntityType.ITEM,
                     "half-block tunnel passes items but blocks adult mobs/players");
             cases++;
         }
@@ -33,14 +32,14 @@ final class MachineClearanceParity {
             var stair = Blocks.STONE_STAIRS.defaultBlockState().setValue(BlockStateProperties.HORIZONTAL_FACING, facing);
             int itemPasses = 0;
             for (double lane : new double[]{5.25, 5.75}) {
-                for (var type : List.of(EntityTypes.ITEM, EntityTypes.ZOMBIE)) {
+                for (var type : List.of(EntityType.ITEM, EntityType.ZOMBIE)) {
                     var start = new Vec3(lane, 1.501, 3.2);
                     var motion = new Vec3(0, 0, 0.12);
                     var expected = trace(helper, false, type, stair, start, motion, 0);
                     compare(helper, trace(helper, true, type, stair, start, motion, 0), expected, "stair filter " + facing + " " + lane + " " + type);
                     boolean passed = expected.getLast().position().z > helper.absoluteVec(new Vec3(0, 0, 5.5)).z;
-                    if (type == EntityTypes.ITEM && passed) itemPasses++;
-                    if (type == EntityTypes.ZOMBIE) helper.assertTrue(!passed, "adult must not fit staircase notch");
+                    if (type == EntityType.ITEM && passed) itemPasses++;
+                    if (type == EntityType.ZOMBIE) helper.assertTrue(!passed, "adult must not fit staircase notch");
                     cases++;
                 }
             }
@@ -48,11 +47,11 @@ final class MachineClearanceParity {
         }
         for (double epsilon : new double[]{-1E-6, -1E-7, 0, 1E-7, 1E-6}) {
             var start = new Vec3(4, 1.5 + epsilon, 4.5);
-            var expected = trace(helper, false, EntityTypes.ITEM, topSlab, start, new Vec3(0.12, 0, 0), 0);
-            compare(helper, trace(helper, true, EntityTypes.ITEM, topSlab, start, new Vec3(0.12, 0, 0), 0), expected, "slot edge epsilon=" + epsilon);
+            var expected = trace(helper, false, EntityType.ITEM, topSlab, start, new Vec3(0.12, 0, 0), 0);
+            compare(helper, trace(helper, true, EntityType.ITEM, topSlab, start, new Vec3(0.12, 0, 0), 0), expected, "slot edge epsilon=" + epsilon);
             cases++;
         }
-        for (var type : List.of(EntityTypes.ITEM, EntityTypes.ZOMBIE, EntityTypes.PLAYER)) {
+        for (var type : List.of(EntityType.ITEM, EntityType.ZOMBIE, EntityType.PLAYER)) {
             var start = new Vec3(4, 1.1, 4.5);
             var stone = trace(helper, false, type, Blocks.STONE.defaultBlockState(), start, new Vec3(0.12, 0, 0), 0);
             var honey = trace(helper, false, type, Blocks.HONEY_BLOCK.defaultBlockState(), start, new Vec3(0.12, 0, 0), 0);
@@ -64,15 +63,15 @@ final class MachineClearanceParity {
         for (int branch : new int[]{-1, 1}) {
             var start = new Vec3(4, 1.01, 4.5 + branch * 0.1);
             var motion = new Vec3(0.16, 0, branch * 0.08);
-            var expected = trace(helper, false, EntityTypes.ITEM, Blocks.STONE.defaultBlockState(), start, motion, 0);
-            compare(helper, trace(helper, true, EntityTypes.ITEM, Blocks.STONE.defaultBlockState(), start, motion, 0), expected, "splitter branch " + branch);
+            var expected = trace(helper, false, EntityType.ITEM, Blocks.STONE.defaultBlockState(), start, motion, 0);
+            compare(helper, trace(helper, true, EntityType.ITEM, Blocks.STONE.defaultBlockState(), start, motion, 0), expected, "splitter branch " + branch);
             var end = expected.getLast().position();
             helper.assertTrue(end.x > helper.absoluteVec(new Vec3(6, 0, 0)).x
                     && Math.signum(end.z - helper.absoluteVec(new Vec3(0, 0, 4.5)).z) == branch,
                     "item must slide around splitter and leave through designated branch");
             cases++;
         }
-        for (var type : List.of(EntityTypes.ZOMBIE, EntityTypes.PLAYER)) {
+        for (var type : List.of(EntityType.ZOMBIE, EntityType.PLAYER)) {
             var start = new Vec3(4.7, 3.4, 4.5);
             var expected = trace(helper, false, type, Blocks.HONEY_BLOCK.defaultBlockState(), start, new Vec3(0.12, -0.3, 0), 1);
             compare(helper, trace(helper, true, type, Blocks.HONEY_BLOCK.defaultBlockState(), start, new Vec3(0.12, -0.3, 0), 1), expected, "honey slide " + type);

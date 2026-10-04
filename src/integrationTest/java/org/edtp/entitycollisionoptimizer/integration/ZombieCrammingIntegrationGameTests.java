@@ -3,7 +3,7 @@ package org.edtp.entitycollisionoptimizer.integration;
 import net.fabricmc.fabric.api.gametest.v1.GameTest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.entity.EntityTypes;
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.monster.zombie.Zombie;
 import net.minecraft.world.level.gamerules.GameRules;
 import net.minecraft.world.phys.Vec3;
@@ -39,7 +39,6 @@ public final class ZombieCrammingIntegrationGameTests {
 
     @GameTest(
             maxTicks = 400,
-            padding = 48,
             environment = "entity_collision_optimizer:integration"
     )
     public void crowdedChamberMatchesVanilla(GameTestHelper helper) {
@@ -123,7 +122,7 @@ public final class ZombieCrammingIntegrationGameTests {
             level.getRandom().setSeed(LEVEL_SEED);
             Random spawnRandom = new Random(SPAWN_SEED);
             for (int index = 0; index < ENTITY_COUNT; index++) {
-                Zombie zombie = arena.spawn(EntityTypes.ZOMBIE, spawnPosition(sceneOrigin, spawnRandom));
+                Zombie zombie = arena.spawn(EntityType.ZOMBIE, spawnPosition(sceneOrigin, spawnRandom));
                 ZombieTrace.normalize(
                         zombie,
                         LEVEL_SEED + ENTITY_SEED_STEP * index

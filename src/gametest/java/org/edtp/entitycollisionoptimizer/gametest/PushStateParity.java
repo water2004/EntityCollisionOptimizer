@@ -2,7 +2,7 @@ package org.edtp.entitycollisionoptimizer.gametest;
 
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.EntityTypes;
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
@@ -26,12 +26,12 @@ final class PushStateParity {
     private static void compare(GameTestHelper helper, int count) {
         try (var scene = new InteractionScene(helper)) {
             List<LivingEntity> entities = new ArrayList<>();
-            for (int i = 0; i < count; i++) entities.add((LivingEntity) scene.spawn(EntityTypes.ZOMBIE,
+            for (int i = 0; i < count; i++) entities.add((LivingEntity) scene.spawn(EntityType.ZOMBIE,
                     new Vec3(4.4 + i % 5 * .04, 1, 4.4 + i / 5 * .04)));
             LivingEntity source = entities.getFirst(), target = entities.get(1);
             // Roots are outside the query. Only an ancestor changes when the two branches join.
-            Entity firstRoot = scene.spawn(EntityTypes.OAK_BOAT, new Vec3(10, 1, 4));
-            Entity secondRoot = scene.spawn(EntityTypes.OAK_BOAT, new Vec3(11, 1, 4));
+            Entity firstRoot = scene.spawn(EntityType.OAK_BOAT, new Vec3(10, 1, 4));
+            Entity secondRoot = scene.spawn(EntityType.OAK_BOAT, new Vec3(11, 1, 4));
             CollisionFrame.begin(helper.getLevel());
             try (var batch = CollisionFrame.collectPushable(source, null, Team.CollisionRule.ALWAYS, true)) {
                 helper.assertValueEqual(batch.size(), count - 1, "state fixture candidate count");

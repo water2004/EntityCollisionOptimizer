@@ -1,5 +1,19 @@
 # Test suites
 
+> **Minecraft 1.21.11 port status:** all four suites have been ported to 1.21.11 and every one of
+> them compiles and runs:
+>
+> | Command | Result on 1.21.11 |
+> | --- | --- |
+> | `runGameTest -PunitTest` | 35 tests run, **32 pass** |
+> | `runGameTest -PintegrationTest` | **3/3 pass**, including the cross-process byte-for-byte trace comparison |
+> | `runGameTest -Pbenchmark` | **5/5 pass**, four benchmark scenarios report results |
+>
+> The three remaining contract-suite failures are documented in
+> [PORTING-1.21.11.md](PORTING-1.21.11.md#7-测试套件适配状态); two are 1.21.11 timing expectation
+> differences, and `shared_body_state_parity` reports a real parity signal that still needs
+> investigation.
+
 The project keeps correctness contracts, cross-process integration scenarios, and performance
 benchmarks separate. Each Gradle invocation enables exactly one suite.
 

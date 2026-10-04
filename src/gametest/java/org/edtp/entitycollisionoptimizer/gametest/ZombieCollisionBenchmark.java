@@ -5,7 +5,7 @@ import net.minecraft.gametest.framework.GameTestHelper;
 
 public final class ZombieCollisionBenchmark {
     static final int DURATION_TICKS = CollisionBenchmarkRunner.DURATION_TICKS;
-    @GameTest(maxTicks = CollisionBenchmarkRunner.SUITE_MAX_TICKS, padding = 96)
+    @GameTest(maxTicks = CollisionBenchmarkRunner.SUITE_MAX_TICKS)
     public void fallingZombies(GameTestHelper helper) {
         CollisionBenchmarkRunner.run(helper, new ZombieBenchmarkChamber(helper));
     }

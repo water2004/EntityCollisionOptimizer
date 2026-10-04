@@ -16,7 +16,9 @@ import java.util.Optional;
 @Mixin(LivingEntity.class)
 public abstract class LivingEntityStateMixin {
     @Shadow @Final private static EntityDataAccessor<Optional<BlockPos>> SLEEPING_POS_ID;
-    @Inject(method = "onSyncedDataUpdated", at = @At("HEAD"))
+    // 1.21.11's Entity also declares onSyncedDataUpdated(List), so the descriptor is
+    // required to select the EntityDataAccessor overload unambiguously.
+    @Inject(method = "onSyncedDataUpdated(Lnet/minecraft/network/syncher/EntityDataAccessor;)V", at = @At("HEAD"))
     private void eco$onDataUpdated(EntityDataAccessor<?> accessor, CallbackInfo ci) {
         // Sleeping position, not pose, is the authority used by LivingEntity.push.
         if (accessor.equals(SLEEPING_POS_ID)) {

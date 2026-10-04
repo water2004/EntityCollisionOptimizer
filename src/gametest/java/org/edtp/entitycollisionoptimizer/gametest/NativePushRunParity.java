@@ -2,7 +2,7 @@ package org.edtp.entitycollisionoptimizer.gametest;
 
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.EntityTypes;
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.monster.zombie.Zombie;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.scores.Team;
@@ -29,11 +29,11 @@ final class NativePushRunParity {
 
     private static void compare(GameTestHelper helper, int count, Vec3 initial, int guards) {
         try (var scene = new InteractionScene(helper)) {
-            var source = (Zombie) scene.spawn(EntityTypes.ZOMBIE, new Vec3(4.5, 1, 4.5));
+            var source = (Zombie) scene.spawn(EntityType.ZOMBIE, new Vec3(4.5, 1, 4.5));
             List<Entity> entities = new ArrayList<>();
             entities.add(source);
             for (int i = 0; i < count; i++) {
-                entities.add(scene.spawn(EntityTypes.ZOMBIE,
+                entities.add(scene.spawn(EntityType.ZOMBIE,
                         new Vec3(4.5 + (i % 5 - 2) * .06, 1, 4.5 + (i / 5 - 2) * .06)));
             }
             // Snapshot candidates before transitions: execution must read the live guards after collection.

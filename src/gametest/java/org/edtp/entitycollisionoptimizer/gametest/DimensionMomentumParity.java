@@ -8,7 +8,6 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityType;
-import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.MoverType;
 import net.minecraft.world.entity.Relative;
 import net.minecraft.world.entity.item.ItemEntity;
@@ -37,8 +36,8 @@ final class DimensionMomentumParity {
     static List<Observation> capture(GameTestHelper helper, ServerLevel overworld, ServerLevel nether,
                                      Vec3 sourceOrigin, Vec3 destinationOrigin) {
         List<Observation> observations = new ArrayList<>();
-        for (EntityType<?> type : new EntityType<?>[]{EntityTypes.ITEM, EntityTypes.TNT,
-                EntityTypes.ENDER_PEARL, EntityTypes.OAK_BOAT}) {
+        for (EntityType<?> type : new EntityType<?>[]{EntityType.ITEM, EntityType.TNT,
+                EntityType.ENDER_PEARL, EntityType.OAK_BOAT}) {
             for (int mode = 0; mode < 3; mode++) {
                 List<Entity> owned = new ArrayList<>();
                 try {

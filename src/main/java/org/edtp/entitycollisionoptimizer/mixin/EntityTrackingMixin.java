@@ -14,21 +14,23 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 /** Track query visibility, including accessible non-ticking chunks; not just entity ticking. */
 @Mixin(targets = "net.minecraft.server.level.ServerLevel$EntityCallbacks")
 public abstract class EntityTrackingMixin {
-    @Shadow @Final private ServerLevel this$0;
+    // 1.21.11's official mappings name this synthetic outer-instance field
+    // field_26936 instead of the this$0 used by later versions.
+    @Shadow @Final private ServerLevel field_26936;
 
     @Inject(method = "onTrackingStart(Lnet/minecraft/world/entity/Entity;)V", at = @At("HEAD"))
     private void eco$start(Entity entity, CallbackInfo ci) {
-        CollisionFrame.trackingStarted(this$0, entity);
+        CollisionFrame.trackingStarted(field_26936, entity);
     }
 
     @Inject(method = "onTrackingEnd(Lnet/minecraft/world/entity/Entity;)V", at = @At("RETURN"))
     private void eco$end(Entity entity, CallbackInfo ci) {
-        CollisionFrame.trackingEnded(this$0, entity);
+        CollisionFrame.trackingEnded(field_26936, entity);
     }
 
     @Inject(method = "onSectionChange(Lnet/minecraft/world/entity/Entity;)V", at = @At("HEAD"))
     private void eco$section(Entity entity, CallbackInfo ci) {
-        CollisionFrame.sectionChanged(this$0, entity);
+        CollisionFrame.sectionChanged(field_26936, entity);
     }
 
     @Inject(method = {"onTickingStart(Lnet/minecraft/world/entity/Entity;)V",

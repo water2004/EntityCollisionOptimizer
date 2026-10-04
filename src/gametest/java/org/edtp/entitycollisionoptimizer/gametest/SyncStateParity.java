@@ -7,9 +7,8 @@ import net.minecraft.network.protocol.game.ClientboundSetEntityMotionPacket;
 import net.minecraft.server.level.ServerEntity;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.EntityTypes;
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.UpdateInterval;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.scores.Team;
 import org.edtp.entitycollisionoptimizer.EntityCollisionOptimizer;
@@ -37,13 +36,13 @@ final class SyncStateParity {
             List<ServerEntity> trackers = new ArrayList<>();
             List<Sink> sinks = new ArrayList<>();
             for (int i = 0; i < count; i++) {
-                var entity = (LivingEntity) scene.spawn(EntityTypes.ZOMBIE,
+                var entity = (LivingEntity) scene.spawn(EntityType.ZOMBIE,
                         new Vec3(4.5 + i % 5 * .03, 1, 4.5 + i / 5 * .04));
                 entity.setDeltaMovement(Vec3.ZERO);
                 entity.needsSync = false;
                 entities.add(entity);
                 var sink = new Sink();
-                var tracker = new ServerEntity(helper.getLevel(), entity, UpdateInterval.periodic(1000), false, sink);
+                var tracker = new ServerEntity(helper.getLevel(), entity, 1000, false, sink);
                 tracker.sendChanges(); // Consume initial dirty data; subsequent updates need needsSync.
                 sink.packets.clear();
                 trackers.add(tracker);
@@ -100,7 +99,7 @@ final class SyncStateParity {
         final List<Sent> packets = new ArrayList<>();
         @Override public void sendToTrackingPlayers(Packet<? super ClientGamePacketListener> packet) {
             packets.add(new Sent(packet.getClass().getName(),
-                    packet instanceof ClientboundSetEntityMotionPacket motion ? motion.movement() : null));
+                    packet instanceof ClientboundSetEntityMotionPacket motion ? motion.getMovement() : null));
         }
         @Override public void sendToTrackingPlayersAndSelf(Packet<? super ClientGamePacketListener> packet) {
             sendToTrackingPlayers(packet);

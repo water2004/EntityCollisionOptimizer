@@ -4,13 +4,13 @@
 
 <h1 align="center">Entity Collision Optimizer</h1>
 
-<p align="center">Vanilla-accurate entity collision acceleration for Minecraft 26.3 Fabric servers.</p>
+<p align="center">Vanilla-accurate entity collision acceleration for Minecraft 1.21.11 Fabric servers.</p>
 
 <p align="center"><strong>English</strong> | <a href="README_zh.md">简体中文</a></p>
 
 ---
 
-Entity Collision Optimizer is a server-side Fabric mod for Minecraft 26.3 that uses a C++ native backend to accelerate entity queries, pushing, and movement collision while **preserving vanilla entity-collision behavior**. Install it and it works; connecting clients do not need the mod.
+Entity Collision Optimizer is a server-side Fabric mod for Minecraft 1.21.11 that uses a C++ native backend to accelerate entity queries, pushing, and movement collision while **preserving vanilla entity-collision behavior**. Install it and it works; connecting clients do not need the mod.
 
 ## Why use Entity Collision Optimizer?
 
@@ -69,10 +69,10 @@ The FFM boundary therefore carries a complete query, push run, or movement opera
 
 | Component | Requirement |
 | --- | --- |
-| Minecraft | 26.3 |
+| Minecraft | 1.21.11 |
 | Mod loader | Fabric Loader 0.17.0 or newer |
-| Dependency | A Minecraft 26.3-compatible Fabric API 0.161.0 or newer |
-| Java | 25 |
+| Dependency | A Minecraft 1.21.11-compatible Fabric API 0.140.0 or newer |
+| Java | 21, started with `--enable-preview` (see Installation) |
 | Operating system | Windows, Linux, or macOS |
 | Processor | x86-64 with AVX2 |
 
@@ -81,11 +81,17 @@ Release JARs contain native libraries for x86-64 Windows, Linux, and macOS. ARM6
 ## Installation
 
 1. Install Fabric Loader and Fabric API.
-2. Download the JAR for Minecraft 26.3 from [GitHub Releases](https://github.com/water2004/EntityCollisionOptimizer/releases) and place it in the instance's `mods` directory.
+2. Download the JAR for Minecraft 1.21.11 from [GitHub Releases](https://github.com/water2004/EntityCollisionOptimizer/releases) and place it in the instance's `mods` directory.
 
-No additional JVM arguments are required on the supported Java 25 runtime. The official Minecraft 26.3 launcher already enables native access. A dedicated server started manually without that option may print Java's native-access warning once, but Java 25 still allows the operation and the mod continues to work.
+Minecraft 1.21.11 runs on Java 21, where the FFM API used by the native backend is still a preview API, so the game JVM must be started with:
 
-Server administrators who want to suppress that warning may optionally add:
+```text
+--enable-preview
+```
+
+Without that flag the JVM refuses to load this mod's classes. Add it to the instance's JVM arguments in your launcher (PCL2, HMCL, Prism, or the official launcher), and to the start script of a dedicated server. Keep using the Java 21 runtime: a Java 22 or newer runtime cannot load Java 21 preview class files either.
+
+Server administrators who also want to silence Java 21's native-access warning may add:
 
 ```text
 --enable-native-access=ALL-UNNAMED
@@ -95,7 +101,19 @@ An unsupported native platform or an FFM initialization failure is reported as a
 
 ## Configuration
 
-Use `/eco` to check whether the FFM backend initialized successfully. The mod has no runtime tuning options and always preserves Minecraft's entity candidate order and update semantics.
+Use `/eco` to check whether the FFM backend initialized successfully. The mod has no performance tuning options and always preserves Minecraft's entity candidate order and update semantics.
+
+`/eco` also exposes **diagnostic switches** that attribute a suspect behaviour to one subsystem; a disabled subsystem falls back to the untouched vanilla path:
+
+| Command | Effect |
+| --- | --- |
+| `/eco`, `/eco check` | FFM initialization state plus the current switch state |
+| `/eco movement <on\|off>` | Native movement clipping and step solve (`Entity.move` / `Entity.collide`) |
+| `/eco push <on\|off>` | Native push run and candidate selection (`LivingEntity.pushEntities`) |
+| `/eco index <on\|off>` | Native spatial index (box and entity-collision queries use vanilla) |
+| `/eco all <on\|off>`, `/eco on`, `/eco off` | All at once; with everything off the mod does not change world behaviour |
+
+**Permissions**: in a single-player world the world owner can use `/eco` **without enabling cheats**; on a dedicated server the gamemaster level is still required to execute it.
 
 ## Compatibility
 
@@ -108,7 +126,7 @@ Please report reproducible problems through the [issue tracker](https://github.c
 
 ## Building and testing
 
-Use Java 25 and the included Gradle Wrapper:
+Use Java 21 and the included Gradle Wrapper:
 
 ```powershell
 ./gradlew.bat build
@@ -116,11 +134,13 @@ Use Java 25 and the included Gradle Wrapper:
 ./gradlew.bat runGameTest -PintegrationTest
 ```
 
+The build needs a JDK 21 compiler specifically: a Java 22 or newer compiler cannot emit Java 21 preview class files. If Gradle cannot find one, point `org.gradle.java.installations.paths` (in your Gradle home's `gradle.properties`) or `JAVA_HOME` at a JDK 21 installation.
+
 Unit GameTests cover focused collision contracts and deterministic edge cases. Integration GameTests run real scenarios first without the mod and then with it, requiring byte-for-byte identical traces. See [TESTING.md](TESTING.md) for the suite boundaries and commands.
 
 Benchmarks are opt-in through `-Pbenchmark`; a normal build does not start a benchmark server. Use `-PcompatModsDir=<directory>` to add extra mods to a test run.
 
-Building a complete release JAR with all native targets currently requires Windows. On Linux or macOS, use `./gradlew compileJava` to check the Java sources. Build artifacts are written to `build/libs`; version and tag conventions are documented in [RELEASE.md](RELEASE.md).
+Building a complete release JAR with all native targets currently requires Windows and the pinned cross-compilation toolchain. Where that toolchain is unavailable, `build-local-windows.ps1` builds the Windows library with a local MSYS2/MinGW g++ (`native/build-windows-mingw.ps1`) and packages a Windows-only JAR through `-PnativeWindowsOnly`. On Linux or macOS, use `./gradlew compileJava` to check the Java sources. Build artifacts are written to `build/libs`; version and tag conventions are documented in [RELEASE.md](RELEASE.md). The changes made for the 1.21.11 target are recorded in [PORTING-1.21.11.md](PORTING-1.21.11.md).
 
 ## License
 

@@ -49,6 +49,7 @@ public abstract class EntityBodyMixin implements CollisionBodyAccess {
 
     @Override public final void eco$writePosition(Vec3 value) {
         // Publish at the original field store, before section/world callbacks, never during a query.
+        org.edtp.entitycollisionoptimizer.natives.NativeMovement.POSITION_WRITES.incrementAndGet();
         if (eco$bodyTable == null) position = value;
         else eco$bodyTable.position(eco$bodySlot, value);
     }

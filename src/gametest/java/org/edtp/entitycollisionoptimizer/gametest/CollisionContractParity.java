@@ -3,7 +3,7 @@ package org.edtp.entitycollisionoptimizer.gametest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntitySelector;
-import net.minecraft.world.entity.EntityTypes;
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.TamableAnimal;
 import net.minecraft.world.phys.Vec3;
@@ -21,7 +21,7 @@ final class CollisionContractParity {
     static void teams(GameTestHelper helper) {
         var level = helper.getLevel();
         var source = CollisionTestSupport.spawnZombie(helper, new Vec3(3.5, 2, 3.5));
-        var pet = (TamableAnimal) CollisionTestSupport.spawnEntity(helper, EntityTypes.WOLF, new Vec3(3.7, 2, 3.5));
+        var pet = (TamableAnimal) CollisionTestSupport.spawnEntity(helper, EntityType.WOLF, new Vec3(3.7, 2, 3.5));
         var owner = CollisionTestSupport.spawnMockServerPlayer(helper, new Vec3(12.5, 2, 3.5),
                 net.minecraft.world.level.GameType.SURVIVAL);
         var team = level.getScoreboard().addPlayerTeam("pet_" + UUID.randomUUID().toString().substring(0, 6));

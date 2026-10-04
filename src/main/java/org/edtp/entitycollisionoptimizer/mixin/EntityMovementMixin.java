@@ -13,6 +13,7 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
+import org.edtp.entitycollisionoptimizer.OptimizerSwitches;
 import org.edtp.entitycollisionoptimizer.collision.blocks.EntityMovementCollision;
 import org.edtp.entitycollisionoptimizer.natives.NativeMovement;
 import org.spongepowered.asm.mixin.Mixin;
@@ -39,7 +40,7 @@ public abstract class EntityMovementMixin {
             "Lnet/minecraft/world/entity/Entity;collide(Lnet/minecraft/world/phys/Vec3;)Lnet/minecraft/world/phys/Vec3;"))
     private Vec3 eco$solveMovement(Entity entity, Vec3 requested, Operation<Vec3> original,
                                    @Share("eco$movement") LocalRef<NativeMovement> transaction) {
-        if (!(entity.level() instanceof ServerLevel)) {
+        if (!(entity.level() instanceof ServerLevel) || !OptimizerSwitches.movement()) {
             return original.call(entity, requested);
         }
         var result = EntityMovementCollision.solve(entity, requested);
@@ -52,13 +53,19 @@ public abstract class EntityMovementMixin {
     private Vec3 eco$movementDestination(Vec3 from, Vec3 displacement, Operation<Vec3> original,
                                          @Share("eco$movement") LocalRef<NativeMovement> transaction) {
         var result = transaction.get();
-        return result == null ? original.call(from, displacement) : result.destination(from);
+        if (result == null) {
+            return original.call(from, displacement);
+        }
+        Vec3 proposed = result.destination(from);
+        // A null proposal means the entity was repositioned after the solve; vanilla's own
+        // add is then the correct publication and keeps the tick consistent.
+        return proposed == null ? original.call(from, displacement) : proposed;
     }
 
     @Inject(method = "collide", at = @At("HEAD"), cancellable = true)
     private void eco$ownMovement(Vec3 requested, CallbackInfoReturnable<Vec3> cir) {
         Entity entity = (Entity) (Object) this;
-        if (entity.level() instanceof ServerLevel) {
+        if (entity.level() instanceof ServerLevel && OptimizerSwitches.movement()) {
             cir.setReturnValue(EntityMovementCollision.collide(entity, requested));
         }
     }
@@ -67,18 +74,13 @@ public abstract class EntityMovementMixin {
             at = @At("HEAD"), cancellable = true)
     private static void eco$ownEntityBox(Entity entity, Vec3 requested, AABB box, Level level,
                                          List<VoxelShape> entities, CallbackInfoReturnable<Vec3> cir) {
-        if (level instanceof ServerLevel) {
+        if (level instanceof ServerLevel && OptimizerSwitches.movement()) {
             CollisionContext context = entity == null ? CollisionContext.empty() : CollisionContext.of(entity);
             cir.setReturnValue(EntityMovementCollision.collideBox(level, context, entity, requested, box, entities));
         }
     }
 
-    @Inject(method = "collideBoundingBox(Lnet/minecraft/world/phys/shapes/CollisionContext;Lnet/minecraft/world/phys/Vec3;Lnet/minecraft/world/phys/AABB;Lnet/minecraft/world/level/Level;Ljava/util/List;)Lnet/minecraft/world/phys/Vec3;",
-            at = @At("HEAD"), cancellable = true)
-    private static void eco$ownContextBox(CollisionContext context, Vec3 requested, AABB box, Level level,
-                                          List<VoxelShape> entities, CallbackInfoReturnable<Vec3> cir) {
-        if (level instanceof ServerLevel) {
-            cir.setReturnValue(EntityMovementCollision.collideBox(level, context, null, requested, box, entities));
-        }
-    }
+    // Minecraft 1.21.11 has no CollisionContext overload of collideBoundingBox: the
+    // entity-typed overload above is the only movement collision entry point, so the
+    // 26.3 injector for the context overload has no 1.21.11 counterpart to own.
 }

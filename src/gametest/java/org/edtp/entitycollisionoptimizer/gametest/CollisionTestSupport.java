@@ -11,7 +11,6 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.network.CommonListenerCookie;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
-import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.monster.zombie.Zombie;
@@ -73,7 +72,7 @@ final class CollisionTestSupport {
         ensureEntityTicks(helper, position);
         Entity entity = helper.spawn((EntityType) type, position);
         entity.setNoGravity(true);
-        entity.setPermanentlyInvulnerable(false);
+        entity.setInvulnerable(false);
         entity.setSilent(true);
         if (entity instanceof Mob mob) {
             mob.setNoAi(true);
@@ -84,9 +83,9 @@ final class CollisionTestSupport {
 
     static Zombie spawnZombie(GameTestHelper helper, Vec3 position) {
         ensureEntityTicks(helper, position);
-        Zombie zombie = helper.spawnWithNoFreeWill(EntityTypes.ZOMBIE, position);
+        Zombie zombie = helper.spawnWithNoFreeWill(EntityType.ZOMBIE, position);
         zombie.setNoGravity(true);
-        zombie.setPermanentlyInvulnerable(true);
+        zombie.setInvulnerable(true);
         zombie.setSilent(true);
         zombie.setPersistenceRequired();
         return zombie;

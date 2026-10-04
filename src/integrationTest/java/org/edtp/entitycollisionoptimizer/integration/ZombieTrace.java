@@ -22,7 +22,7 @@ final class ZombieTrace {
         zombie.setNoAi(true);
         zombie.setNoGravity(false);
         zombie.setSilent(false);
-        zombie.setPermanentlyInvulnerable(false);
+        zombie.setInvulnerable(false);
         zombie.setPersistenceRequired();
         zombie.setCanPickUpLoot(false);
         zombie.setBaby(false);
@@ -41,7 +41,7 @@ final class ZombieTrace {
         zombie.hurtTime = 0;
         zombie.hurtDuration = 0;
         zombie.deathTime = 0;
-        zombie.setInvulnerableTime(0);
+        zombie.invulnerableTime = 0;
         zombie.fallDistance = 0.0;
         zombie.tickCount = 0;
         for (EquipmentSlot slot : EquipmentSlot.values()) {
@@ -102,7 +102,7 @@ final class ZombieTrace {
         output.writeInt(zombie.hurtTime);
         output.writeInt(zombie.hurtDuration);
         output.writeInt(zombie.deathTime);
-        output.writeInt(zombie.getInvulnerableTime());
+        output.writeInt(zombie.invulnerableTime);
         output.writeInt(zombie.getAirSupply());
         output.writeInt(zombie.getRemainingFireTicks());
         output.writeInt(zombie.getTicksFrozen());
@@ -132,8 +132,9 @@ final class ZombieTrace {
         if (zombie.verticalCollision) flags |= 1 << 2;
         if (zombie.verticalCollisionBelow) flags |= 1 << 3;
         if (zombie.minorHorizontalCollision) flags |= 1 << 4;
-        if (zombie.syncVelocity) flags |= 1 << 5;
-        if (zombie.syncPosition) flags |= 1 << 6;
+        // 1.21.11 keeps a single needsSync flag, and the optimizer routes it into its off-heap
+        // body once the entity is bound, so a raw field read is not comparable across the
+        // vanilla and optimized processes. Bits 5 and 6 are therefore no longer emitted.
         if (zombie.isAlive()) flags |= 1 << 7;
         if (zombie.isDeadOrDying()) flags |= 1 << 8;
         if (zombie.isRemoved()) flags |= 1 << 9;

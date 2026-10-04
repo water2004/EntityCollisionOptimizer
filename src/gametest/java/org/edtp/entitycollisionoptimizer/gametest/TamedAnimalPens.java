@@ -3,7 +3,7 @@ package org.edtp.entitycollisionoptimizer.gametest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.entity.EntityReference;
-import net.minecraft.world.entity.EntityTypes;
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.TamableAnimal;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
@@ -67,13 +67,13 @@ final class TamedAnimalPens extends BenchmarkScenario {
                 Vec3 position = new Vec3(x + 2.5 + (random.nextDouble() - 0.5) * 0.8,
                         1, z + 2.5 + (random.nextDouble() - 0.5) * 0.8);
                 TamableAnimal animal = (index & 1) == 0
-                        ? helper.spawn(EntityTypes.CAT, position) : helper.spawn(EntityTypes.WOLF, position);
+                        ? helper.spawn(EntityType.CAT, position) : helper.spawn(EntityType.WOLF, position);
                 animal.setTame(true, true);
                 // UUID-only references also cover normal persisted pets whose owner is offline.
                 animal.setOwnerReference(EntityReference.of(ownerId));
                 animal.setOrderedToSit(true);
                 animal.setInSittingPose(true);
-                animal.setPermanentlyInvulnerable(true);
+                animal.setInvulnerable(true);
                 animal.setPersistenceRequired();
                 animal.setHealth(animal.getMaxHealth());
                 residents.add(new Resident(animal, pen, animal.tickCount));
@@ -127,8 +127,8 @@ final class TamedAnimalPens extends BenchmarkScenario {
         int cats = 0, wolves = 0;
         for (Resident resident : residents) {
             TamableAnimal animal = resident.animal();
-            if (animal.getType() == EntityTypes.CAT) cats++;
-            else if (animal.getType() == EntityTypes.WOLF) wolves++;
+            if (animal.getType() == EntityType.CAT) cats++;
+            else if (animal.getType() == EntityType.WOLF) wolves++;
             int x = resident.pen() % COLUMNS * PEN_PITCH, z = resident.pen() / COLUMNS * PEN_PITCH;
             UUID expectedOwner = (resident.pen() & 1) == 0 ? owner.player().getUUID() : OFFLINE_OWNER;
             PlayerTeam expectedTeam = (resident.pen() & 1) == 0 ? ownerTeam : null;
@@ -177,7 +177,7 @@ final class TamedAnimalPens extends BenchmarkScenario {
             owner.close();
             owner = null;
         }
-        forcedChunks.forEach(chunk -> helper.getLevel().setChunkForced(chunk.x(), chunk.z(), false));
+        forcedChunks.forEach(chunk -> helper.getLevel().setChunkForced(chunk.x, chunk.z, false));
         forcedChunks.clear();
     }
 }

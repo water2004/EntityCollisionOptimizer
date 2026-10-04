@@ -3,10 +3,12 @@
   "minVersion": "0.8",
   "package": "org.edtp.entitycollisionoptimizer.mixin",
   "plugin": "org.edtp.entitycollisionoptimizer.mixin.BodyMixinPlugin",
-  "compatibilityLevel": "JAVA_25",
+  "compatibilityLevel": "JAVA_21",
   "mixins": [
     "BodyFieldConsumersMixin",
     "InterfaceBodyFieldConsumersMixin",
+    "EntityMemberNames",
+    "LivingEntityMemberNames",
     "CreakingMixin",
     "CommonLevelAccessorMixin",
     "EntityMixin",

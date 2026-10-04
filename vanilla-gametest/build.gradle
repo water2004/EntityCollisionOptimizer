@@ -1,5 +1,7 @@
 plugins {
-    id 'net.fabricmc.fabric-loom' version "${loom_version}"
+    // Matches the main build: 1.21.11 still runs in the intermediary namespace, so the
+    // remapping plugin and explicit mappings are required.
+    id 'net.fabricmc.fabric-loom-remap' version "${loom_version}"
 }
 
 version = '1.0.0'
@@ -11,8 +13,9 @@ repositories {
 
 dependencies {
     minecraft "com.mojang:minecraft:${minecraft_version}"
-    implementation "net.fabricmc:fabric-loader:${loader_version}"
-    implementation "net.fabricmc.fabric-api:fabric-api:${fabric_api_version}"
+    mappings loom.officialMojangMappings()
+    modImplementation "net.fabricmc:fabric-loader:${loader_version}"
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${fabric_api_version}"
 }
 
 sourceSets.main.java.srcDir(file('../src/integrationTest/java'))
@@ -35,6 +38,9 @@ loom {
         configureEach {
             property 'entity_collision_optimizer.integration.mode', 'record'
             property 'entity_collision_optimizer.integration.trace_dir', integrationTraceDir.absolutePath
+            // The 1.21.11 target uses the Java 21 preview FFM API, so dev runs need the flag.
+            vmArg '--enable-preview'
+            vmArg '--enable-native-access=ALL-UNNAMED'
         }
     }
 }
@@ -47,9 +53,10 @@ tasks.named('runGameTest') {
 }
 
 tasks.withType(JavaCompile).configureEach {
-    options.release = 25
+    options.release = 21
+    options.compilerArgs += ['--enable-preview']
 }
 
 java {
-    toolchain.languageVersion = JavaLanguageVersion.of(25)
+    toolchain.languageVersion = JavaLanguageVersion.of(21)
 }

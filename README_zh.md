@@ -4,13 +4,13 @@
 
 <h1 align="center">实体碰撞优化</h1>
 
-<p align="center">面向 Minecraft 26.3 Fabric 服务器的原版等价实体碰撞加速。</p>
+<p align="center">面向 Minecraft 1.21.11 Fabric 服务器的原版等价实体碰撞加速。</p>
 
 <p align="center"><a href="README.md">English</a> | <strong>简体中文</strong></p>
 
 ---
 
-实体碰撞优化是面向 Minecraft 26.3 的服务端 Fabric 模组，通过 C++ native 后端加速实体查询、相互推动和移动碰撞，同时**保持原版实体碰撞行为**。安装即生效，连接服务器的客户端无需安装。
+实体碰撞优化是面向 Minecraft 1.21.11 的服务端 Fabric 模组，通过 C++ native 后端加速实体查询、相互推动和移动碰撞，同时**保持原版实体碰撞行为**。安装即生效，连接服务器的客户端无需安装。
 
 ## 为什么使用实体碰撞优化？
 
@@ -69,10 +69,10 @@ Minecraft 按区段存储实体。一次碰撞查询需要遍历相关区段、�
 
 | 组件 | 要求 |
 | --- | --- |
-| Minecraft | 26.3 |
+| Minecraft | 1.21.11 |
 | 模组加载器 | Fabric Loader 0.17.0 或更高版本 |
-| 依赖 | Fabric API 0.161.0 或更高的 26.3 兼容版本 |
-| Java | 25 |
+| 依赖 | Fabric API 0.140.0 或更高的 1.21.11 兼容版本 |
+| Java | 21，且必须添加 `--enable-preview`（见“安装”） |
 | 操作系统 | Windows、Linux 或 macOS |
 | 处理器 | 支持 AVX2 的 x86-64 处理器 |
 
@@ -81,11 +81,17 @@ Minecraft 按区段存储实体。一次碰撞查询需要遍历相关区段、�
 ## 安装
 
 1. 安装 Fabric Loader 和 Fabric API。
-2. 从 [GitHub Releases](https://github.com/water2004/EntityCollisionOptimizer/releases) 下载 Minecraft 26.3 对应的 JAR，放入实例的 `mods` 目录。
+2. 从 [GitHub Releases](https://github.com/water2004/EntityCollisionOptimizer/releases) 下载 Minecraft 1.21.11 对应的 JAR，放入实例的 `mods` 目录。
 
-在本项目支持的 Java 25 上不需要添加任何 JVM 参数。Minecraft 26.3 官方启动器已经启用了 native access；手动启动的独立服务器如果没有该选项，Java 可能只在日志中输出一次 native access 警告，但 Java 25 仍会允许调用，模组可以正常工作。
+Minecraft 1.21.11 运行在 Java 21 上，而 native 后端所使用的 FFM API 在 Java 21 中仍属于预览 API，因此游戏 JVM 必须添加：
 
-希望消除这条警告的服务器管理员可以选择添加：
+```text
+--enable-preview
+```
+
+缺少该参数时 JVM 会拒绝加载本模组的类。请在启动器的 JVM 参数中加入它（PCL2、HMCL、Prism 或官方启动器均可），独立服务器也要写进启动脚本。同时请继续使用 Java 21 运行环境：Java 22 及更高版本的运行环境同样无法加载 Java 21 的预览类文件。
+
+希望同时消除 Java 21 native access 警告的服务器管理员可以再加上：
 
 ```text
 --enable-native-access=ALL-UNNAMED
@@ -95,7 +101,19 @@ Minecraft 按区段存储实体。一次碰撞查询需要遍历相关区段、�
 
 ## 配置
 
-使用 `/eco` 检查 FFM 后端是否成功初始化。模组没有运行时调优选项，并始终保持 Minecraft 的实体候选顺序和更新语义。
+使用 `/eco` 检查 FFM 后端是否成功初始化。模组没有性能调优选项，并始终保持 Minecraft 的实体候选顺序和更新语义。
+
+`/eco` 另带一组**诊断开关**，用于把某个可疑行为归因到具体子系统（关掉即回退到原版路径）：
+
+| 命令 | 作用 |
+| --- | --- |
+| `/eco`、`/eco check` | 显示 FFM 初始化状态与当前开关状态 |
+| `/eco movement <on\|off>` | 原生位移裁剪/台阶解算（`Entity.move` / `Entity.collide`） |
+| `/eco push <on\|off>` | 原生推动批次与候选筛选（`LivingEntity.pushEntities`） |
+| `/eco index <on\|off>` | 原生空间索引（方块查询与实体碰撞查询改走原版） |
+| `/eco all <on\|off>`、`/eco on`、`/eco off` | 一次全开/全关（全关时模组对世界行为无影响） |
+
+**权限**：单人存档（集成服务器）里**世界所有者不需要开启作弊**即可使用 `/eco`；专用服务器上仍要求管理员（权限等级 2）才能执行。
 
 ## 兼容性
 
@@ -108,7 +126,7 @@ Minecraft 按区段存储实体。一次碰撞查询需要遍历相关区段、�
 
 ## 构建与测试
 
-使用 Java 25 和仓库内的 Gradle Wrapper：
+使用 Java 21 和仓库内的 Gradle Wrapper：
 
 ```powershell
 ./gradlew.bat build
@@ -116,11 +134,13 @@ Minecraft 按区段存储实体。一次碰撞查询需要遍历相关区段、�
 ./gradlew.bat runGameTest -PintegrationTest
 ```
 
+构建必须使用 JDK 21 编译器：Java 22 及更高版本的编译器无法生成 Java 21 的预览类文件。如果 Gradle 找不到 JDK 21，请通过 Gradle 主目录下的 `gradle.properties` 中的 `org.gradle.java.installations.paths`，或 `JAVA_HOME` 指向本地 JDK 21。
+
 单元 GameTest 覆盖聚焦的碰撞契约和确定性边界条件。集成 GameTest 会先在不加载本模组的进程中运行真实场景，再在加载本模组的进程中运行，并要求两边轨迹逐字节一致。测试职责和命令详见 [TESTING.md](TESTING.md)。
 
 压测必须通过 `-Pbenchmark` 显式启用，普通构建不会启动压测服务器。可以使用 `-PcompatModsDir=<目录>` 为测试运行加入额外模组。
 
-构建包含全部原生平台的完整发布 JAR 目前需要 Windows；Linux 和 macOS 可以使用 `./gradlew compileJava` 检查 Java 源码。构建产物位于 `build/libs`，版本号和 tag 约定见 [RELEASE.md](RELEASE.md)。
+构建包含全部原生平台的完整发布 JAR 目前需要 Windows 和固定的交叉编译工具链。在没有该工具链的机器上，可以用 `build-local-windows.ps1` 通过本地 MSYS2/MinGW g++ 编译 Windows 原生库（`native/build-windows-mingw.ps1`），并用 `-PnativeWindowsOnly` 打包仅含 Windows 原生库的 JAR；Linux 和 macOS 可以使用 `./gradlew compileJava` 检查 Java 源码。构建产物位于 `build/libs`，版本号和 tag 约定见 [RELEASE.md](RELEASE.md)。本次 1.21.11 适配的全部改动记录在 [PORTING-1.21.11.md](PORTING-1.21.11.md)。
 
 ## 许可证
 

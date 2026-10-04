@@ -3,7 +3,7 @@ package org.edtp.entitycollisionoptimizer.gametest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.EntityTypes;
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.Pose;
 import net.minecraft.world.entity.animal.equine.Horse;
 import net.minecraft.world.entity.decoration.ArmorStand;
@@ -120,13 +120,13 @@ final class CollisionSpecialTransitionParity {
         Zombie vanillaSource = spawnZombie(helper, vanillaAnchor);
         Warden vanillaTarget = (Warden) spawnEntity(
                 helper,
-                EntityTypes.WARDEN,
+                EntityType.WARDEN,
                 vanillaAnchor.add(0.18, 0.0, 0.07)
         );
         Zombie acceleratedSource = spawnZombie(helper, acceleratedAnchor);
         Warden acceleratedTarget = (Warden) spawnEntity(
                 helper,
-                EntityTypes.WARDEN,
+                EntityType.WARDEN,
                 acceleratedAnchor.add(0.18, 0.0, 0.07)
         );
         Pose initialPose = initiallyEmerging ? Pose.EMERGING : Pose.STANDING;
@@ -181,23 +181,23 @@ final class CollisionSpecialTransitionParity {
         Zombie vanillaSource = spawnZombie(helper, vanillaAnchor);
         Horse vanillaTarget = (Horse) spawnEntity(
                 helper,
-                EntityTypes.HORSE,
+                EntityType.HORSE,
                 vanillaAnchor.add(0.18, 0.0, 0.07)
         );
         ArmorStand vanillaPassenger = (ArmorStand) spawnEntity(
                 helper,
-                EntityTypes.ARMOR_STAND,
+                EntityType.ARMOR_STAND,
                 vanillaAnchor.add(0.0, 4.0, 0.0)
         );
         Zombie acceleratedSource = spawnZombie(helper, acceleratedAnchor);
         Horse acceleratedTarget = (Horse) spawnEntity(
                 helper,
-                EntityTypes.HORSE,
+                EntityType.HORSE,
                 acceleratedAnchor.add(0.18, 0.0, 0.07)
         );
         ArmorStand acceleratedPassenger = (ArmorStand) spawnEntity(
                 helper,
-                EntityTypes.ARMOR_STAND,
+                EntityType.ARMOR_STAND,
                 acceleratedAnchor.add(0.0, 4.0, 0.0)
         );
         try {

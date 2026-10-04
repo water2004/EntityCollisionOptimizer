@@ -13,6 +13,7 @@
 !/native/src/
 !/native/include/
 !/native/README.md
+!/native/build-windows-mingw.ps1
 
 # Generated diagnostics belong outside the source tree.
 *.jfr
