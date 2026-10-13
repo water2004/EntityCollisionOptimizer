@@ -1,4 +1,4 @@
-name: Build Fabric 1.21.1
+name: Build
 
 on:
   push:
@@ -49,9 +49,20 @@ jobs:
       - name: Run cross-process integration GameTests
         run: ./gradlew runGameTest -PintegrationTest --stacktrace
 
+      - name: Check release scripts
+        shell: pwsh
+        run: ./.github/scripts/test-release.ps1
+
+      - name: Prepare artifact name
+        id: artifact
+        shell: pwsh
+        run: |
+          $ref = $env:GITHUB_REF_NAME -replace '[^A-Za-z0-9._+-]', '-'
+          "name=EntityCollisionOptimizer-$ref-build-$env:GITHUB_RUN_NUMBER" >> $env:GITHUB_OUTPUT
+
       - name: Upload Mod artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: EntityCollisionOptimizer-${{ github.sha }}-build-${{ github.run_number }}
+          name: ${{ steps.artifact.outputs.name }}
           path: build/libs/*.jar
           retention-days: 14
