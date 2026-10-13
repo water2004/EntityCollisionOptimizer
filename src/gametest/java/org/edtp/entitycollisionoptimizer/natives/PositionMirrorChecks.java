@@ -29,6 +29,10 @@ public final class PositionMirrorChecks {
             helper.assertValueEqual(Double.doubleToRawLongBits(entity.getX()), Long.MIN_VALUE, "shared X owns negative zero");
             helper.assertTrue(entity.getY() == 67.5 && entity.getZ() == -13, "all position getters read shared authority");
             helper.assertTrue(entity.position() == fields.eco$rawPosition(), "merged field reader uses authoritative cache");
+            if (net.fabricmc.loader.api.FabricLoader.getInstance().isModLoaded("fuji")) {
+                helper.assertTrue(fujiPosition(entity) == entity.position(),
+                        "Fuji's direct position reader uses the shared authority");
+            }
             entity.setPosRaw(4, 5, 6);
             check(helper, table, slot, entity, "raw position write");
             for (Vec3 position : new Vec3[]{new Vec3(-0.0, 0, -0.0), new Vec3(-29_999_999, 64, 29_999_999),
@@ -82,5 +86,14 @@ public final class PositionMirrorChecks {
                 Double.doubleToRawLongBits(entity.getZ()), "shared Z " + label);
         helper.assertValueEqual(Double.doubleToRawLongBits(table.memory().get(JAVA_DOUBLE, offset + CollisionStateTable.Y_OFFSET)),
                 Double.doubleToRawLongBits(entity.getY()), "shared Y " + label);
+    }
+
+    private static Vec3 fujiPosition(Entity entity) {
+        try {
+            Class<?> helper = Class.forName("mod.fuji.core.auxiliary.minecraft.EntityHelper");
+            return (Vec3) helper.getMethod("getPos", Entity.class).invoke(null, entity);
+        } catch (ReflectiveOperationException failure) {
+            throw new AssertionError("Cannot call Fuji's position reader", failure);
+        }
     }
 }

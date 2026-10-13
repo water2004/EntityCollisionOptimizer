@@ -37,8 +37,11 @@ final class BodyFieldConsumerCoverage {
         for (String target : targets) {
             try { Class.forName(target, false, loader); loaded++; }
             catch (ClassNotFoundException failure) {
-                if (!target.startsWith("carpet.")
-                        || net.fabricmc.loader.api.FabricLoader.getInstance().isModLoaded("carpet")) {
+                boolean optionalAbsent = (target.startsWith("carpet.")
+                        && !net.fabricmc.loader.api.FabricLoader.getInstance().isModLoaded("carpet"))
+                        || (target.startsWith("mod.fuji.")
+                        && !net.fabricmc.loader.api.FabricLoader.getInstance().isModLoaded("fuji"));
+                if (!optionalAbsent) {
                     throw new AssertionError("Declared field consumer missing: " + target, failure);
                 }
                 absent++;
