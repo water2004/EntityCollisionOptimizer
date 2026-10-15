@@ -26,6 +26,16 @@ public final class EntityMovementCollision {
         NativeMovement movement = new NativeMovement(entity, requested, null, true);
         try {
             AABB scan = movement.stepScan();
+            // Like Lithium, test the supporting block before querying entities. With no
+            // horizontal motion, a fully cancelled fall cannot need another collider or a step.
+            if (requested.y < 0.0 && requested.x == 0.0 && requested.z == 0.0) {
+                try (NativeShapeBatch support = new NativeShapeBatch()) {
+                    if (OrderedBlockColliders.collectSupport(entity, movement.sourceBounds(), scan, requested.y, support)) {
+                        movement.solve(support, false);
+                        if (movement.displacement().y == 0.0) return movement;
+                    }
+                }
+            }
             // Since 26.3, the initial entity query also covers the possible upward step.
             int[] hardIds = CollisionFrame.hardCollisionIds(entity, scan.expandTowards(0.0, entity.maxUpStep(), 0.0));
             movement.steppingState();

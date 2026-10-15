@@ -4,6 +4,7 @@
   "package": "org.edtp.entitycollisionoptimizer.gametest.mixin",
   "compatibilityLevel": "JAVA_25",
   "mixins": [
+    "HardQueryObservationMixin",
     "NativeShapeBatchCaptureMixin",
     "VanillaEntityQueryMixin"
   ],
