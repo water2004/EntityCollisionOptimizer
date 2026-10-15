@@ -56,6 +56,7 @@ public final class CollisionContractGameTests {
 
     @GameTest(maxTicks = 200, padding = 48)
     public void nativeMovementContract(GameTestHelper helper) {
+        MovementShortCircuitChecks.verify(helper);
         NativeVoxelParity.edges(helper);
         SingleCellParity.verify(helper);
         org.edtp.entitycollisionoptimizer.natives.MovementPublicationChecks.verify(helper);

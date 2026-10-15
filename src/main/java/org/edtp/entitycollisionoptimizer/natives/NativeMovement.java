@@ -54,6 +54,7 @@ public final class NativeMovement implements AutoCloseable {
     }
 
     public boolean needsStep() { return get(32) != 0; }
+    public AABB sourceBounds() { return new AABB(get(0), get(1), get(2), get(3), get(4), get(5)); }
     public AABB stepScan() { return new AABB(get(24), get(25), get(26), get(27), get(28), get(29)); }
     public Vec3 displacement() { return vector(12); }
     /** Read the proposed destination only at vanilla's publication boundary. */
