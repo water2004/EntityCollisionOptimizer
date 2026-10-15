@@ -9,6 +9,7 @@ namespace eco {
 
 void insertSectionEntity(CollisionContext& context, int nativeId, const Aabb& bounds);
 void removeSectionEntity(CollisionContext& context, int nativeId);
+void updateSectionHardCollidability(CollisionContext& context, int nativeId, bool hard);
 void updateSectionEntity(
         CollisionContext& context,
         int nativeId,

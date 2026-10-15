@@ -1,5 +1,7 @@
 #include "spatial/section_index.h"
 
+#include <algorithm>
+
 namespace eco {
 namespace {
 
@@ -24,7 +26,7 @@ void insertSectionEntity(CollisionContext& context, int nativeId, const Aabb& bo
     membersSlot->queryable.push_back(static_cast<std::uint8_t>(queryable));
     if (queryable) ++membersSlot->queryableCount;
     membersSlot->bounds.push(bounds);
-    if (context.metadata[nativeId].hardCollidable) ++membersSlot->hardCount;
+    if (context.metadata[nativeId].hardCollidable) membersSlot->hardSlots.push_back(membersSlot->ids.size() - 1);
     context.sectionSlots[nativeId] = {membersSlot, membersSlot->ids.size() - 1};
 }
 
@@ -35,7 +37,9 @@ void removeSectionEntity(CollisionContext& context, int nativeId) {
 
     CellMembers& members = *slot.members;
     if (members.queryable[slot.index] != 0) --members.queryableCount;
-    if (context.metadata[nativeId].hardCollidable) --members.hardCount;
+    auto hardSlot = std::lower_bound(members.hardSlots.begin(), members.hardSlots.end(), slot.index);
+    if (hardSlot != members.hardSlots.end() && *hardSlot == slot.index) hardSlot = members.hardSlots.erase(hardSlot);
+    for (; hardSlot != members.hardSlots.end(); ++hardSlot) --*hardSlot;
     const auto offset = static_cast<std::ptrdiff_t>(slot.index);
     members.ids.erase(members.ids.begin() + offset);
     members.queryable.erase(members.queryable.begin() + offset);
@@ -48,6 +52,15 @@ void removeSectionEntity(CollisionContext& context, int nativeId) {
         context.sections.erase(sectionOf(context.metadata[nativeId]));
         context.retireSectionMembers(&members);
     }
+}
+
+void updateSectionHardCollidability(CollisionContext& context, int nativeId, bool hard) {
+    const CellSlot slot = context.sectionSlots[nativeId];
+    if (slot.members == nullptr) return;
+    auto& hardSlots = slot.members->hardSlots;
+    const auto position = std::lower_bound(hardSlots.begin(), hardSlots.end(), slot.index);
+    if (hard) hardSlots.insert(position, slot.index);
+    else hardSlots.erase(position);
 }
 
 void updateSectionEntity(

@@ -34,11 +34,15 @@ public final class NativeOrderChecks {
                     case 2 -> { body.x ^= -1; body.y ^= -1; body.z ^= -1; }
                     case 3 -> {
                         FFMBackend.removeEntity(context, id);
-                        IndexUpdateFixture.insert(context, id, body.box, body.x, body.y, body.z);
+                        insert(context, id, body);
                         body.order = ++nextOrder;
                         reinserted = true;
                     }
-                    case 4 -> { body.selectable = !body.selectable; body.passenger = !body.passenger; }
+                    case 4 -> {
+                        body.selectable = !body.selectable;
+                        body.passenger = !body.passenger;
+                        body.hard = !body.hard;
+                    }
                     case 5 -> FFMBackend.invalidatePushEligibilityCacheFields(context, 3);
                     case 6, 7 -> {
                         nextOrder = resetAll(context, bodies, nextOrder);
@@ -50,7 +54,7 @@ public final class NativeOrderChecks {
                 }
                 IndexUpdateFixture.update(context, id, body.box, body.x, body.y, body.z,
                         body.selectable, body.passenger, true, true,
-                        -1, 0, 100 + id, false);
+                        -1, 0, 100 + id, body.hard);
                 // Repeated queries with different sources share the same ordered cell state.
                 for (int repeat = 0; repeat < 3; repeat++) for (int source = 0; source < count; source++) {
                     compare(helper, context, bodies, source, "step=" + step + " repeat=" + repeat);
@@ -97,12 +101,28 @@ public final class NativeOrderChecks {
             helper.assertValueEqual(slots[i], 100 + expected.get(i), "body slot order " + label);
             helper.assertValueEqual(flags[i], 1, "native dispatch order " + label);
         }
+        for (boolean hardOnly : new boolean[]{false, true}) {
+            expected.clear();
+            for (int id = 0; id < bodies.length; id++) {
+                Body body = bodies[id];
+                if (id != source && (!hardOnly || body.hard) && query.intersects(body.box)
+                        && body.x >= Math.floor((query.minX - 2) / 16) && body.x <= Math.floor((query.maxX + 2) / 16)
+                        && body.y >= Math.floor((query.minY - 4) / 16) && body.y <= Math.floor(query.maxY / 16)
+                        && body.z >= Math.floor((query.minZ - 2) / 16) && body.z <= Math.floor((query.maxZ + 2) / 16)) expected.add(id);
+            }
+            expected.sort(Comparator.<Integer>comparingLong(id -> SectionPos.asLong(bodies[id].x, bodies[id].y, bodies[id].z))
+                    .thenComparingLong(id -> bodies[id].order));
+            var hardResult = FFMBackend.queryHard(context, query, source, hardOnly, bodies.length);
+            actual.clear();
+            for (int i = 0; i < hardResult.size(); i++) actual.add(hardResult.get(i));
+            helper.assertValueEqual(actual, expected, "hard candidate order hardOnly=" + hardOnly + " " + label);
+        }
     }
 
     private static long insertAll(FFMBackend.Context context, Body[] bodies, long nextOrder) {
         for (int id = 0; id < bodies.length; id++) {
             Body body = bodies[id];
-            IndexUpdateFixture.insert(context, id, body.box, body.x, body.y, body.z);
+            insert(context, id, body);
             body.order = ++nextOrder;
         }
         return nextOrder;
@@ -115,7 +135,11 @@ public final class NativeOrderChecks {
 
     private static void metadata(FFMBackend.Context context, int id, Body body) {
         IndexUpdateFixture.metadata(context, id, body.selectable, body.passenger,
-                true, true, -1, 0, 100 + id, false);
+                true, true, -1, 0, 100 + id, body.hard);
+    }
+
+    private static void insert(FFMBackend.Context context, int id, Body body) {
+        FFMBackend.insertEntity(context, id, body.box, body.x, body.y, body.z, body.hard, false);
     }
 
     private static final class Body {
@@ -123,8 +147,9 @@ public final class NativeOrderChecks {
         AABB box;
         int x, y, z;
         long order;
-        boolean selectable = true, passenger;
+        boolean selectable = true, passenger, hard;
         Body(int id) {
+            hard = id % 3 == 0;
             home = box = new AABB(-.4 + id % 5 * .03, -.4, -.4 + id / 5 * .03, .4, .4, .4);
             x = -(id & 1); y = -((id >> 1) & 1); z = -((id >> 2) & 1);
         }
