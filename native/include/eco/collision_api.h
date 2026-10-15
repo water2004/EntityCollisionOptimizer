@@ -29,7 +29,7 @@ ECO_EXPORT int insertCollisionEntity(
         int hardCollidable,
         int derivedTeam
 );
-// Publish collision state and body binding independently of team metadata.
+// Publish collision state independently of team metadata and Java body bindings.
 ECO_EXPORT int updateCollisionEntityState(
         void* contextPointer,
         int nativeId,
@@ -37,7 +37,6 @@ ECO_EXPORT int updateCollisionEntityState(
         int passenger,
         int vanillaEntityPush,
         int allowsDeferredVelocityWrites,
-        int bodySlot,
         int hardCollidable
 );
 // Derived teams are resolved for a logical query; ordinary miss retries share its epoch.
@@ -90,9 +89,9 @@ ECO_EXPORT int queryEntitiesInBox(
         int outputCapacity
 );
 // outputBuffer: [metadataRequired, pushableCount, nonPassengerCount],
-// native IDs[capacity], bodySlots[capacity]. nativePushFlags receives one
+// native IDs[capacity], requiredFields[capacity]. nativePushFlags receives one
 // native-push flag per returned native ID.
-// On a metadata miss, bodySlots contains per-ID required-field masks (state=1, team=2).
+// requiredFields is populated only on a metadata miss (state=1, team=2).
 ECO_EXPORT int queryPushableEntities(
         void* contextPointer,
         const double* sourceBounds,

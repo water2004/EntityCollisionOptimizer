@@ -14,10 +14,9 @@ int updateCollisionEntityState(
         int passenger,
         int vanillaEntityPush,
         int allowsDeferredVelocityWrites,
-        int bodySlot,
         int hardCollidable
 ) {
-    if (contextPointer == nullptr || nativeId < 0 || bodySlot < 0) {
+    if (contextPointer == nullptr || nativeId < 0) {
         return -1;
     }
     try {
@@ -37,7 +36,6 @@ int updateCollisionEntityState(
             eco::updateSectionHardCollidability(context, nativeId, hard);
         }
         metadata.hardCollidable = hard;
-        metadata.bodySlot = bodySlot;
         metadata.selectableValid = true;
         if (wasQueryable != metadata.selectable) {
             eco::updateEntityQueryability(context, nativeId, metadata.selectable);

@@ -21,11 +21,11 @@ final class IndexUpdateFixture {
                        int sectionX, int sectionY, int sectionZ,
                        boolean selectable, boolean passenger,
                        boolean vanillaEntityPush, boolean allowsDeferredVelocityWrites,
-                       int team, int rule, int bodySlot,
+                       int team, int rule,
                        boolean hardCollidable) {
         FFMBackend.updateEntityBounds(context, id, box);
         FFMBackend.updateEntityState(context, id, selectable, passenger,
-                vanillaEntityPush, allowsDeferredVelocityWrites, bodySlot, hardCollidable);
+                vanillaEntityPush, allowsDeferredVelocityWrites, hardCollidable);
         FFMBackend.updateEntityTeam(context, id, team, rule, 0);
         FFMBackend.updateEntitySection(context, id, sectionX, sectionY, sectionZ);
     }
@@ -33,10 +33,10 @@ final class IndexUpdateFixture {
     static void metadata(FFMBackend.Context context, int id,
                          boolean selectable, boolean passenger,
                          boolean vanillaEntityPush, boolean allowsDeferredVelocityWrites,
-                         int team, int rule, int bodySlot,
+                         int team, int rule,
                          boolean hardCollidable) {
         FFMBackend.updateEntityState(context, id, selectable, passenger,
-                vanillaEntityPush, allowsDeferredVelocityWrites, bodySlot, hardCollidable);
+                vanillaEntityPush, allowsDeferredVelocityWrites, hardCollidable);
         FFMBackend.updateEntityTeam(context, id, team, rule, 0);
     }
 }

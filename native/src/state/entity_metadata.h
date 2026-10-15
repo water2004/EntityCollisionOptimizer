@@ -8,7 +8,6 @@ namespace eco {
 struct alignas(32) EntityMetadata {
     std::int32_t sectionX = 0, sectionY = 0, sectionZ = 0;
     int teamId = -1;
-    int bodySlot = -1;
     std::uint32_t collisionRule : 2 = 0;
     std::uint32_t selectable : 1 = false;
     std::uint32_t passenger : 1 = false;

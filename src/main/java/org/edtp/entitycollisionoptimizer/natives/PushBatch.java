@@ -31,7 +31,7 @@ public final class PushBatch implements AutoCloseable {
         this.recycler = recycler;
     }
 
-    void prepare(FFMBackend.QueryResult result) {
+    void prepare(FFMBackend.QueryResult result, PersistentEntityIds ids, LivingEntity source) {
         borrowed = true;
         bodies.borrow();
         size = result.size();
@@ -42,7 +42,12 @@ public final class PushBatch implements AutoCloseable {
             bodySlots = new int[capacity];
             nativePushFlags = new int[capacity];
         }
-        result.copyBodiesTo(bodySlots, nativePushFlags);
+        result.copyPushCandidatesTo(bodySlots, nativePushFlags);
+        // Only final candidates need body slots; pin them before any push callback can retire IDs.
+        if (size != 0 && ids.contains(source)) bodies.bindBody(source);
+        for (int index = 0; index < size; index++) {
+            bodySlots[index] = bodies.bindBody(ids.getEntity(bodySlots[index]));
+        }
     }
 
     public Entity target(int index) { return bodies.entity(bodySlots[index]); }
