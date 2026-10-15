@@ -148,6 +148,12 @@ public final class CollisionFrame {
         return frameFor(source).collectPushable(source, sourceTeam, sourceRule, sourceUsesVanillaDoPush);
     }
 
+    /** Ordered server-side EntitySelector.pushableBy query, with the factory-captured team and rule. */
+    public static List<Entity> getPushableEntities(ServerLevel level, Entity excluded, AABB queryBounds,
+            PlayerTeam sourceTeam, Team.CollisionRule sourceRule) {
+        return frameFor(level).getPushableEntities(excluded, queryBounds, sourceTeam, sourceRule);
+    }
+
     private static LevelCollisionFrame frameFor(Entity entity) {
         if (!(entity.level() instanceof ServerLevel level)) {
             throw new IllegalArgumentException("Native entity collision queries require a server level");

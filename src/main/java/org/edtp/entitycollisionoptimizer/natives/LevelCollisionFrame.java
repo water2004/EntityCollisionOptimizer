@@ -277,20 +277,23 @@ final class LevelCollisionFrame {
             Team.CollisionRule sourceRule,
             boolean sourceUsesVanillaDoPush
     ) {
+        return queryPushable(source, source.getBoundingBox(), sourceTeam, sourceRule,
+                sourceUsesVanillaDoPush && VanillaMethodDetector.allowsDeferredVelocityWrites(source));
+    }
+
+    private FFMBackend.QueryResult queryPushable(Entity excluded, AABB queryBounds,
+            PlayerTeam sourceTeam, Team.CollisionRule sourceRule, boolean sourceNativePushEligible) {
         // Ordinary miss retries share an epoch; a changed world restarts with a fresh one.
         long queryEpoch = ++pushQueryEpoch;
-        AABB sourceBounds = source.getBoundingBox();
         int sourceTeamId = assignTeamId(sourceTeam);
         int sourceRuleCode = collisionRuleCode(sourceRule);
-        boolean sourceNativePushEligible = sourceUsesVanillaDoPush
-                && VanillaMethodDetector.allowsDeferredVelocityWrites(source);
         while (true) {
             invalidateStalePushEligibility();
-            int sourceNativeId = ids.getNativeId(source);
+            int excludedNativeId = excluded == null ? -1 : ids.getNativeId(excluded);
             FFMBackend.QueryResult result = FFMBackend.queryPushable(
                     nativeContext,
-                    sourceBounds,
-                    sourceNativeId,
+                    queryBounds,
+                    excludedNativeId,
                     sourceTeamId,
                     sourceRuleCode,
                     sourceNativePushEligible,
@@ -316,6 +319,17 @@ final class LevelCollisionFrame {
                 metadataQuerySnapshots.addFirst(requests);
             }
         }
+    }
+
+    /** Query-only counterpart of PushBatch: no body binding or velocity-write lease. */
+    synchronized List<Entity> getPushableEntities(Entity excluded, AABB queryBounds,
+            PlayerTeam sourceTeam, Team.CollisionRule sourceRule) {
+        FFMBackend.QueryResult result = queryPushable(excluded, queryBounds, sourceTeam, sourceRule, false);
+        List<Entity> entities = new ArrayList<>(result.size());
+        // Resolve every ID before returning to caller callbacks, which may remove/reuse IDs
+        // or issue another query against the same native output buffer.
+        for (int index = 0; index < result.size(); index++) entities.add(requireEntity(result.get(index)));
+        return entities;
     }
 
     private int[] metadataSnapshot(FFMBackend.QueryResult result) {
