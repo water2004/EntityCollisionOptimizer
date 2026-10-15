@@ -30,7 +30,8 @@ final class CollisionRepeatedFrameParity {
         try {
             for (int index = 0; index < 6; index++) {
                 Vec3 offset = offset(index, 0);
-                vanilla.add(spawnZombie(helper, new Vec3(18.5, 1.0, 25.0).add(offset)));
+                // Equal section-local positions are required for an ordered vanilla comparison.
+                vanilla.add(spawnZombie(helper, new Vec3(14.5, 1.0, 25.0).add(offset)));
                 accelerated.add(spawnZombie(helper, new Vec3(30.5, 1.0, 25.0).add(offset)));
             }
 
@@ -41,7 +42,7 @@ final class CollisionRepeatedFrameParity {
                     CollisionTestSupport.ensureEntityTicks(helper, new Vec3(18.5, 1.0, 25.0).add(offset));
                     CollisionTestSupport.ensureEntityTicks(helper, new Vec3(30.5, 1.0, 25.0).add(offset));
                     vanilla.get(index).setPos(helper.absoluteVec(
-                            new Vec3(18.5, 1.0, 25.0).add(offset)
+                            new Vec3(14.5, 1.0, 25.0).add(offset)
                     ));
                     accelerated.get(index).setPos(helper.absoluteVec(
                             new Vec3(30.5, 1.0, 25.0).add(offset)
