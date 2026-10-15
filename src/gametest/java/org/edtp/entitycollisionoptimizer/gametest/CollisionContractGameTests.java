@@ -199,6 +199,12 @@ public final class CollisionContractGameTests {
     }
 
     @GameTest(maxTicks = 200, padding = 48)
+    public void lithiumPushableQueryContract(GameTestHelper helper) {
+        LithiumPushableQueryParity.verify(helper);
+        helper.succeed();
+    }
+
+    @GameTest(maxTicks = 200, padding = 48)
     public void canonicalVelocityContract(GameTestHelper helper) {
         CollisionContractParity.visibility(helper);
         helper.succeed();

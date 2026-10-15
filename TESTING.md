@@ -16,6 +16,10 @@ same process. Failures should identify the violated contract precisely.
 
 Sources live under `src/gametest`; the entrypoint manifest lives under `src/unitTest`.
 
+With `-PcompatModsDir=<directory>` containing Lithium, the optional pushable-query contract also
+checks its adapter against vanilla section traversal, including explicit query bounds, captured
+team rules, candidate order and custom-predicate callbacks. Without Lithium, this check is skipped.
+
 ## Cross-process integration GameTests
 
 ```powershell

@@ -16,7 +16,10 @@
   "entrypoints": {
     "main": ["org.edtp.entitycollisionoptimizer.EntityCollisionOptimizer"]
   },
-  "mixins": ["entity_collision_optimizer.mixins.json"],
+  "mixins": [
+    "entity_collision_optimizer.mixins.json",
+    "entity_collision_optimizer-lithium.mixins.json"
+  ],
   "depends": {
     "fabricloader": ">=0.17.0",
     "minecraft": "~26.3",
