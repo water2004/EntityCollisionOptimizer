@@ -61,3 +61,8 @@ Use `-PcompatModsDir=<directory>` for an optional local mod stack. Timing, measu
 markers, fixture validation and cleanup use the same runner as the other benchmarks. Owner
 connections, scoreboard teams and newly forced chunks are released after the workload; chunks
 already forced by the test framework are preserved.
+
+`mixed_collision_benchmark_dense_hard_and_soft_entities` exercises normal movement and pushing
+with 600 zombified piglins and 20 boats in one section. It warms up for 1200 ticks, then measures
+400 ticks. AI and gravity remain enabled; invulnerability keeps the population fixed. This is a
+controlled hard/soft-candidate workload, not a reproduction of a particular piglin farm.
