@@ -70,10 +70,6 @@ loom {
             if (benchmarksEnabled) {
                 vmArg "-Dentity_collision_optimizer.runBenchmark=true"
             }
-            // A/B hook for the benchmark suite: replay the same workload on the vanilla paths.
-            if (providers.gradleProperty("ecoVanillaPaths").isPresent()) {
-                vmArg "-Deco.benchmark.vanillaPaths=true"
-            }
             if (providers.gradleProperty("jfrOutput").isPresent()) {
                 vmArg "-XX:StartFlightRecording=filename=${file(providers.gradleProperty("jfrOutput").get()).absolutePath},settings=profile,dumponexit=true"
             }

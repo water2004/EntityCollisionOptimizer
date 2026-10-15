@@ -192,7 +192,7 @@ powershell -ExecutionPolicy Bypass -File build-local-windows.ps1
   该预设可被数据包覆盖，因此用等价的 `flat.json`（overworld 保留 bedrock/dirt/grass 分层、不加结构，
   另附 nether/end 与空的 `benchmark_void`）覆盖它，压测的虚空管道场景才得以运行。
 * 新增跨进程场景（见第 8、9 节）：`falling-item-vehicles`、`step-lane`；
-  新增压测场景 `sliding_minecarts`（配 `-PecoVanillaPaths` 做原版 A/B）。
+  新增压测场景 `sliding_minecarts`（24 辆矿车 + 64 僵尸的稳定 workload）。
 
 ### 已知失败项（均为测试期望问题，非模组缺陷）
 
@@ -250,6 +250,5 @@ int[] hardIds = CollisionFrame.hardCollisionIds(entity, scan.expandTowards(0.0, 
 * 用户报告的"矿车让帧率从 240 掉到 100 多"：量化后确认原版同样如此，
   而模组的矿车碰撞路径比原版快约 1.5×（`sliding_minecarts` 场景 MSPT 4.037 → 2.688 ms）。
 
-因此剩余差异更可能是**客户端可见的状态发布**或**未覆盖的场景**。为此新增了运行期开关
-`/eco movement|push|index <on|off>`（单人存档**无需作弊**即可使用，见 `HANDOFF-1.21.11.md` 第 6、12 节），
-可在一次游戏会话内把症状归因到具体子系统，或直接确认"关掉全部优化后症状是否仍在"。
+因此剩余差异更可能是**客户端可见的状态发布**或**未覆盖的场景**。性能类问题按上游 `CONTRIBUTING.md` 的指引用 JFR / WPR(ETW) + `tools/profiling/jit-map` 分析，
+不在模组内引入诊断开关（会改变行为并给热路径增加开销）。

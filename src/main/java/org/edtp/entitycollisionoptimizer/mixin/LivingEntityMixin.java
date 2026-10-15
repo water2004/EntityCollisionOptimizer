@@ -2,7 +2,6 @@ package org.edtp.entitycollisionoptimizer.mixin;
 
 import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
-import org.edtp.entitycollisionoptimizer.OptimizerSwitches;
 import org.edtp.entitycollisionoptimizer.collision.VanillaMethodDetector;
 import org.edtp.entitycollisionoptimizer.natives.CollisionFrame;
 import org.edtp.entitycollisionoptimizer.natives.PushBatch;
@@ -24,7 +23,7 @@ public abstract class LivingEntityMixin {
     @WrapMethod(method = "pushEntities")
     private void entityCollisionOptimizer$pushEntities(Operation<Void> original) {
         LivingEntity self = (LivingEntity) (Object) this;
-        if (!(self.level() instanceof ServerLevel serverLevel) || !OptimizerSwitches.push()) {
+        if (!(self.level() instanceof ServerLevel serverLevel)) {
             original.call();
             return;
         }

@@ -101,7 +101,7 @@ An unsupported native platform or an FFM initialization failure is reported as a
 
 ## Configuration
 
-Use `/eco` to check whether the FFM backend initialized successfully. The mod has no performance tuning options and always preserves Minecraft's entity candidate order and update semantics.
+Use `/eco` to check whether the FFM backend initialized successfully. The mod has no runtime tuning options and always preserves Minecraft's entity candidate order and update semantics.
 
 `/eco` also exposes **diagnostic switches** that attribute a suspect behaviour to one subsystem; a disabled subsystem falls back to the untouched vanilla path:
 

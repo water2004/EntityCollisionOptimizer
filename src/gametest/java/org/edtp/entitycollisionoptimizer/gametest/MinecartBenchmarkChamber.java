@@ -9,7 +9,6 @@ import net.minecraft.world.entity.vehicle.minecart.AbstractMinecart;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
 import org.edtp.entitycollisionoptimizer.EntityCollisionOptimizer;
-import org.edtp.entitycollisionoptimizer.OptimizerSwitches;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -21,11 +20,8 @@ import java.util.List;
  * "every entity in the query box" collider path instead of the hard-collider fast path used by
  * most mobs. This scenario keeps a fixed set of carts pressed into each other and into a crowd of
  * pushable zombies, so the per-tick movement solve, the minecart entity queries and the push path
- * all run at a constant rate.
- *
- * <p>Run with {@code -PecoVanillaPaths} to replay the identical workload with every optimizer
- * subsystem switched back to the vanilla path; the two runs are directly comparable because the
- * scenario is deterministic.
+ * all run at a constant rate. Profiling follows CONTRIBUTING.md (JFR/WPR), so the scenario stays a
+ * pure workload and never changes mod behaviour.
  */
 final class MinecartBenchmarkChamber extends BenchmarkScenario {
     private static final int MINECART_COUNT = 24;
@@ -36,7 +32,6 @@ final class MinecartBenchmarkChamber extends BenchmarkScenario {
     private final GameTestHelper helper;
     private final List<AbstractMinecart> minecarts = new ArrayList<>(MINECART_COUNT);
     private final List<Zombie> zombies = new ArrayList<>(ZOMBIE_COUNT);
-    private boolean vanillaPaths;
 
     MinecartBenchmarkChamber(GameTestHelper helper) {
         this.helper = helper;
@@ -46,15 +41,10 @@ final class MinecartBenchmarkChamber extends BenchmarkScenario {
 
     @Override String description() {
         return "minecarts=" + MINECART_COUNT + " zombies=" + ZOMBIE_COUNT
-                + " spacing=" + SPACING + " speed=" + SPEED
-                + " vanilla_paths=" + vanillaPaths;
+                + " spacing=" + SPACING + " speed=" + SPEED;
     }
 
     @Override void start() {
-        vanillaPaths = Boolean.getBoolean("eco.benchmark.vanillaPaths");
-        if (vanillaPaths) {
-            OptimizerSwitches.all(false);
-        }
         buildFloor();
         spawnMinecarts();
         spawnZombies();
@@ -126,8 +116,7 @@ final class MinecartBenchmarkChamber extends BenchmarkScenario {
 
     @Override String summary() {
         return "minecarts=" + minecarts.size()
-                + " passengers=" + minecarts.stream().mapToLong(cart -> cart.getPassengers().size()).sum()
-                + " vanilla_paths=" + vanillaPaths;
+                + " passengers=" + minecarts.stream().mapToLong(cart -> cart.getPassengers().size()).sum();
     }
 
     @Override void cleanup() {
@@ -135,9 +124,5 @@ final class MinecartBenchmarkChamber extends BenchmarkScenario {
         minecarts.clear();
         zombies.forEach(Entity::discard);
         zombies.clear();
-        if (vanillaPaths) {
-            OptimizerSwitches.all(true);
-            vanillaPaths = false;
-        }
     }
 }

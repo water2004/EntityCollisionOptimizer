@@ -1,6 +1,5 @@
 package org.edtp.entitycollisionoptimizer.mixin;
 
-import org.edtp.entitycollisionoptimizer.OptimizerSwitches;
 import org.edtp.entitycollisionoptimizer.natives.CollisionFrame;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
@@ -26,7 +25,7 @@ public interface CommonLevelAccessorMixin {
             AABB box,
             CallbackInfoReturnable<List<VoxelShape>> cir
     ) {
-        if ((Object) this instanceof ServerLevel level && OptimizerSwitches.index()) {
+        if ((Object) this instanceof ServerLevel level) {
             cir.setReturnValue(CollisionFrame.getEntityCollisions(level, entity, box));
         }
     }
