@@ -34,12 +34,7 @@ int updateCollisionEntityState(
         const bool hard = hardCollidable != 0;
         if (metadata.hardCollidable != hard) {
             if (hard) ++context.hardEntityCount; else --context.hardEntityCount;
-            if (static_cast<std::size_t>(nativeId) < context.sectionSlots.size()) {
-                const auto slot = context.sectionSlots[nativeId];
-                if (slot.members != nullptr) {
-                    if (hard) ++slot.members->hardCount; else --slot.members->hardCount;
-                }
-            }
+            eco::updateSectionHardCollidability(context, nativeId, hard);
         }
         metadata.hardCollidable = hard;
         metadata.bodySlot = bodySlot;
