@@ -43,7 +43,7 @@ struct CollisionContext {
         members->queryable.clear();
         members->bounds.clear();
         members->queryableCount = 0;
-        members->hardCount = 0;
+        members->hardSlots.clear();
         members->poolNext = freeSectionMembers;
         freeSectionMembers = members;
     }

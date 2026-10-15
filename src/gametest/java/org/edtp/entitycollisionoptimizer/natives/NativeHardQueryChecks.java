@@ -23,6 +23,7 @@ public final class NativeHardQueryChecks {
     }
 
     public static void verify(GameTestHelper helper) {
+        denseSection(helper);
         int queries = 0;
         for (int count : new int[]{2, 8, 20}) {
             try (var context = FFMBackend.createContext()) {
@@ -46,6 +47,27 @@ public final class NativeHardQueryChecks {
                 queries);
     }
 
+    private static void denseSection(GameTestHelper helper) {
+        AABB box = new AABB(0, 0, 0, 1, 1, 1);
+        AABB scan = box.inflate(.1);
+        try (var context = FFMBackend.createContext()) {
+            for (int id = 0; id < 620; id++) {
+                FFMBackend.insertEntity(context, id, box, 0, 0, 0, id % 31 == 0, false);
+            }
+            // Both query paths must retain AABB's strict comparisons, including NaN rejection.
+            FFMBackend.insertEntity(context, 620, new AABB(Double.NaN, 0, 0, Double.NaN, 1, 1),
+                    0, 0, 0, true, false);
+            for (boolean hardOnly : new boolean[]{true, false}) {
+                List<Integer> expected = new ArrayList<>();
+                for (int id = 0; id < 620; id++) if (!hardOnly || id % 31 == 0) expected.add(id);
+                var result = FFMBackend.queryHard(context, scan, -1, hardOnly, 621);
+                List<Integer> actual = new ArrayList<>();
+                for (int index = 0; index < result.size(); index++) actual.add(result.get(index));
+                helper.assertValueEqual(actual, expected, "dense hard subset hardOnly=" + hardOnly);
+            }
+        }
+    }
+
     private static Body[] bodies(int count, int phase) {
         double anchor = new double[]{-32, 0, 16}[phase / 12];
         AABB source = new AABB(anchor, anchor + 1, anchor, anchor + 12, anchor + 3, anchor + 12);
@@ -65,7 +87,7 @@ public final class NativeHardQueryChecks {
                     SectionPos.posToSectionCoord((box.minX + box.maxX) * 0.5),
                     SectionPos.posToSectionCoord(box.minY),
                     SectionPos.posToSectionCoord((box.minZ + box.maxZ) * 0.5),
-                    id % 3 != 0
+                    (id + phase) % 3 != 0
             );
         }
         return bodies;

@@ -26,8 +26,8 @@ struct CellMembers {
     std::vector<std::uint8_t> queryable;
     CellBoundsSoa bounds;
     std::size_t queryableCount = 0;
-    // Hard members resident in this section; hard-only scans skip empty sections.
-    std::size_t hardCount = 0;
+    // Ordered slots into ids/bounds; hard-only queries never scan soft members.
+    std::vector<std::size_t> hardSlots;
     CellMembers* poolNext = nullptr;
 };
 

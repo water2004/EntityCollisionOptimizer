@@ -20,6 +20,12 @@
 
 namespace {
 
+inline bool intersectsCellBounds(const eco::Aabb& scan, const eco::CellBoundsSoa& bounds, std::size_t index) noexcept {
+    return scan.minX < bounds.maxX[index] && scan.maxX > bounds.minX[index]
+            && scan.minY < bounds.maxY[index] && scan.maxY > bounds.minY[index]
+            && scan.minZ < bounds.maxZ[index] && scan.maxZ > bounds.minZ[index];
+}
+
 // The low four result bits correspond to four consecutive cell member slots.
 inline unsigned intersectCellBounds4(
         const eco::Aabb& source,
@@ -145,12 +151,7 @@ bool visitIntersecting(
         }
     }
     for (; index < members.ids.size(); ++index) {
-        if (scan.minX >= members.bounds.maxX[index]
-                || scan.maxX <= members.bounds.minX[index]
-                || scan.minY >= members.bounds.maxY[index]
-                || scan.maxY <= members.bounds.minY[index]
-                || scan.minZ >= members.bounds.maxZ[index]
-                || scan.maxZ <= members.bounds.minZ[index]) continue;
+        if (!intersectsCellBounds(scan, members.bounds, index)) continue;
         if (!consume(index)) return false;
     }
     return true;
@@ -184,17 +185,20 @@ int queryHardCollisionEntities(
         int resultSize = 0;
         const bool complete = visitOrderedSections(sectionRange, [&](std::int64_t x, std::int64_t y, std::int64_t z) {
             const eco::CellMembers* members = eco::sectionEntities(context, {x, y, z});
-            if (members == nullptr || (hardOnly != 0 && members->hardCount == 0)) return true;
-            return visitIntersecting(scan, *members, [&](std::size_t index) {
+            if (members == nullptr) return true;
+            const auto consume = [&](std::size_t index) {
                 const int candidateNativeId = members->ids[index];
-                if (candidateNativeId == excludedNativeId
-                        || (hardOnly != 0 && !context.metadata[candidateNativeId].hardCollidable)) {
-                    return true;
-                }
+                if (candidateNativeId == excludedNativeId) return true;
                 if (resultSize >= outputCapacity) return false;
                 outputNativeIds[resultSize++] = candidateNativeId;
                 return true;
-            });
+            };
+            if (hardOnly == 0) return visitIntersecting(scan, *members, consume);
+            for (const std::size_t index : members->hardSlots) {
+                if (!intersectsCellBounds(scan, members->bounds, index)) continue;
+                if (!consume(index)) return false;
+            }
+            return true;
         });
         return complete ? resultSize : -2;
     } catch (...) {
@@ -340,12 +344,7 @@ int queryPushableEntities(
             }
             for (; index < members->ids.size(); ++index) {
                 if ((!allQueryable && members->queryable[index] == 0)
-                        || source.minX >= members->bounds.maxX[index]
-                        || source.maxX <= members->bounds.minX[index]
-                        || source.minY >= members->bounds.maxY[index]
-                        || source.maxY <= members->bounds.minY[index]
-                        || source.minZ >= members->bounds.maxZ[index]
-                        || source.maxZ <= members->bounds.minZ[index]) continue;
+                        || !intersectsCellBounds(source, members->bounds, index)) continue;
                 const int candidateNativeId = members->ids[index];
                 if (candidateNativeId == excludedNativeId) continue;
                 status = consume(candidateNativeId);
