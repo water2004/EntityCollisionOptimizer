@@ -39,7 +39,7 @@ public final class VerticalIndexChecks {
                             IndexUpdateFixture.insert(context, id, boxes[id], 0, section(y), 0);
                             IndexUpdateFixture.metadata(context, id,
                                     true, false, true, true, -1, 0,
-                                    id, id % 2 == 0);
+                                    id % 2 == 0);
                         }
                         for (int source = 0; source < count; source++) {
                             AABB box = boxes[source];

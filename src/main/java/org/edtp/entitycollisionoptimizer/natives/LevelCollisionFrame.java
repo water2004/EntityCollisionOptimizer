@@ -287,7 +287,6 @@ final class LevelCollisionFrame {
         while (true) {
             invalidateStalePushEligibility();
             int sourceNativeId = ids.getNativeId(source);
-            if (sourceNativeId >= 0) bodies.bindBody(source);
             FFMBackend.QueryResult result = FFMBackend.queryPushable(
                     nativeContext,
                     sourceBounds,
@@ -342,7 +341,7 @@ final class LevelCollisionFrame {
             batch = new PushBatch(nativeContext, bodies, this::recycle);
         }
         try {
-            batch.prepare(result);
+            batch.prepare(result, ids, source);
             return batch;
         } catch (RuntimeException failure) {
             batch.close();
@@ -379,7 +378,7 @@ final class LevelCollisionFrame {
             FFMBackend.updateEntityState(nativeContext, nativeId, selectable, passenger,
                     VanillaMethodDetector.usesVanillaEntityPush(entity),
                     VanillaMethodDetector.allowsDeferredVelocityWrites(entity),
-                    bodies.bindBody(entity), hardCollidable);
+                    hardCollidable);
         }
         if ((requiredFields & METADATA_TEAM) != 0 && selectableValues[nativeId] != 0) {
             long teamRevision = CollisionCacheEpochs.teamRevision();

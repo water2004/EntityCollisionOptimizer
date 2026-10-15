@@ -10,8 +10,10 @@ import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.scores.PlayerTeam;
 import net.minecraft.world.scores.Team;
 import org.edtp.entitycollisionoptimizer.collision.CollisionCacheState;
+import org.edtp.entitycollisionoptimizer.collision.CollisionBodyAccess;
 
 import java.lang.reflect.Field;
+import java.lang.foreign.MemorySegment;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -20,12 +22,58 @@ public final class MetadataRefreshChecks {
     private MetadataRefreshChecks() { }
 
     public static void verify(GameTestHelper helper) {
+        lazyBodyBindings(helper);
         nativeFieldRequests(helper);
         spatialTeams(helper);
         nestedQuery(helper);
         retirementAndOutputGrowth(helper);
         restartedTeamEpoch(helper);
         predicateRevision(helper);
+    }
+
+    private static void lazyBodyBindings(GameTestHelper helper) {
+        try (var fixture = new Fixture(helper)) {
+            Probe source = fixture.add(0);
+            Probe target = fixture.add(0.1);
+            Probe remote = fixture.add(64);
+            target.pushable = false;
+            try (var batch = fixture.frame.collectPushable(source, null, Team.CollisionRule.ALWAYS, true)) {
+                helper.assertValueEqual(batch.size(), 0, "unpushable target omitted");
+            }
+            unbound(helper, source, target, remote);
+
+            target.pushable = true;
+            ((CollisionCacheState) (Object) target).entityCollisionOptimizer$invalidateCollisionCache();
+            fixture.frame.invalidateEntity(target);
+            PlayerTeam blocked = new PlayerTeam(helper.getLevel().getScoreboard(), "eco-body-filter-test");
+            blocked.setCollisionRule(Team.CollisionRule.NEVER);
+            target.team = blocked;
+            try (var batch = fixture.frame.collectPushable(source, null, Team.CollisionRule.ALWAYS, true)) {
+                helper.assertValueEqual(batch.size(), 0, "team-filtered target omitted");
+            }
+            unbound(helper, source, target, remote);
+
+            target.team = null;
+            fixture.expect(source, target);
+            unbound(helper, source, target, remote); // Query metadata alone must never bind bodies.
+            try (var batch = fixture.frame.collectPushable(source, null, Team.CollisionRule.ALWAYS, true)) {
+                helper.assertTrue(batch.size() == 1 && batch.target(0) == target, "resolved candidate bound");
+                helper.assertTrue(!((CollisionBodyAccess) (Object) source).eco$positionBody().equals(MemorySegment.NULL)
+                        && !((CollisionBodyAccess) (Object) target).eco$positionBody().equals(MemorySegment.NULL),
+                        "nonempty batch binds source and target");
+                fixture.frame.removeEntity(target);
+                Probe replacement = fixture.add(0.1);
+                helper.assertTrue(batch.target(0) == target, "body lease preserves target after native ID reuse");
+                unbound(helper, replacement, remote);
+            }
+        }
+    }
+
+    private static void unbound(GameTestHelper helper, Probe... entities) {
+        for (Probe entity : entities) {
+            helper.assertTrue(((CollisionBodyAccess) (Object) entity).eco$positionBody().equals(MemorySegment.NULL),
+                    "filtered or query-only entity must remain unbound");
+        }
     }
 
     private static void nativeFieldRequests(GameTestHelper helper) {
@@ -35,7 +83,7 @@ public final class MetadataRefreshChecks {
                 boolean remote = id == 2;
                 FFMBackend.insertEntity(context, id, remote ? near.move(160, 0, 0) : near,
                         remote ? 10 : 0, 0, 0, id == 1, id != 3);
-                FFMBackend.updateEntityState(context, id, id != 4, false, true, true, id, id == 1);
+                FFMBackend.updateEntityState(context, id, id != 4, false, true, true, id == 1);
                 FFMBackend.updateEntityTeam(context, id, -1, 0, 0);
             }
             // Registration publishes hard eligibility without invoking any Java predicate.
@@ -47,7 +95,7 @@ public final class MetadataRefreshChecks {
             FFMBackend.invalidateEntityPushEligibilityCache(context, 1);
             miss = FFMBackend.queryPushable(context, near, 0, -1, 0, true, 1, 5);
             helper.assertTrue(miss.requiredFields(0) == 3, "independent state and team request bits");
-            FFMBackend.updateEntityState(context, 1, true, false, true, true, 1, true);
+            FFMBackend.updateEntityState(context, 1, true, false, true, true, true);
             miss = FFMBackend.queryPushable(context, near, 0, -1, 0, true, 1, 5);
             helper.assertTrue(miss.requiredFields(0) == 2, "state refresh must not certify a team");
             FFMBackend.updateEntityTeam(context, 1, -1, 0, 1);

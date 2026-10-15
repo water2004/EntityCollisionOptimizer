@@ -12,6 +12,7 @@ import java.util.List;
 /** Source-boundary and output-layout contract, independent of the native query implementation. */
 public final class NativeQueryChecks {
     public static void verify(GameTestHelper helper) {
+        maskedSections(helper);
         int queries = 0;
         for (int count : new int[]{2, 8, 20}) {
             try (var context = FFMBackend.createContext()) {
@@ -32,17 +33,43 @@ public final class NativeQueryChecks {
                 Body source = bodies(count, 89)[0];
                 IndexUpdateFixture.update(context, 0, new AABB(0, 0, 0, 0, 0, 0), 0, 0, 0,
                         source.selectable, source.passenger, source.vanillaEntityPush, source.allowsDeferredVelocityWrites,
-                        source.team, source.rule, 900, false);
+                        source.team, source.rule, false);
                 var empty = FFMBackend.queryPushable(
                         context, new AABB(0, 0, 0, 0, 0, 0), 0, -1, 0, true, 0, count);
                 helper.assertTrue(empty.size() == 0 && empty.pushableCount() == 0
                         && empty.nonPassengerCount() == 0 && !empty.metadataRequired(), "empty source result");
-                empty.copyBodiesTo(new int[0], new int[0]);
+                empty.copyPushCandidatesTo(new int[0], new int[0]);
             }
         }
         EntityCollisionOptimizer.LOGGER.info(
                 "ECO_NATIVE_QUERY_CHECKS entities=2,8,20 queries={} section_faces=6 ulp_offsets=3 team_rules=16 output_growth=true result=passed",
                 queries);
+    }
+
+    private static void maskedSections(GameTestHelper helper) {
+        AABB box = new AABB(0, 0, 0, 1, 1, 1);
+        try (var context = FFMBackend.createContext()) {
+            for (int id = 0; id < 29; id++) {
+                IndexUpdateFixture.insert(context, id, box, 0, 0, 0);
+                IndexUpdateFixture.metadata(context, id, false, false, true, true, -1, 0, false);
+            }
+            helper.assertValueEqual(FFMBackend.queryPushable(context, box, -1, -1, 0, true, 0, 29).size(),
+                    0, "fully masked section");
+            // Keep the section queryable while its preceding 8-lane and 4-lane batches are empty.
+            for (int selected : new int[]{28, 24, 9, 0}) {
+                FFMBackend.invalidateEntityPushEligibilityCache(context, selected);
+                var miss = FFMBackend.queryPushable(context, box, -1, -1, 0, true, 0, 29);
+                helper.assertTrue(miss.metadataRequired() && miss.size() == 1 && miss.get(0) == selected
+                        && miss.requiredFields(0) == 1, "masked lane reactivated by invalidation " + selected);
+                IndexUpdateFixture.metadata(context, selected, true, false, true, true, -1, 0, false);
+                var ready = FFMBackend.queryPushable(context, box, -1, -1, 0, true, 0, 29);
+                helper.assertTrue(!ready.metadataRequired() && ready.size() == 1 && ready.get(0) == selected,
+                        "single visible lane " + selected);
+                IndexUpdateFixture.metadata(context, selected, false, false, true, true, -1, 0, false);
+            }
+            helper.assertValueEqual(FFMBackend.queryHard(context, box, -1, false, 29).size(),
+                    29, "push filtering must not hide entities from geometry queries");
+        }
     }
 
     private static Body[] bodies(int count, int phase) {
@@ -109,11 +136,11 @@ public final class NativeQueryChecks {
         helper.assertValueEqual(result.pushableCount(), expected.size(), "pushable count " + label);
         helper.assertValueEqual(result.nonPassengerCount(), (int) expected.stream().filter(id -> !bodies[id].passenger).count(),
                 "non-passenger count " + label);
-        int[] slots = new int[result.size()], flags = new int[result.size()];
-        result.copyBodiesTo(slots, flags);
-        for (int i = 0; i < slots.length; i++) {
+        int[] nativeIds = new int[result.size()], flags = new int[result.size()];
+        result.copyPushCandidatesTo(nativeIds, flags);
+        for (int i = 0; i < nativeIds.length; i++) {
             int id = expected.get(i);
-            helper.assertValueEqual(slots[i], 900 - id, "fixed-offset body slot " + label);
+            helper.assertValueEqual(nativeIds[i], id, "copied native ID " + label);
             boolean nativePush = sourceNative && source.allowsDeferredVelocityWrites
                     && bodies[id].vanillaEntityPush && bodies[id].allowsDeferredVelocityWrites;
             helper.assertValueEqual(flags[i], nativePush ? 1 : 0, "dispatch flag " + label);
@@ -132,14 +159,14 @@ public final class NativeQueryChecks {
             IndexUpdateFixture.insert(context, id, body.box, body.x, body.y, body.z);
             IndexUpdateFixture.metadata(context, id,
                     body.selectable, body.passenger, body.vanillaEntityPush, body.allowsDeferredVelocityWrites,
-                    body.team, body.rule, 900 - id, false);
+                    body.team, body.rule, false);
         }
     }
 
     private static void metadata(FFMBackend.Context context, int id, Body b) {
         IndexUpdateFixture.metadata(context, id, b.selectable, b.passenger,
                 b.vanillaEntityPush, b.allowsDeferredVelocityWrites,
-                b.team, b.rule, 900 - id, false);
+                b.team, b.rule, false);
     }
 
     private record Body(AABB box, int x, int y, int z, int team, int rule, boolean selectable,

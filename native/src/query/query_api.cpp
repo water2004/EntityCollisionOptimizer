@@ -271,7 +271,7 @@ int queryPushableEntities(
         const eco::LookupSections sectionRange(source);
         const eco::TeamFilter teamFilter(sourceTeamId, sourceCollisionRule);
         const bool nativePushSource = sourceNativePushEligible != 0;
-        int* const bodySlots = outputBuffer + 3 + outputCapacity;
+        int* const requiredFieldsOutput = outputBuffer + 3 + outputCapacity;
         context.metadataMisses.clear();
         int nonPassengerCount = 0;
         int actionableCount = 0;
@@ -291,7 +291,6 @@ int queryPushableEntities(
             if (!target.passenger) ++nonPassengerCount;
             if (actionableCount >= outputCapacity) return -2;
             outputBuffer[3 + actionableCount] = candidateNativeId;
-            bodySlots[actionableCount] = target.bodySlot;
             nativePushFlags[actionableCount] = nativePushSource
                     && target.vanillaEntityPush
                     && target.allowsDeferredVelocityWrites;
@@ -302,13 +301,14 @@ int queryPushableEntities(
         int status = 0;
         const bool complete = visitOrderedSections(sectionRange, [&](std::int64_t x, std::int64_t y, std::int64_t z) {
             const eco::CellMembers* members = eco::sectionEntities(context, {x, y, z});
-            if (members == nullptr) return true;
+            if (members == nullptr || members->queryableCount == 0) return true;
 
             const bool allQueryable = members->queryableCount == members->ids.size();
             std::size_t index = 0;
             for (; index + 8 <= members->ids.size(); index += 8) {
                 const unsigned activeMask = allQueryable
                         ? 0xffU : queryableMask8(members->queryable.data() + index);
+                if (activeMask == 0) continue;
                 unsigned hitMask = activeMask & intersectCellBounds8(source, members->bounds, index);
                 while (hitMask != 0) {
                     const unsigned lane = std::countr_zero(hitMask);
@@ -328,6 +328,7 @@ int queryPushableEntities(
                 for (unsigned lane = 0; lane < 4; ++lane) {
                     if ((allQueryable || members->queryable[index + lane] != 0)) activeMask |= 1U << lane;
                 }
+                if (activeMask == 0) continue;
                 unsigned hitMask = activeMask & intersectCellBounds4(source, members->bounds, index);
                 while (hitMask != 0) {
                     const unsigned lane = std::countr_zero(hitMask);
@@ -357,7 +358,7 @@ int queryPushableEntities(
         if (!context.metadataMisses.empty()) {
             for (std::size_t index = 0; index < context.metadataMisses.size(); ++index) {
                 outputBuffer[3 + index] = context.metadataMisses[index].nativeId;
-                bodySlots[index] = context.metadataMisses[index].requiredFields;
+                requiredFieldsOutput[index] = context.metadataMisses[index].requiredFields;
             }
             outputBuffer[0] = 1;
             outputBuffer[1] = 0;

@@ -160,7 +160,6 @@ public final class FFMBackend {
             boolean passenger,
             boolean vanillaEntityPush,
             boolean allowsDeferredVelocityWrites,
-            int bodySlot,
             boolean hardCollidable
     ) {
         synchronized (nativeContext) {
@@ -173,7 +172,6 @@ public final class FFMBackend {
                         passenger ? 1 : 0,
                         vanillaEntityPush ? 1 : 0,
                         allowsDeferredVelocityWrites ? 1 : 0,
-                        bodySlot,
                         hardCollidable ? 1 : 0
                 );
                 checkStatus("update native entity", status);
@@ -425,7 +423,7 @@ public final class FFMBackend {
                 }
                 QueryResult result = nativeContext.queryResult;
                 result.offset = 3;
-                result.bodyOffset = 3 + nativeContext.outputCapacity;
+                result.requiredFieldsOffset = 3 + nativeContext.outputCapacity;
                 result.size = resultSize;
                 result.metadataRequired = nativeContext.outputBuffer.get(JAVA_INT, 0) != 0;
                 result.pushableCount = nativeContext.outputBuffer.get(JAVA_INT, Integer.BYTES);
@@ -557,7 +555,7 @@ public final class FFMBackend {
         );
         FunctionDescriptor updateEntityDescriptor = FunctionDescriptor.of(
                 JAVA_INT, ADDRESS, JAVA_INT, JAVA_INT, JAVA_INT,
-                JAVA_INT, JAVA_INT, JAVA_INT, JAVA_INT);
+                JAVA_INT, JAVA_INT, JAVA_INT);
         updateEntityState = linker.downcallHandle(
                 library.find("updateCollisionEntityState")
                         .orElseThrow(() -> missingSymbol("updateCollisionEntityState")), updateEntityDescriptor);
@@ -790,7 +788,7 @@ public final class FFMBackend {
         private MemorySegment output = MemorySegment.NULL;
         private MemorySegment nativePushFlags = MemorySegment.NULL;
         private int offset;
-        private int bodyOffset;
+        private int requiredFieldsOffset;
         private int size;
         private boolean metadataRequired;
         private int pushableCount;
@@ -823,14 +821,13 @@ public final class FFMBackend {
         }
 
         int requiredFields(int index) {
-            return output.get(JAVA_INT, (long) (bodyOffset + index) * Integer.BYTES);
+            return output.get(JAVA_INT, (long) (requiredFieldsOffset + index) * Integer.BYTES);
         }
 
-        void copyBodiesTo(int[] bodySlots, int[] nativePushFlags) {
+        void copyPushCandidatesTo(int[] nativeIds, int[] nativePushFlags) {
             if (metadataRequired || offset != 3) throw new IllegalStateException("No resolved push batch");
             if (size == 0) return;
-            // Fixed-capacity regions let native fill IDs/slots/flags together, without a second traversal.
-            MemorySegment.copy(output, JAVA_INT, (long) bodyOffset * Integer.BYTES, bodySlots, 0, size);
+            MemorySegment.copy(output, JAVA_INT, (long) offset * Integer.BYTES, nativeIds, 0, size);
             MemorySegment.copy(this.nativePushFlags, JAVA_INT, 0, nativePushFlags, 0, size);
         }
     }
