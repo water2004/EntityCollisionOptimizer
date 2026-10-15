@@ -1,0 +1,15 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "org.edtp.entitycollisionoptimizer.adaptors.lithium.mixin",
+  "plugin": "org.edtp.entitycollisionoptimizer.adaptors.lithium.LithiumMixinPlugin",
+  "compatibilityLevel": "JAVA_25",
+  "mixins": [
+    "PushablePredicateMixin",
+    "EntitySelectorMixin",
+    "WorldHelperMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

@@ -56,6 +56,13 @@ public final class MetadataRefreshChecks {
             target.team = null;
             fixture.expect(source, target);
             unbound(helper, source, target, remote); // Query metadata alone must never bind bodies.
+            List<Entity> queryOnly = fixture.frame.getPushableEntities(
+                    source, source.getBoundingBox(), null, Team.CollisionRule.ALWAYS);
+            helper.assertValueEqual(queryOnly, List.of(target), "query-only candidates match the push query");
+            List<Entity> remoteOnly = fixture.frame.getPushableEntities(
+                    null, remote.getBoundingBox(), null, Team.CollisionRule.ALWAYS);
+            helper.assertValueEqual(remoteOnly, List.of(remote), "explicit query bounds and null exclusion");
+            unbound(helper, source, target, remote);
             try (var batch = fixture.frame.collectPushable(source, null, Team.CollisionRule.ALWAYS, true)) {
                 helper.assertTrue(batch.size() == 1 && batch.target(0) == target, "resolved candidate bound");
                 helper.assertTrue(!((CollisionBodyAccess) (Object) source).eco$positionBody().equals(MemorySegment.NULL)
@@ -64,6 +71,8 @@ public final class MetadataRefreshChecks {
                 fixture.frame.removeEntity(target);
                 Probe replacement = fixture.add(0.1);
                 helper.assertTrue(batch.target(0) == target, "body lease preserves target after native ID reuse");
+                fixture.frame.getPushableEntities(source, source.getBoundingBox(), null, Team.CollisionRule.ALWAYS);
+                helper.assertValueEqual(queryOnly, List.of(target), "query list keeps references across removal, ID reuse and nested queries");
                 unbound(helper, replacement, remote);
             }
         }
