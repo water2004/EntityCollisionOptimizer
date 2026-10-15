@@ -142,6 +142,8 @@ Benchmarks are opt-in through `-Pbenchmark`; a normal build does not start a ben
 
 Building a complete release JAR with all native targets currently requires Windows and the pinned cross-compilation toolchain. Where that toolchain is unavailable, `build-local-windows.ps1` builds the Windows library with a local MSYS2/MinGW g++ (`native/build-windows-mingw.ps1`) and packages a Windows-only JAR through `-PnativeWindowsOnly`. On Linux or macOS, use `./gradlew compileJava` to check the Java sources. Build artifacts are written to `build/libs`; version and tag conventions are documented in [RELEASE.md](RELEASE.md). The changes made for the 1.21.11 target are recorded in [PORTING-1.21.11.md](PORTING-1.21.11.md).
 
+Development and contribution conventions live in the [contribution guide](https://github.com/water2004/EntityCollisionOptimizer/blob/main/CONTRIBUTING.md), which covers behaviour guarantees, the profiling workflow and commit conventions. The `1.21.11` branch is maintained by [@Byx070531](https://github.com/Byx070531).
+
 ## License
 
 Entity Collision Optimizer is available under the [MIT License](LICENSE).

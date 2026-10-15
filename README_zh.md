@@ -130,6 +130,8 @@ Minecraft 1.21.11 运行在 Java 21 上，而 native 后端所使用的 FFM API 
 
 构建包含全部原生平台的完整发布 JAR 目前需要 Windows 和固定的交叉编译工具链。在没有该工具链的机器上，可以用 `build-local-windows.ps1` 通过本地 MSYS2/MinGW g++ 编译 Windows 原生库（`native/build-windows-mingw.ps1`），并用 `-PnativeWindowsOnly` 打包仅含 Windows 原生库的 JAR；Linux 和 macOS 可以使用 `./gradlew compileJava` 检查 Java 源码。构建产物位于 `build/libs`，版本号和 tag 约定见 [RELEASE.md](RELEASE.md)。本次 1.21.11 适配的全部改动记录在 [PORTING-1.21.11.md](PORTING-1.21.11.md)。
 
+开发与贡献规范见[贡献指南](https://github.com/water2004/EntityCollisionOptimizer/blob/main/CONTRIBUTING_zh.md)；其中包含行为约定、性能探测流程和提交规范。`1.21.11` 分支由 [@Byx070531](https://github.com/Byx070531) 维护。
+
 ## 许可证
 
 实体碰撞优化使用 [MIT License](LICENSE)。
