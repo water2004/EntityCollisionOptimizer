@@ -16,7 +16,7 @@ import java.util.Locale;
 public final class CollisionBenchmarkRunner {
     static final int DURATION_TICKS = 200;
     // GameTest clocks include time spent waiting for the other serial scenarios.
-    static final int SUITE_MAX_TICKS = 4000;
+    static final int SUITE_MAX_TICKS = 6000;
     private static BenchmarkRun activeRun;
     private static final ArrayDeque<BenchmarkRun> pending = new ArrayDeque<>();
 
