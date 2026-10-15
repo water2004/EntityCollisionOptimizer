@@ -54,7 +54,7 @@ public final class NativeOrderChecks {
                 }
                 IndexUpdateFixture.update(context, id, body.box, body.x, body.y, body.z,
                         body.selectable, body.passenger, true, true,
-                        -1, 0, 100 + id, body.hard);
+                        -1, 0, body.hard);
                 // Repeated queries with different sources share the same ordered cell state.
                 for (int repeat = 0; repeat < 3; repeat++) for (int source = 0; source < count; source++) {
                     compare(helper, context, bodies, source, "step=" + step + " repeat=" + repeat);
@@ -95,10 +95,10 @@ public final class NativeOrderChecks {
         helper.assertValueEqual(result.pushableCount(), expected.size(), "full candidate count " + label);
         helper.assertValueEqual(result.nonPassengerCount(), (int) expected.stream().filter(id -> !bodies[id].passenger).count(),
                 "passenger count " + label);
-        int[] slots = new int[result.size()], flags = new int[result.size()];
-        result.copyBodiesTo(slots, flags);
-        for (int i = 0; i < slots.length; i++) {
-            helper.assertValueEqual(slots[i], 100 + expected.get(i), "body slot order " + label);
+        int[] nativeIds = new int[result.size()], flags = new int[result.size()];
+        result.copyPushCandidatesTo(nativeIds, flags);
+        for (int i = 0; i < nativeIds.length; i++) {
+            helper.assertValueEqual(nativeIds[i], expected.get(i), "native ID order " + label);
             helper.assertValueEqual(flags[i], 1, "native dispatch order " + label);
         }
         for (boolean hardOnly : new boolean[]{false, true}) {
@@ -135,7 +135,7 @@ public final class NativeOrderChecks {
 
     private static void metadata(FFMBackend.Context context, int id, Body body) {
         IndexUpdateFixture.metadata(context, id, body.selectable, body.passenger,
-                true, true, -1, 0, 100 + id, body.hard);
+                true, true, -1, 0, body.hard);
     }
 
     private static void insert(FFMBackend.Context context, int id, Body body) {
