@@ -225,6 +225,8 @@ public final class CollisionContractGameTests {
 
     @GameTest(maxTicks = 200, padding = 48)
     public void impulseObservationParity(GameTestHelper helper) {
+        PushCapabilitiesChecks.verify(helper);
+        org.edtp.entitycollisionoptimizer.natives.PushRootChecks.verify(helper);
         CollisionImpulseParity.verify(helper);
         NativeImpulseParity.verify(helper);
         PushBatchParity.verify(helper);
