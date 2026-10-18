@@ -26,7 +26,8 @@ public final class EntityMovementCollision {
                 try (NativeShapeBatch support = new NativeShapeBatch()) {
                     if (OrderedBlockColliders.collectSupport(entity, movement.sourceBounds(), scan, requested.y, support)) {
                         movement.solve(support, false);
-                        if (movement.displacement().y == 0.0) return movement.displacement();
+                        Vec3 clipped = movement.displacement();
+                        if (clipped.y == 0.0) return clipped;
                     }
                 }
             }

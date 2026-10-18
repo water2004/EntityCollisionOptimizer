@@ -46,7 +46,6 @@ public final class FFMBackend {
     private static MethodHandle queryPushable;
     private static MethodHandle executeRun;
     private static MethodHandle movement;
-    private static MethodHandle prepareMovement;
     private static final Set<Context> CONTEXTS = ConcurrentHashMap.newKeySet();
     private static volatile boolean initialized;
 
@@ -67,18 +66,6 @@ public final class FFMBackend {
             checkStatus("solve native movement", status);
         } catch (Throwable failure) {
             throw callFailure("FFM movement call failed", failure);
-        }
-    }
-
-    public static void prepareMovement(MemorySegment movementPacket) {
-        ensureInitialized();
-        try {
-            checkStatus(
-                    "prepare native movement",
-                    (int) prepareMovement.invokeExact(movementPacket)
-            );
-        } catch (Throwable failure) {
-            throw callFailure("FFM movement preparation failed", failure);
         }
     }
 
@@ -540,9 +527,6 @@ public final class FFMBackend {
         movement = linker.downcallHandle(
                 library.find("solveMovement").orElseThrow(() -> missingSymbol("solveMovement")),
                 FunctionDescriptor.of(JAVA_INT, ADDRESS, ADDRESS, JAVA_INT, JAVA_INT));
-        prepareMovement = linker.downcallHandle(
-                library.find("prepareMovement").orElseThrow(() -> missingSymbol("prepareMovement")),
-                FunctionDescriptor.of(JAVA_INT, ADDRESS), Linker.Option.critical(false));
     }
 
     private static void checkStatus(String operation, int status) {
@@ -611,7 +595,6 @@ public final class FFMBackend {
         queryPushable = null;
         executeRun = null;
         movement = null;
-        prepareMovement = null;
     }
 
     public static final class Context implements AutoCloseable {
