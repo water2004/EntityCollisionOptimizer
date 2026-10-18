@@ -21,7 +21,10 @@ public final class MovementBoundsChecks {
                     new Vec3(-0.0, 0, -0.0), new Vec3(1e-8, -1e-7, 0)}) {
                 AABB captured = entity.getBoundingBox();
                 try (var movement = new NativeMovement(entity, request, captured, true)) {
-                    helper.assertTrue(movement.stepScan().equals(captured.expandTowards(request)), "native swept bounds");
+                    AABB scan = movement.stepScan();
+                    helper.assertTrue(scan.equals(captured.expandTowards(request)), "movement swept bounds");
+                    helper.assertTrue(movement.sourceBounds() == captured && movement.stepScan() == scan,
+                            "Java bounds are reused before solving");
                     // Movement keeps its captured geometry despite callbacks changing the entity.
                     entity.setBoundingBox(captured.move(4, 0, 0));
                     for (int i = 0; i < 300; i++) table.bindBody(new Zombie(helper.getLevel()));
