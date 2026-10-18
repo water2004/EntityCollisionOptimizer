@@ -1,6 +1,7 @@
 package org.edtp.entitycollisionoptimizer.natives;
 
 import net.minecraft.world.phys.shapes.VoxelShape;
+import net.minecraft.world.phys.AABB;
 import org.edtp.entitycollisionoptimizer.collision.blocks.NativeVoxelAccess;
 import org.edtp.entitycollisionoptimizer.collision.blocks.NativeVoxelGeometry;
 
@@ -31,7 +32,7 @@ public final class NativeShapeBatch implements AutoCloseable {
 
     public void add(VoxelShape shape) { add(shape, 0, 0, 0, false); }
     public void addTranslated(VoxelShape shape, double x, double y, double z) { add(shape, x, y, z, true); }
-    public void addCube(MemorySegment bounds) {
+    public void addCube(AABB bounds) {
         if (closed) throw new IllegalStateException("Closed shape batch");
         retain(NativeVoxelGeometry.createCube(bounds), false, 0, 0, 0);
     }

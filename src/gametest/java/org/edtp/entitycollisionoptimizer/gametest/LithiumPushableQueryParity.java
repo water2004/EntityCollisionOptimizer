@@ -14,12 +14,11 @@ import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.scores.Team;
 import org.edtp.entitycollisionoptimizer.adaptors.lithium.PushableQuery;
 import org.edtp.entitycollisionoptimizer.EntityCollisionOptimizer;
-import org.edtp.entitycollisionoptimizer.collision.CollisionBodyAccess;
+import org.edtp.entitycollisionoptimizer.gametest.mixin.EntityBodyTestAccess;
 import org.edtp.entitycollisionoptimizer.mixin.PersistentEntitySectionManagerAccessor;
 import org.edtp.entitycollisionoptimizer.mixin.ServerLevelAccessor;
 import org.edtp.entitycollisionoptimizer.natives.NativePushQueryObservation;
 
-import java.lang.foreign.MemorySegment;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -107,7 +106,7 @@ final class LithiumPushableQueryParity {
 
             // List collection must not create collision bodies, including for boats/minecarts.
             for (Entity fixture : fixtures) {
-                helper.assertTrue(((CollisionBodyAccess) fixture).eco$positionBody().equals(MemorySegment.NULL),
+                helper.assertTrue(((EntityBodyTestAccess) fixture).eco$bodyTable() == null,
                         "query-only path must leave bodies unbound");
             }
             EntityCollisionOptimizer.LOGGER.info(

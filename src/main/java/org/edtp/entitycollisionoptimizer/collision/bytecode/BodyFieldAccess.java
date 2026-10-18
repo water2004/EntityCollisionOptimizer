@@ -18,29 +18,24 @@ public final class BodyFieldAccess {
     public static void rewrite(ClassNode node) {
         boolean entityClass = node.name.equals(ENTITY);
         for (var method : node.methods) {
-            // Only these storage primitives may physically touch the unbound field.
+            // Do not rewrite the storage primitives themselves.
             if (entityClass && (method.name.equals("eco$readVelocity") || method.name.equals("eco$writeVelocity")
                     || method.name.equals("eco$readNeedsSync") || method.name.equals("eco$writeNeedsSync")
                     || method.name.equals("eco$writeNoPhysics") || method.name.equals("eco$writePosition")
-                    || method.name.equals("eco$readPosition")
-                    || method.name.equals("eco$readBounds") || method.name.equals("eco$writeBounds")
                     || method.name.equals("eco$detachBody"))) continue;
             for (var instruction : method.instructions.toArray()) {
                 if (!(instruction instanceof FieldInsnNode field)) continue;
                 boolean read = field.getOpcode() == Opcodes.GETFIELD;
                 boolean velocity = field.owner.equals(ENTITY) && field.name.equals("deltaMovement") && field.desc.equals(VECTOR);
-                boolean position = field.owner.equals(ENTITY) && field.name.equals("position") && field.desc.equals(VECTOR);
-                boolean bounds = field.owner.equals(ENTITY) && field.name.equals("bb")
-                        && field.desc.equals("Lnet/minecraft/world/phys/AABB;");
+                boolean position = !read && field.owner.equals(ENTITY) && field.name.equals("position") && field.desc.equals(VECTOR);
                 boolean sync = field.name.equals("needsSync") && field.desc.equals("Z");
                 boolean physics = !read && field.name.equals("noPhysics") && field.desc.equals("Z");
-                if (!velocity && !position && !bounds && !((sync || physics) && isEntity(field.owner, node))) continue;
+                if (!velocity && !position && !((sync || physics) && isEntity(field.owner, node))) continue;
                 if (!read && field.getOpcode() != Opcodes.PUTFIELD) {
                     throw new IllegalStateException("Unexpected collision body field opcode");
                 }
                 String name = velocity ? (read ? "eco$readVelocity" : "eco$writeVelocity")
-                        : position ? (read ? "eco$readPosition" : "eco$writePosition")
-                        : bounds ? (read ? "eco$readBounds" : "eco$writeBounds")
+                        : position ? "eco$writePosition"
                         : sync ? (read ? "eco$readNeedsSync" : "eco$writeNeedsSync") : "eco$writeNoPhysics";
                 method.instructions.set(field, new MethodInsnNode(Opcodes.INVOKEINTERFACE, ACCESS,
                         name, read ? "()" + field.desc : "(" + field.desc + ")V", true));

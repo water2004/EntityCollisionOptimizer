@@ -180,7 +180,7 @@ final class LevelCollisionFrame {
             if (target == null) {
                 throw new IllegalStateException("Native hard collision cube requested unknown entity " + nativeId);
             }
-            shapes.addCube(bodies.movementRow(bodies.bindBody(target)));
+            shapes.addCube(target.getBoundingBox());
         }
     }
 

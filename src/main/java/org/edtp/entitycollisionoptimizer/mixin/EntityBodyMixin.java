@@ -8,11 +8,10 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 
-/** Position, velocity and needsSync use vanilla fields only while the entity is unbound. */
+/** Native pushing owns bound velocity and sync state; position remains a vanilla field. */
 @Mixin(Entity.class)
 public abstract class EntityBodyMixin implements CollisionBodyAccess {
     @Shadow private Vec3 position;
-    @Shadow private net.minecraft.world.phys.AABB bb;
     @Shadow private Vec3 deltaMovement;
     @Shadow public boolean needsSync;
     @Shadow public boolean noPhysics;
@@ -43,31 +42,10 @@ public abstract class EntityBodyMixin implements CollisionBodyAccess {
         eco$invalidatePushState();
     }
 
-    @Override public final Vec3 eco$readPosition() {
-        return eco$bodyTable == null ? position : eco$bodyTable.position(eco$bodySlot);
-    }
-
     @Override public final void eco$writePosition(Vec3 value) {
         // Publish at the original field store, before section/world callbacks, never during a query.
-        if (eco$bodyTable == null) position = value;
-        else eco$bodyTable.position(eco$bodySlot, value);
-    }
-
-    @Override public final java.lang.foreign.MemorySegment eco$positionBody() {
-        return eco$bodyTable == null ? java.lang.foreign.MemorySegment.NULL : eco$bodyTable.row(eco$bodySlot);
-    }
-
-    @Override public final net.minecraft.world.phys.AABB eco$readBounds() {
-        return eco$bodyTable == null ? bb : eco$bodyTable.bounds(eco$bodySlot);
-    }
-
-    @Override public final void eco$writeBounds(net.minecraft.world.phys.AABB value) {
-        if (eco$bodyTable == null) bb = value;
-        else eco$bodyTable.bounds(eco$bodySlot, value);
-    }
-
-    @Override public final java.lang.foreign.MemorySegment eco$movementBody() {
-        return eco$bodyTable == null ? java.lang.foreign.MemorySegment.NULL : eco$bodyTable.movementRow(eco$bodySlot);
+        position = value;
+        if (eco$bodyTable != null) eco$bodyTable.position(eco$bodySlot, value);
     }
 
     @Override public final void eco$invalidatePushState() {
@@ -79,8 +57,7 @@ public abstract class EntityBodyMixin implements CollisionBodyAccess {
             // Also handles moving an entity between tables: read the former owner before rebinding.
             table.velocity(slot, eco$readVelocity());
             table.needsSync(slot, eco$readNeedsSync());
-            table.position(slot, eco$readPosition());
-            table.bounds(slot, eco$readBounds());
+            table.position(slot, position);
             if (eco$bodyTable != null) eco$bodyTable.unbind(eco$bodySlot);
             eco$bodyTable = table;
             eco$bodySlot = slot;
@@ -92,8 +69,6 @@ public abstract class EntityBodyMixin implements CollisionBodyAccess {
         if (eco$bodyTable == table && eco$bodySlot == slot) {
             deltaMovement = table.velocity(slot);
             needsSync = table.needsSync(slot);
-            position = table.position(slot);
-            bb = table.bounds(slot);
             table.unbind(slot);
             eco$bodyTable = null;
         }

@@ -93,7 +93,7 @@ public final class NativeFailureChecks {
     }
 
     private static void solve() {
-        FFMBackend.solveMovement(MemorySegment.NULL, MemorySegment.NULL, MemorySegment.NULL, 0, 0);
+        FFMBackend.solveMovement(MemorySegment.NULL, MemorySegment.NULL, 0, 0);
     }
 
     private static Error expectError(GameTestHelper helper, Runnable action) {

@@ -10,10 +10,9 @@ import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.scores.PlayerTeam;
 import net.minecraft.world.scores.Team;
 import org.edtp.entitycollisionoptimizer.collision.CollisionCacheState;
-import org.edtp.entitycollisionoptimizer.collision.CollisionBodyAccess;
+import org.edtp.entitycollisionoptimizer.gametest.mixin.EntityBodyTestAccess;
 
 import java.lang.reflect.Field;
-import java.lang.foreign.MemorySegment;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -41,6 +40,17 @@ public final class MetadataRefreshChecks {
                 helper.assertValueEqual(batch.size(), 0, "unpushable target omitted");
             }
             unbound(helper, source, target, remote);
+            try (var shapes = new NativeShapeBatch();
+                 var movement = new NativeMovement(null, new Vec3(1, 0, 0),
+                         target.getBoundingBox().move(-1, 0, 0), false)) {
+                fixture.frame.addHardCubes(new int[]{fixture.ids.getNativeId(target)}, shapes);
+                movement.solve(shapes, false);
+                Vec3 expected = org.edtp.entitycollisionoptimizer.gametest.mixin.EntityCollisionInvoker.eco$collideWithShapes(
+                        new Vec3(1, 0, 0), target.getBoundingBox().move(-1, 0, 0),
+                        List.of(net.minecraft.world.phys.shapes.Shapes.create(target.getBoundingBox())));
+                helper.assertValueEqual(movement.displacement(), expected, "hard cube uses current Java bounds");
+            }
+            unbound(helper, source, target, remote); // Hard geometry needs no pushing body either.
 
             target.pushable = true;
             ((CollisionCacheState) (Object) target).entityCollisionOptimizer$invalidateCollisionCache();
@@ -65,8 +75,8 @@ public final class MetadataRefreshChecks {
             unbound(helper, source, target, remote);
             try (var batch = fixture.frame.collectPushable(source, null, Team.CollisionRule.ALWAYS, true)) {
                 helper.assertTrue(batch.size() == 1 && batch.target(0) == target, "resolved candidate bound");
-                helper.assertTrue(!((CollisionBodyAccess) (Object) source).eco$positionBody().equals(MemorySegment.NULL)
-                        && !((CollisionBodyAccess) (Object) target).eco$positionBody().equals(MemorySegment.NULL),
+                helper.assertTrue(((EntityBodyTestAccess) (Object) source).eco$bodyTable() != null
+                        && ((EntityBodyTestAccess) (Object) target).eco$bodyTable() != null,
                         "nonempty batch binds source and target");
                 fixture.frame.removeEntity(target);
                 Probe replacement = fixture.add(0.1);
@@ -80,7 +90,7 @@ public final class MetadataRefreshChecks {
 
     private static void unbound(GameTestHelper helper, Probe... entities) {
         for (Probe entity : entities) {
-            helper.assertTrue(((CollisionBodyAccess) (Object) entity).eco$positionBody().equals(MemorySegment.NULL),
+            helper.assertTrue(((EntityBodyTestAccess) (Object) entity).eco$bodyTable() == null,
                     "filtered or query-only entity must remain unbound");
         }
     }
