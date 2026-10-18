@@ -3,15 +3,9 @@
         lastNativeException;
         insertCollisionEntity;
         removeCollisionEntity;
-        updateCollisionEntitySection;
-        scanCollisionBlocks;
         createCollisionContext;
         destroyCollisionContext;
-        updateCollisionEntityState;
-        updateCollisionEntityTeam;
-        updateCollisionEntityBounds;
-        invalidateEntityPushEligibilityCache;
-        invalidatePushEligibilityCacheFields;
+        flushCollisionUpdates;
         queryHardCollisionEntities;
         queryEntitiesInBox;
         queryPushableEntities;

@@ -20,22 +20,6 @@ public abstract class PalettedContainerMixin<T> implements CollisionBlockMask {
     @Shadow public abstract T get(int x, int y, int z);
     @Unique private CollisionRows entityCollisionOptimizer$collisionRows;
 
-    @Override
-    public int entityCollisionOptimizer$collisionRow(int y, int z, int edgesYZ, int edgesX) {
-        int row = (y << 4) | z;
-        CollisionRows rows = entityCollisionOptimizer$collisionRows;
-        if (rows == null || !rows.known(row)) {
-            rows = entityCollisionOptimizer$decodeRow(y, z, row);
-        }
-        int offset = row * 3 + edgesYZ;
-        int selected = rows.get(offset);
-        if (edgesX != 0) {
-            int boundary = edgesYZ == 2 ? 0 : rows.get(offset + 1);
-            selected = (selected & ~edgesX) | (boundary & edgesX);
-        }
-        return selected;
-    }
-
     @Unique
     private CollisionRows entityCollisionOptimizer$decodeRow(int y, int z, int row) {
         CollisionRows rows = entityCollisionOptimizer$collisionRows;
@@ -51,10 +35,10 @@ public abstract class PalettedContainerMixin<T> implements CollisionBlockMask {
     }
 
     @Override
-    public java.lang.foreign.MemorySegment entityCollisionOptimizer$collisionRows(int minY, int maxY, int minZ, int maxZ) {
+    public CollisionRows entityCollisionOptimizer$collisionRows(int minY, int maxY, int minZ, int maxZ) {
         if (entityCollisionOptimizer$collisionRows != null
                 && entityCollisionOptimizer$collisionRows.knownRectangle(minY, maxY, minZ, maxZ)) {
-            return entityCollisionOptimizer$collisionRows.memory();
+            return entityCollisionOptimizer$collisionRows;
         }
         for (int y = minY; y <= maxY; y++) for (int z = minZ; z <= maxZ; z++) {
             int row = (y << 4) | z;
@@ -62,7 +46,7 @@ public abstract class PalettedContainerMixin<T> implements CollisionBlockMask {
                 entityCollisionOptimizer$decodeRow(y, z, row);
             }
         }
-        return entityCollisionOptimizer$collisionRows.memory();
+        return entityCollisionOptimizer$collisionRows;
     }
 
     @Inject(method = "set(ILjava/lang/Object;)V", at = @At("RETURN"))

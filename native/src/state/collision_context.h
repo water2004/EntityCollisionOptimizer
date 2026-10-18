@@ -1,6 +1,7 @@
 #pragma once
 
 #include "state/entity_metadata.h"
+#include "state/index_updates.h"
 #include "spatial/cell_map.h"
 
 #include <cstddef>
@@ -18,6 +19,7 @@ struct CellSlot {
 };
 
 struct CollisionContext {
+    IndexUpdates* updates;
     std::vector<EntityMetadata> metadata;
     CellMap sections;
     std::deque<CellMembers> sectionMembersPool;

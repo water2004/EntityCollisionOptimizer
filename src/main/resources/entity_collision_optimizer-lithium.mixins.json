@@ -5,6 +5,7 @@
   "plugin": "org.edtp.entitycollisionoptimizer.adaptors.lithium.LithiumMixinPlugin",
   "compatibilityLevel": "JAVA_25",
   "mixins": [
+    "BlockIntersectionMixin",
     "PushablePredicateMixin",
     "EntitySelectorMixin",
     "WorldHelperMixin"

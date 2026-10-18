@@ -3,9 +3,11 @@
 
 #include "state/collision_context.h"
 
-void* createCollisionContext() {
+void* createCollisionContext(void* indexUpdatesPointer) {
     try {
-        return new eco::CollisionContext();
+        auto* context = new eco::CollisionContext();
+        context->updates = static_cast<eco::IndexUpdates*>(indexUpdatesPointer);
+        return context;
     } catch (...) {
         eco::recordNativeException();
         return nullptr;
