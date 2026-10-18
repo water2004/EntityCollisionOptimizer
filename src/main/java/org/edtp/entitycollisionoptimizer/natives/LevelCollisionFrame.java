@@ -278,7 +278,7 @@ final class LevelCollisionFrame {
             boolean sourceUsesVanillaDoPush
     ) {
         return queryPushable(source, source.getBoundingBox(), sourceTeam, sourceRule,
-                sourceUsesVanillaDoPush && VanillaMethodDetector.allowsDeferredVelocityWrites(source));
+                sourceUsesVanillaDoPush && VanillaMethodDetector.pushCapabilities(source).deferredVelocityWrites());
     }
 
     private FFMBackend.QueryResult queryPushable(Entity excluded, AABB queryBounds,
@@ -389,9 +389,10 @@ final class LevelCollisionFrame {
             selectableValues[nativeId] = (byte) (selectable ? 1 : 0);
             selectableEntityRevisions[nativeId] = entityRevision;
             selectableBlockRevisions[nativeId] = blockRevision;
+            var pushCapabilities = VanillaMethodDetector.pushCapabilities(entity);
             FFMBackend.updateEntityState(nativeContext, nativeId, selectable, passenger,
-                    VanillaMethodDetector.usesVanillaEntityPush(entity),
-                    VanillaMethodDetector.allowsDeferredVelocityWrites(entity),
+                    pushCapabilities.vanillaEntityPush(),
+                    pushCapabilities.deferredVelocityWrites(),
                     hardCollidable);
         }
         if ((requiredFields & METADATA_TEAM) != 0 && selectableValues[nativeId] != 0) {
