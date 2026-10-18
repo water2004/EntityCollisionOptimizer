@@ -1,20 +1,13 @@
 package org.edtp.entitycollisionoptimizer.mixin;
 
-import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
-import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
-import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
-import com.llamalad7.mixinextras.sugar.Share;
-import com.llamalad7.mixinextras.sugar.ref.LocalRef;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.MoverType;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import org.edtp.entitycollisionoptimizer.collision.blocks.EntityMovementCollision;
-import org.edtp.entitycollisionoptimizer.natives.NativeMovement;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -24,37 +17,6 @@ import java.util.List;
 
 @Mixin(value = Entity.class, priority = 1100)
 public abstract class EntityMovementMixin {
-    @WrapMethod(method = "move")
-    private void eco$movementLifetime(MoverType type, Vec3 requested, Operation<Void> original,
-                                       @Share("eco$movement") LocalRef<NativeMovement> transaction) {
-        try {
-            original.call(type, requested);
-        } finally {
-            NativeMovement movement = transaction.get();
-            if (movement != null) movement.close();
-        }
-    }
-
-    @WrapOperation(method = "move", at = @At(value = "INVOKE", target =
-            "Lnet/minecraft/world/entity/Entity;collide(Lnet/minecraft/world/phys/Vec3;)Lnet/minecraft/world/phys/Vec3;"))
-    private Vec3 eco$solveMovement(Entity entity, Vec3 requested, Operation<Vec3> original,
-                                   @Share("eco$movement") LocalRef<NativeMovement> transaction) {
-        if (!(entity.level() instanceof ServerLevel)) {
-            return original.call(entity, requested);
-        }
-        var result = EntityMovementCollision.solve(entity, requested);
-        transaction.set(result);
-        return result.displacement();
-    }
-
-    @WrapOperation(method = "move", at = @At(value = "INVOKE", ordinal = 1, target =
-            "Lnet/minecraft/world/phys/Vec3;add(Lnet/minecraft/world/phys/Vec3;)Lnet/minecraft/world/phys/Vec3;"))
-    private Vec3 eco$movementDestination(Vec3 from, Vec3 displacement, Operation<Vec3> original,
-                                         @Share("eco$movement") LocalRef<NativeMovement> transaction) {
-        var result = transaction.get();
-        return result == null ? original.call(from, displacement) : result.destination(from);
-    }
-
     @Inject(method = "collide", at = @At("HEAD"), cancellable = true)
     private void eco$ownMovement(Vec3 requested, CallbackInfoReturnable<Vec3> cir) {
         Entity entity = (Entity) (Object) this;

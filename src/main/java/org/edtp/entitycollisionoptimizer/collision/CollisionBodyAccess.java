@@ -10,12 +10,7 @@ public interface CollisionBodyAccess {
     boolean eco$readNeedsSync();
     void eco$writeNeedsSync(boolean value);
     void eco$writeNoPhysics(boolean value);
-    Vec3 eco$readPosition();
     void eco$writePosition(Vec3 value);
-    java.lang.foreign.MemorySegment eco$positionBody();
-    net.minecraft.world.phys.AABB eco$readBounds();
-    void eco$writeBounds(net.minecraft.world.phys.AABB value);
-    java.lang.foreign.MemorySegment eco$movementBody();
     void eco$invalidatePushState();
     void eco$bindBody(CollisionStateTable table, int slot);
     void eco$detachBody(CollisionStateTable table, int slot);

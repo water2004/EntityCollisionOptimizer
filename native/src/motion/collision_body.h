@@ -9,12 +9,8 @@ struct CollisionBody {
     double x, z, vx, vy, vz;
     std::uint64_t velocityVersion;
     std::int32_t state, root, needsSync, reserved;
-    double y;
-    std::uint64_t positionVersion;
 };
-static_assert(sizeof(CollisionBody) == 80);
-static_assert(offsetof(CollisionBody, y) == 64);
-static_assert(offsetof(CollisionBody, positionVersion) == 72);
+static_assert(sizeof(CollisionBody) == 64);
 static_assert(offsetof(CollisionBody, velocityVersion) == 40);
 static_assert(offsetof(CollisionBody, state) == 48);
 static_assert(offsetof(CollisionBody, root) == 52);

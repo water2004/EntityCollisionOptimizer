@@ -17,19 +17,16 @@ import static java.lang.foreign.ValueLayout.JAVA_LONG;
 
 /** Level-owned body slots with leases independent of persistent spatial membership. */
 public final class CollisionStateTable implements AutoCloseable {
-    public static final int STRIDE_BYTES = 80, VERSION_OFFSET = 40, STATE_OFFSET = 48,
-            ROOT_OFFSET = 52, SYNC_OFFSET = 56, Y_OFFSET = 64, POSITION_VERSION_OFFSET = 72;
+    public static final int STRIDE_BYTES = 64, VERSION_OFFSET = 40, STATE_OFFSET = 48,
+            ROOT_OFFSET = 52, SYNC_OFFSET = 56;
     private static final int VELOCITY_OFFSET = 2 * Double.BYTES;
     private final IdentityHashMap<Entity, Integer> slots = new IdentityHashMap<>();
     private final ArrayDeque<Integer> free = new ArrayDeque<>();
     private Entity[] entities = new Entity[0];
     private Vec3[] velocities = new Vec3[0];
     private long[] velocityVersions = new long[0];
-    private Vec3[] positions = new Vec3[0];
-    private long[] positionVersions = new long[0];
     private boolean[] bound = new boolean[0];
     private final CollisionPushStates pushStates = new CollisionPushStates(this);
-    private final CollisionBounds bounds = new CollisionBounds();
     private Arena arena;
     private MemorySegment memory = MemorySegment.NULL;
     private int size, borrowers;
@@ -79,40 +76,18 @@ public final class CollisionStateTable implements AutoCloseable {
         slots.remove(entity);
         entities[slot] = null;
         velocities[slot] = null;
-        positions[slot] = null;
-        bounds.forget(slot);
         free.addLast(slot);
     }
 
-    /** Position publication boundary, also used by teleports and raw vanilla stores. */
+    /** One-way X/Z input for native pushing; Java retains position authority. */
     public void position(int slot, Vec3 position) {
         long offset = (long) slot * STRIDE_BYTES;
         memory.set(JAVA_DOUBLE, offset, position.x);
         memory.set(JAVA_DOUBLE, offset + Double.BYTES, position.z);
-        memory.set(JAVA_DOUBLE, offset + Y_OFFSET, position.y);
-        long version = memory.get(JAVA_LONG, offset + POSITION_VERSION_OFFSET) + 1;
-        memory.set(JAVA_LONG, offset + POSITION_VERSION_OFFSET, version);
-        positions[slot] = position;
-        positionVersions[slot] = version;
     }
 
-    public Vec3 position(int slot) {
-        long offset = (long) slot * STRIDE_BYTES;
-        long version = memory.get(JAVA_LONG, offset + POSITION_VERSION_OFFSET);
-        if (positions[slot] != null && positionVersions[slot] == version) return positions[slot];
-        Vec3 value = new Vec3(memory.get(JAVA_DOUBLE, offset), memory.get(JAVA_DOUBLE, offset + Y_OFFSET),
-                memory.get(JAVA_DOUBLE, offset + Double.BYTES));
-        positions[slot] = value;
-        positionVersions[slot] = version;
-        return value;
-    }
-
-    /** Borrow only for a synchronous native call; never retain across Java world callbacks or growth. */
-    public MemorySegment row(int slot) { return memory.asSlice((long) slot * STRIDE_BYTES, STRIDE_BYTES); }
-
-    public net.minecraft.world.phys.AABB bounds(int slot) { return bounds.get(slot); }
-    public void bounds(int slot, net.minecraft.world.phys.AABB value) { bounds.set(slot, value); }
-    public MemorySegment movementRow(int slot) { return bounds.row(slot); }
+    /** Borrow only for a synchronous native call, never across callbacks or table growth. */
+    MemorySegment row(int slot) { return memory.asSlice((long) slot * STRIDE_BYTES, STRIDE_BYTES); }
 
     /** All Java writes reach the same authoritative row; this is a raw field store, without extra guards. */
     public void velocity(int slot, Vec3 velocity) {
@@ -156,7 +131,7 @@ public final class CollisionStateTable implements AutoCloseable {
         }
         destination.fill((byte) 0);
         CollisionBodyAccess access = (CollisionBodyAccess) entity;
-        Vec3 position = access.eco$readPosition();
+        Vec3 position = entity.position();
         Vec3 velocity = access.eco$readVelocity();
         destination.set(JAVA_DOUBLE, 0, position.x);
         destination.set(JAVA_DOUBLE, Double.BYTES, position.z);
@@ -171,7 +146,6 @@ public final class CollisionStateTable implements AutoCloseable {
         destination.set(JAVA_INT, ROOT_OFFSET,
                 rootSlot != null && bound[rootSlot] ? rootSlot : -1);
         destination.set(JAVA_INT, SYNC_OFFSET, access.eco$readNeedsSync() ? 1 : 0);
-        destination.set(JAVA_DOUBLE, Y_OFFSET, position.y);
     }
 
     /** Publishes fields mutated on the detached source's batch-local row. */
@@ -208,7 +182,6 @@ public final class CollisionStateTable implements AutoCloseable {
     private void ensureCapacity(int required) {
         if (required <= entities.length) return;
         int capacity = Math.max(required, entities.length + (entities.length >> 1) + 256);
-        bounds.capacity(capacity);
         Arena nextArena = Arena.ofShared();
         MemorySegment next;
         try {
@@ -224,8 +197,6 @@ public final class CollisionStateTable implements AutoCloseable {
         entities = Arrays.copyOf(entities, capacity);
         velocities = Arrays.copyOf(velocities, capacity);
         velocityVersions = Arrays.copyOf(velocityVersions, capacity);
-        positions = Arrays.copyOf(positions, capacity);
-        positionVersions = Arrays.copyOf(positionVersions, capacity);
         bound = Arrays.copyOf(bound, capacity);
     }
 
@@ -240,10 +211,8 @@ public final class CollisionStateTable implements AutoCloseable {
         free.clear();
         Arrays.fill(entities, 0, size, null);
         Arrays.fill(velocities, 0, size, null);
-        Arrays.fill(positions, 0, size, null);
         size = 0;
         pushStates.clear();
-        bounds.clear();
     }
 
     @Override public void close() {
@@ -254,8 +223,6 @@ public final class CollisionStateTable implements AutoCloseable {
         entities = new Entity[0];
         velocities = new Vec3[0];
         velocityVersions = new long[0];
-        positions = new Vec3[0];
-        positionVersions = new long[0];
         bound = new boolean[0];
     }
 }

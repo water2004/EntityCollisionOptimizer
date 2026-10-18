@@ -84,8 +84,8 @@ ECO_EXPORT int executePushRun(void* sourceBodyPointer, void* targetBodiesPointer
                              int targetCapacity, const int* targetSlots, int targetCount);
 
 // Movement preparation and collision solving.
-ECO_EXPORT int prepareMovement(const double* entityBounds, double* movementData);
-ECO_EXPORT int solveMovement(const void* bodyPointer, double* movementData,
+ECO_EXPORT int prepareMovement(double* movementData);
+ECO_EXPORT int solveMovement(double* movementData,
                              const void* shapeReferencesPointer, int shapeCount,
                              int movementPhase);
 

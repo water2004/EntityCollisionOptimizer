@@ -1,6 +1,5 @@
 #include "eco/collision_api.h"
 #include "native_error.h"
-#include "motion/collision_body.h"
 #include "geometry/voxel_geometry.h"
 
 #include <algorithm>
@@ -8,10 +7,9 @@
 #include <vector>
 
 namespace {
-// Shared packet layout with NativeMovement. No Java callback executes while native borrows a body.
-constexpr int BOX = 0, REQUEST = 6, POSITION = 9, RESULT = 12, TARGET = 15,
-              STEP_BASE = 18, STEP_SCAN = 24, MAX_STEP = 30, GROUNDED = 31,
-              NEEDS_STEP = 32, ENTITY_QUERY = 33;
+// Shared packet layout with NativeMovement.
+constexpr int BOX = 0, REQUEST = 6, RESULT = 9, STEP_BASE = 12, STEP_SCAN = 18,
+              MAX_STEP = 24, GROUNDED = 25, NEEDS_STEP = 26, ENTITY_QUERY = 27;
 double horizontal(const double* vector) { return vector[0] * vector[0] + vector[2] * vector[2]; }
 double lengthSquared(const double* vector) {
     return vector[0] * vector[0] + vector[1] * vector[1] + vector[2] * vector[2];
@@ -66,9 +64,8 @@ void step(double* movementData, const eco::VoxelRef* shapeReferences, int shapeC
 }
 }
 
-int prepareMovement(const double* entityBounds, double* movementData) {
+int prepareMovement(double* movementData) {
     if (!movementData) return -1;
-    if (entityBounds) std::copy_n(entityBounds, 6, movementData + BOX);
     std::copy_n(movementData + BOX, 6, movementData + STEP_SCAN);
     for (int axis = 0; axis < 3; ++axis) {
         double delta = movementData[REQUEST + axis];
@@ -79,7 +76,6 @@ int prepareMovement(const double* entityBounds, double* movementData) {
 }
 
 int solveMovement(
-        const void* bodyPointer,
         double* movementData,
         const void* shapeReferencesPointer,
         int shapeCount,
@@ -91,15 +87,6 @@ int solveMovement(
         const auto* shapeReferences = static_cast<const eco::VoxelRef*>(shapeReferencesPointer);
         if (movementPhase == 0) initial(movementData, shapeReferences, shapeCount);
         else step(movementData, shapeReferences, shapeCount);
-        if (bodyPointer) {
-            const auto& body = *static_cast<const eco::CollisionBody*>(bodyPointer);
-            movementData[POSITION] = body.x;
-            movementData[POSITION + 1] = body.y;
-            movementData[POSITION + 2] = body.z;
-        }
-        for (int axis = 0; axis < 3; ++axis) {
-            movementData[TARGET + axis] = movementData[POSITION + axis] + movementData[RESULT + axis];
-        }
         return 0;
     } catch (...) { return eco::recordNativeException(); }
 }
