@@ -15,6 +15,7 @@ import static java.lang.foreign.ValueLayout.*;
 /** Per-call ordered references to reusable geometry. Reentrant calls own separate batches. */
 public final class NativeShapeBatch implements AutoCloseable {
     private static final int STRIDE = 32;
+    private static final int CUBES_PER_PAGE = 16;
     private static final ThreadLocal<ArrayDeque<Storage>> POOL = ThreadLocal.withInitial(ArrayDeque::new);
     private final Storage storage;
     private int count;
@@ -28,20 +29,38 @@ public final class NativeShapeBatch implements AutoCloseable {
     private static final class Storage {
         MemorySegment references = MemorySegment.NULL;
         MemorySegment[] retained = new MemorySegment[0];
+        MemorySegment[] cubePages = new MemorySegment[0];
+
+        MemorySegment cubePage(int pageIndex) {
+            if (pageIndex >= cubePages.length) {
+                cubePages = Arrays.copyOf(cubePages, pageIndex + (pageIndex >> 1) + 4);
+            }
+            MemorySegment page = cubePages[pageIndex];
+            if (page == null) {
+                // Pages never move: growing a batch must not invalidate earlier native pointers.
+                page = Arena.ofAuto().allocate((long) CUBES_PER_PAGE * NativeVoxelGeometry.CUBE_BYTES, 8);
+                cubePages[pageIndex] = page;
+            }
+            return page;
+        }
     }
 
     public void add(VoxelShape shape) { add(shape, 0, 0, 0, false); }
     public void addTranslated(VoxelShape shape, double x, double y, double z) { add(shape, x, y, z, true); }
     public void addCube(AABB bounds) {
         if (closed) throw new IllegalStateException("Closed shape batch");
-        retain(NativeVoxelGeometry.createCube(bounds), false, 0, 0, 0);
+        // Reuse the reference slot as the cube slot; ordinary shapes need no cube storage.
+        MemorySegment page = storage.cubePage(count / CUBES_PER_PAGE);
+        long offset = (long) (count % CUBES_PER_PAGE) * NativeVoxelGeometry.CUBE_BYTES;
+        NativeVoxelGeometry.writeCube(page, offset, bounds);
+        retain(page, offset, false, 0, 0, 0);
     }
 
     private void add(VoxelShape shape, double x, double y, double z, boolean translated) {
-        retain(((NativeVoxelAccess) shape).eco$nativeGeometry(), translated, x, y, z);
+        retain(((NativeVoxelAccess) shape).eco$nativeGeometry(), 0, translated, x, y, z);
     }
 
-    private void retain(MemorySegment geometry, boolean translated, double x, double y, double z) {
+    private void retain(MemorySegment geometry, long geometryOffset, boolean translated, double x, double y, double z) {
         if (closed) throw new IllegalStateException("Closed shape batch");
         if (count == storage.retained.length) {
             int capacity = count + (count >> 1) + 16;
@@ -54,7 +73,7 @@ public final class NativeShapeBatch implements AutoCloseable {
         long offset = (long) count++ * STRIDE;
         MemorySegment references = storage.references;
         // Native geometry is 8-byte aligned; encode the transform bit without a padded extra field.
-        references.set(JAVA_LONG, offset, geometry.address() | (translated ? 1L : 0L));
+        references.set(JAVA_LONG, offset, (geometry.address() + geometryOffset) | (translated ? 1L : 0L));
         if (translated) {
             references.set(JAVA_DOUBLE, offset + 8, x);
             references.set(JAVA_DOUBLE, offset + 16, y);

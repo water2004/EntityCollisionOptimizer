@@ -11,8 +11,10 @@ import java.lang.foreign.MemorySegment;
 
 import static java.lang.foreign.ValueLayout.*;
 
-/** Immutable local geometry; offsets belong to queries, not to this cache. */
+/** Voxel encoding: cached shapes are immutable; query-local cubes belong to their batch. */
 public final class NativeVoxelGeometry {
+    public static final int CUBE_BYTES = 16 + 7 * Double.BYTES;
+
     public static MemorySegment create(VoxelShape shape, DiscreteVoxelShape grid) {
         int nx = grid.getXSize(), ny = grid.getYSize(), nz = grid.getZSize();
         long cells = Math.multiplyExact(Math.multiplyExact((long) nx, ny), nz);
@@ -41,20 +43,19 @@ public final class NativeVoxelGeometry {
         return memory.asReadOnly();
     }
 
-    public static MemorySegment createCube(AABB bounds) {
-        MemorySegment memory = Arena.ofAuto().allocate(16L + 7L * Double.BYTES, 8);
-        memory.set(JAVA_INT, 0, 1);
-        memory.set(JAVA_INT, 4, 1);
-        memory.set(JAVA_INT, 8, 1);
-        memory.set(JAVA_INT, 12, 2 | 4);
-        memory.set(JAVA_DOUBLE, 16, bounds.minX);
-        memory.set(JAVA_DOUBLE, 24, bounds.maxX);
-        memory.set(JAVA_DOUBLE, 32, bounds.minY);
-        memory.set(JAVA_DOUBLE, 40, bounds.maxY);
-        memory.set(JAVA_DOUBLE, 48, bounds.minZ);
-        memory.set(JAVA_DOUBLE, 56, bounds.maxZ);
-        memory.set(JAVA_LONG, 64, 1L);
-        return memory.asReadOnly();
+    /** Encode query-local bounds in batch-owned storage, without a per-candidate allocation. */
+    public static void writeCube(MemorySegment memory, long offset, AABB bounds) {
+        memory.set(JAVA_INT, offset, 1);
+        memory.set(JAVA_INT, offset + 4, 1);
+        memory.set(JAVA_INT, offset + 8, 1);
+        memory.set(JAVA_INT, offset + 12, 2 | 4);
+        memory.set(JAVA_DOUBLE, offset + 16, bounds.minX);
+        memory.set(JAVA_DOUBLE, offset + 24, bounds.maxX);
+        memory.set(JAVA_DOUBLE, offset + 32, bounds.minY);
+        memory.set(JAVA_DOUBLE, offset + 40, bounds.maxY);
+        memory.set(JAVA_DOUBLE, offset + 48, bounds.minZ);
+        memory.set(JAVA_DOUBLE, offset + 56, bounds.maxZ);
+        memory.set(JAVA_LONG, offset + 64, 1L);
     }
 
     private NativeVoxelGeometry() {}
