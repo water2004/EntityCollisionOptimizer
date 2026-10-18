@@ -3,7 +3,6 @@
 #include "geometry/voxel_geometry.h"
 
 #include <algorithm>
-#include <cmath>
 #include <vector>
 
 namespace {
@@ -62,17 +61,6 @@ void step(double* movementData, const eco::VoxelRef* shapeReferences, int shapeC
         }
     }
 }
-}
-
-int prepareMovement(double* movementData) {
-    if (!movementData) return -1;
-    std::copy_n(movementData + BOX, 6, movementData + STEP_SCAN);
-    for (int axis = 0; axis < 3; ++axis) {
-        double delta = movementData[REQUEST + axis];
-        if (delta < 0) movementData[STEP_SCAN + axis] += delta;
-        else if (delta > 0) movementData[STEP_SCAN + axis + 3] += delta;
-    }
-    return 0;
 }
 
 int solveMovement(

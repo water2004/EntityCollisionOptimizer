@@ -11,6 +11,5 @@
         queryPushableEntities;
         executePushRun;
         solveMovement;
-        prepareMovement;
     local: *;
 };

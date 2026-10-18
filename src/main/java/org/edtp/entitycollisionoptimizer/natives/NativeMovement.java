@@ -16,22 +16,18 @@ public final class NativeMovement implements AutoCloseable {
     private final MemorySegment packet;
     private final Entity entity;
     private final AABB bounds;
+    private final AABB initialScan;
     private boolean closed;
 
     public NativeMovement(Entity entity, Vec3 requested, AABB box, boolean stepping) {
         this.entity = entity;
         bounds = box == null ? entity.getBoundingBox() : box;
+        initialScan = bounds.expandTowards(requested);
         MemorySegment available = POOL.get().pollFirst();
         packet = available == null ? Arena.ofAuto().allocate(28L * Double.BYTES, Double.BYTES) : available;
         box(0, bounds);
         vector(6, requested);
         set(24, 0); set(25, 0); set(26, 0); set(27, stepping ? 1 : 0);
-        try {
-            FFMBackend.prepareMovement(packet);
-        } catch (RuntimeException failure) {
-            close();
-            throw failure;
-        }
     }
 
     /** Sample step eligibility after the entity query, before block-shape callbacks. */
@@ -51,7 +47,9 @@ public final class NativeMovement implements AutoCloseable {
 
     public boolean needsStep() { return get(26) != 0; }
     public AABB sourceBounds() { return bounds; }
-    public AABB stepScan() { return new AABB(get(18), get(19), get(20), get(21), get(22), get(23)); }
+    public AABB stepScan() {
+        return needsStep() ? new AABB(get(18), get(19), get(20), get(21), get(22), get(23)) : initialScan;
+    }
     public Vec3 displacement() { return vector(9); }
 
     private void box(int index, AABB box) {
