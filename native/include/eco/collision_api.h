@@ -15,7 +15,8 @@ extern "C" {
 ECO_EXPORT const char* lastNativeException() noexcept;
 
 // Collision context lifecycle.
-ECO_EXPORT void* createCollisionContext();
+// indexUpdatesPointer is the stable shared header described in state/index_updates.h.
+ECO_EXPORT void* createCollisionContext(void* indexUpdatesPointer);
 ECO_EXPORT void destroyCollisionContext(void* context);
 
 // Persistent entity state and index updates.
@@ -29,38 +30,11 @@ ECO_EXPORT int insertCollisionEntity(
         int hardCollidable,
         int derivedTeam
 );
-// Publish collision state independently of team metadata and Java body bindings.
-ECO_EXPORT int updateCollisionEntityState(
-        void* contextPointer,
-        int nativeId,
-        int selectable,
-        int passenger,
-        int vanillaEntityPush,
-        int allowsDeferredVelocityWrites,
-        int hardCollidable
-);
-// Derived teams are resolved for a logical query; ordinary miss retries share its epoch.
-ECO_EXPORT int updateCollisionEntityTeam(
-        void* contextPointer,
-        int nativeId,
-        int teamId,
-        int collisionRule,
-        std::uint64_t queryEpoch
-);
-// Publish geometry and invalidate push eligibility without evaluating Java entity predicates.
-ECO_EXPORT int updateCollisionEntityBounds(void* contextPointer, int nativeId, const double* entityBounds);
-ECO_EXPORT int updateCollisionEntitySection(
-        void* contextPointer,
-        int nativeId,
-        int sectionX,
-        int sectionY,
-        int sectionZ
-);
 ECO_EXPORT int removeCollisionEntity(void* contextPointer, int nativeId);
 
-// Push-eligibility cache invalidation.
-ECO_EXPORT int invalidateEntityPushEligibilityCache(void* contextPointer, int nativeId);
-ECO_EXPORT int invalidatePushEligibilityCacheFields(void* contextPointer, int fieldsToInvalidate);
+// Queries and membership changes consume pending shared index updates first.
+// Explicit flushing is needed only when Java fills the bounded update buffer.
+ECO_EXPORT int flushCollisionUpdates(void* contextPointer);
 
 // Spatial entity queries.
 ECO_EXPORT int queryHardCollisionEntities(
@@ -115,8 +89,4 @@ ECO_EXPORT int solveMovement(const void* bodyPointer, double* movementData,
                              const void* shapeReferencesPointer, int shapeCount,
                              int movementPhase);
 
-// Scan block collision masks; this API does not use a collision context.
-ECO_EXPORT int scanCollisionBlocks(const std::uint16_t* const* collisionRows,
-                                   int* queryState, int* outputRecords,
-                                   int outputCapacity);
 }

@@ -17,6 +17,7 @@ int insertCollisionEntity(
     if (!contextPointer || !entityBounds || nativeId < 0) return -1;
     try {
         auto& context = *static_cast<eco::CollisionContext*>(contextPointer);
+        eco::applyIndexUpdates(context);
         // nativeId indexes metadata, so new IDs must append and retired IDs may be reused.
         if (static_cast<std::size_t>(nativeId) > context.metadata.size()) return -1;
         if (static_cast<std::size_t>(nativeId) == context.metadata.size()) {
@@ -41,53 +42,15 @@ int insertCollisionEntity(
         return 0;
     } catch (...) { return eco::recordNativeException(); }
 }
-
-int updateCollisionEntityBounds(void* contextPointer, int nativeId, const double* entityBounds) {
-    if (!contextPointer || !entityBounds || nativeId < 0) return -1;
-    try {
-        auto& context = *static_cast<eco::CollisionContext*>(contextPointer);
-        if (static_cast<std::size_t>(nativeId) >= context.metadata.size()) return -1;
-        eco::updateEntityBounds(context, nativeId, eco::makeAabb(
-                entityBounds[0], entityBounds[1], entityBounds[2],
-                entityBounds[3], entityBounds[4], entityBounds[5]));
-        auto& metadata = context.metadata[nativeId];
-        if (metadata.selectableValid && !metadata.selectable) {
-            eco::updateEntityQueryability(context, nativeId, true);
-        }
-        metadata.selectableValid = false;
-        return 0;
-    } catch (...) { return eco::recordNativeException(); }
-}
-
 int removeCollisionEntity(void* contextPointer, int nativeId) {
     if (!contextPointer || nativeId < 0) return -1;
     try {
         auto& context = *static_cast<eco::CollisionContext*>(contextPointer);
+        eco::applyIndexUpdates(context);
         if (static_cast<std::size_t>(nativeId) >= context.metadata.size()) return -1;
         eco::removeSectionEntity(context, nativeId);
         if (context.metadata[nativeId].hardCollidable) --context.hardEntityCount;
         context.metadata[nativeId] = {};
-        return 0;
-    } catch (...) { return eco::recordNativeException(); }
-}
-
-int updateCollisionEntitySection(
-        void* contextPointer,
-        int nativeId,
-        int sectionX,
-        int sectionY,
-        int sectionZ
-) {
-    if (!contextPointer || nativeId < 0) return -1;
-    try {
-        auto& context = *static_cast<eco::CollisionContext*>(contextPointer);
-        if (static_cast<std::size_t>(nativeId) >= context.metadata.size()) return -1;
-        auto& metadata = context.metadata[nativeId];
-        eco::updateSectionEntity(context, nativeId, sectionX, sectionY, sectionZ);
-        if (metadata.selectableValid && !metadata.selectable) {
-            eco::updateEntityQueryability(context, nativeId, true);
-        }
-        metadata.selectableValid = false;
         return 0;
     } catch (...) { return eco::recordNativeException(); }
 }

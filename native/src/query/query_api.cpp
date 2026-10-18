@@ -175,6 +175,7 @@ int queryHardCollisionEntities(
     if (contextPointer == nullptr || outputNativeIds == nullptr || outputCapacity < 0) return -1;
     try {
         auto& context = *static_cast<eco::CollisionContext*>(contextPointer);
+        eco::applyIndexUpdates(context);
         if (excludedNativeId < -1
                 || (excludedNativeId >= 0
                     && static_cast<std::size_t>(excludedNativeId) >= context.metadata.size())) return -1;
@@ -220,6 +221,7 @@ int queryEntitiesInBox(
     if (contextPointer == nullptr || outputNativeIds == nullptr || outputCapacity < 0) return -1;
     try {
         auto& context = *static_cast<eco::CollisionContext*>(contextPointer);
+        eco::applyIndexUpdates(context);
         const eco::Aabb scan = eco::makeAabb(minX, minY, minZ, maxX, maxY, maxZ);
         if (!eco::isIndexable(scan)) return 0;
         const eco::LookupSections sectionRange(scan);
@@ -257,6 +259,7 @@ int queryPushableEntities(
             || sourceCollisionRule > eco::COLLISION_PUSH_OTHER_TEAMS) return -1;
     try {
         auto& context = *static_cast<eco::CollisionContext*>(contextPointer);
+        eco::applyIndexUpdates(context);
         if (excludedNativeId >= 0
                 && static_cast<std::size_t>(excludedNativeId) >= context.metadata.size()) return -1;
         const eco::Aabb source = eco::makeAabb(

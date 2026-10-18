@@ -15,13 +15,29 @@ public final class NativeFailureChecks {
             Field movement = handleField("movement");
             Field create = handleField("createContextHandle");
             Field detail = handleField("lastNativeExceptionHandle");
+            Field flush = handleField("flushUpdates");
             MethodHandle originalMovement = (MethodHandle) movement.get(null);
             MethodHandle originalCreate = (MethodHandle) create.get(null);
             MethodHandle originalDetail = (MethodHandle) detail.get(null);
+            MethodHandle originalFlush = (MethodHandle) flush.get(null);
             try {
                 MemorySegment message = arena.allocate(256);
                 message.setString(0, "std::bad_alloc: failure fixture");
                 detail.set(null, MethodHandles.constant(MemorySegment.class, message));
+                try (var context = FFMBackend.createContext()) {
+                    FFMBackend.insertEntity(context, 0, new net.minecraft.world.phys.AABB(0, 0, 0, 1, 1, 1),
+                            0, 0, 0, false, false);
+                    for (int index = 0; index < 256; index++) {
+                        FFMBackend.invalidateEntityPushEligibilityCache(context, 0);
+                    }
+                    flush.set(null, withArguments(MethodHandles.constant(int.class, -100), originalFlush));
+                    Error publicationFailure = expectError(helper,
+                            () -> FFMBackend.invalidateEntityPushEligibilityCache(context, 0));
+                    helper.assertTrue(publicationFailure.getMessage().contains("std::bad_alloc: failure fixture")
+                                    && publicationFailure.getMessage().contains("shared index updates"),
+                            "shared publication failure is fatal and retains native diagnostics");
+                }
+                flush.set(null, originalFlush);
                 movement.set(null, withArguments(MethodHandles.constant(int.class, -100), originalMovement));
                 Error nativeFailure = expectError(helper, NativeFailureChecks::solve);
                 helper.assertTrue(nativeFailure.getMessage().contains("std::bad_alloc: failure fixture"),
@@ -29,7 +45,8 @@ public final class NativeFailureChecks {
                 helper.assertTrue(nativeFailure.getMessage().contains("solve native movement"),
                         "native exception identifies its operation");
 
-                create.set(null, MethodHandles.constant(MemorySegment.class, MemorySegment.NULL));
+                create.set(null, withArguments(
+                        MethodHandles.constant(MemorySegment.class, MemorySegment.NULL), originalCreate));
                 Error creationFailure = expectError(helper, FFMBackend::createContext);
                 helper.assertTrue(creationFailure.getMessage().contains("std::bad_alloc: failure fixture"),
                         "context creation preserves native exception details");
@@ -58,6 +75,7 @@ public final class NativeFailureChecks {
                 movement.set(null, originalMovement);
                 create.set(null, originalCreate);
                 detail.set(null, originalDetail);
+                flush.set(null, originalFlush);
             }
         } catch (ReflectiveOperationException failure) {
             throw new AssertionError(failure);

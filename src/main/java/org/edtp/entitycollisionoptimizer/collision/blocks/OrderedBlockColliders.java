@@ -12,7 +12,6 @@ import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import org.edtp.entitycollisionoptimizer.natives.CollisionFrame;
 import org.edtp.entitycollisionoptimizer.natives.NativeShapeBatch;
-import org.edtp.entitycollisionoptimizer.natives.NativeBlockScan;
 
 import java.util.List;
 
@@ -53,21 +52,18 @@ public final class OrderedBlockColliders {
                                      AABB box, NativeShapeBatch result) {
         var border = level.getWorldBorder();
         if (entity != null && border.isInsideCloseToBorder(entity, box)) result.add(border.getCollisionShape());
-        new Scan(level, context, box, result::addTranslated).run();
+        new Scan(level, context, box, result).run();
     }
-
-    @FunctionalInterface
-    private interface ColliderSink { void add(VoxelShape shape, double x, double y, double z); }
 
     private static final class Scan {
         private final Level level;
         private final CollisionContext context;
         private final AABB box;
         private final VoxelShape boxShape;
-        private final ColliderSink result;
+        private final NativeShapeBatch result;
         private final BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
 
-        private Scan(Level level, CollisionContext context, AABB box, ColliderSink result) {
+        private Scan(Level level, CollisionContext context, AABB box, NativeShapeBatch result) {
             this.level = level;
             this.context = context;
             this.box = box;
@@ -76,10 +72,10 @@ public final class OrderedBlockColliders {
         }
 
         private void run() {
-            try (NativeBlockScan scan = new NativeBlockScan(level, box)) {
-                for (int count; (count = scan.next()) != 0;) for (int i = 0; i < count; i++) {
-                    int x = scan.coordinate(i, 0), y = scan.coordinate(i, 1), z = scan.coordinate(i, 2);
-                    BlockState state = scan.section(i).getBlockState(x & 15, y & 15, z & 15);
+            try (BlockMaskScan scan = new BlockMaskScan(level, box)) {
+                while (scan.next()) {
+                    int x = scan.x(), y = scan.y(), z = scan.z();
+                    BlockState state = scan.section().getBlockState(x & 15, y & 15, z & 15);
                     add(state, x, y, z);
                 }
             }
@@ -90,11 +86,11 @@ public final class OrderedBlockColliders {
             VoxelShape shape = context.getCollisionShape(state, level, pos);
             if (shape == Shapes.block()) {
                 if (box.intersects(x, y, z, x + 1.0, y + 1.0, z + 1.0)) {
-                    result.add(shape, x, y, z);
+                    result.addTranslated(shape, x, y, z);
                 }
             } else {
                 VoxelShape moved = shape.move(x, y, z);
-                if (!moved.isEmpty() && Shapes.joinIsNotEmpty(moved, boxShape, BooleanOp.AND)) result.add(shape, x, y, z);
+                if (!moved.isEmpty() && Shapes.joinIsNotEmpty(moved, boxShape, BooleanOp.AND)) result.addTranslated(shape, x, y, z);
             }
         }
 

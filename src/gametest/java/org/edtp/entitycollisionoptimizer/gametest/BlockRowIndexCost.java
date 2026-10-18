@@ -28,14 +28,14 @@ final class BlockRowIndexCost {
             for (int i = 0; i < palettes.length; i++) palettes[i] = (CollisionBlockMask) template.copy();
             long checksum = 0;
             long start = System.nanoTime();
-            for (var palette : palettes) checksum ^= palette.entityCollisionOptimizer$collisionRow(0, 0, 0, 0);
+            for (var palette : palettes) checksum ^= BlockMaskParity.row(palette, 0, 0, 0, 0);
             long first = System.nanoTime();
             for (var palette : palettes) for (int row = 1; row < 256; row++) {
-                checksum ^= palette.entityCollisionOptimizer$collisionRow(row >> 4, row & 15, 0, 0);
+                checksum ^= BlockMaskParity.row(palette, row >> 4, row & 15, 0, 0);
             }
             long cold = System.nanoTime();
             for (var palette : palettes) for (int row = 0; row < 256; row++) {
-                checksum ^= palette.entityCollisionOptimizer$collisionRow(row >> 4, row & 15, 0, 0);
+                checksum ^= BlockMaskParity.row(palette, row >> 4, row & 15, 0, 0);
             }
             long warm = System.nanoTime();
             sink = checksum;

@@ -100,7 +100,7 @@ endif()
 set(ECO_COMMON_SOURCES
         src/native_error.cpp
         src/state/context_api.cpp
-        src/state/metadata_api.cpp
+        src/state/index_updates.cpp
         src/state/persistent_index.cpp
         src/spatial/spatial_index.cpp
         src/spatial/section_index.cpp
@@ -109,7 +109,6 @@ set(ECO_COMMON_SOURCES
         src/motion/push_run.cpp
         src/motion/movement_solver.cpp
         src/geometry/voxel_geometry.cpp
-        src/blocks/block_scan.cpp
 )
 
 add_library(EntityCollisionOptimizer SHARED ${ECO_COMMON_SOURCES})

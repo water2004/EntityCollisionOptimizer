@@ -40,36 +40,15 @@ public final class FFMBackend {
     private static MethodHandle createContextHandle;
     private static MethodHandle destroyContextHandle;
     private static MethodHandle lastNativeExceptionHandle;
-    private static MethodHandle insertEntity, removeEntity, updateEntitySection;
-    private static MethodHandle updateEntityState, updateEntityTeam;
-    private static MethodHandle updateEntityBounds;
-    private static MethodHandle invalidateEntityPushEligibilityCache;
-    private static MethodHandle invalidatePushEligibilityCacheFields;
+    private static MethodHandle insertEntity, removeEntity, flushUpdates;
     private static MethodHandle queryHard;
     private static MethodHandle queryEntities;
     private static MethodHandle queryPushable;
     private static MethodHandle executeRun;
     private static MethodHandle movement;
-    private static MethodHandle blockScan;
     private static MethodHandle prepareMovement;
     private static final Set<Context> CONTEXTS = ConcurrentHashMap.newKeySet();
     private static volatile boolean initialized;
-
-    public static int scanBlocks(
-            MemorySegment collisionRows,
-            MemorySegment queryState,
-            MemorySegment outputRecords,
-            int outputCapacity
-    ) {
-        ensureInitialized();
-        try {
-            int recordCount = (int) blockScan.invokeExact(
-                    collisionRows, queryState, outputRecords, outputCapacity
-            );
-            if (recordCount < 0) throw new IllegalStateException("Invalid native block scan: " + recordCount);
-            return recordCount;
-        } catch (Throwable failure) { throw callFailure("Native block scan failed", failure); }
-    }
 
     private FFMBackend() {
     }
@@ -128,13 +107,14 @@ public final class FFMBackend {
 
     public static Context createContext() {
         ensureInitialized();
+        IndexUpdates updates = new IndexUpdates();
         MemorySegment address = MemorySegment.NULL;
         try {
-            address = (MemorySegment) createContextHandle.invokeExact();
+            address = (MemorySegment) createContextHandle.invokeExact(updates.header());
             if (address.equals(MemorySegment.NULL)) {
                 throw nativeFailure("create collision context");
             }
-            Context context = new Context(address);
+            Context context = new Context(address, updates);
             CONTEXTS.add(context);
             return context;
         } catch (Throwable failure) {
@@ -149,6 +129,7 @@ public final class FFMBackend {
                     failure.addSuppressed(cleanupFailure);
                 }
             }
+            if (!(failure instanceof Error)) updates.close();
             throw callFailure("Failed to create an FFM collision context", failure);
         }
     }
@@ -163,46 +144,21 @@ public final class FFMBackend {
             boolean hardCollidable
     ) {
         synchronized (nativeContext) {
-            nativeContext.ensureOpen();
-            try {
-                int status = (int) updateEntityState.invokeExact(
-                        nativeContext.address,
-                        nativeId,
-                        selectable ? 1 : 0,
-                        passenger ? 1 : 0,
-                        vanillaEntityPush ? 1 : 0,
-                        allowsDeferredVelocityWrites ? 1 : 0,
-                        hardCollidable ? 1 : 0
-                );
-                checkStatus("update native entity", status);
-            } catch (Throwable failure) {
-                throw callFailure("FFM updateEntityState call failed", failure);
-            }
+            nativeContext.indexUpdates().state(nativeId, selectable, passenger,
+                    vanillaEntityPush, allowsDeferredVelocityWrites, hardCollidable);
         }
     }
 
     public static void updateEntityTeam(Context nativeContext, int nativeId,
                                        int teamId, int collisionRule, long queryEpoch) {
         synchronized (nativeContext) {
-            nativeContext.ensureOpen();
-            try {
-                checkStatus("update native entity team", (int) updateEntityTeam.invokeExact(
-                        nativeContext.address, nativeId, teamId, collisionRule, queryEpoch));
-            } catch (Throwable failure) {
-                throw callFailure("FFM updateEntityTeam call failed", failure);
-            }
+            nativeContext.indexUpdates().team(nativeId, teamId, collisionRule, queryEpoch);
         }
     }
 
     public static void updateEntityBounds(Context nativeContext, int nativeId, AABB entityBounds) {
         synchronized (nativeContext) {
-            MemorySegment boundsBuffer = prepareEntityBounds(nativeContext, nativeId, entityBounds);
-            try {
-                checkStatus("update entity bounds", (int) updateEntityBounds.invokeExact(
-                        nativeContext.address, nativeId, boundsBuffer));
-            } catch (Throwable failure) {
-                throw callFailure("Persistent entity bounds update failed", failure);
-            }
+            nativeContext.indexUpdates().bounds(nativeId, entityBounds);
         }
     }
 
@@ -268,40 +224,19 @@ public final class FFMBackend {
             int sectionZ
     ) {
         synchronized (nativeContext) {
-            nativeContext.ensureOpen();
-            try { checkStatus("update persistent entity section", (int) updateEntitySection.invokeExact(
-                    nativeContext.address,
-                    nativeId,
-                    sectionX,
-                    sectionY,
-                    sectionZ
-            )); }
-            catch (Throwable failure) { throw callFailure("Persistent entity section update failed", failure); }
+            nativeContext.indexUpdates().section(nativeId, sectionX, sectionY, sectionZ);
         }
     }
 
     public static void invalidateEntityPushEligibilityCache(Context nativeContext, int nativeId) {
         synchronized (nativeContext) {
-            nativeContext.ensureOpen();
-            try {
-                int status = (int) invalidateEntityPushEligibilityCache.invokeExact(nativeContext.address, nativeId);
-                checkStatus("invalidate native entity push-eligibility cache", status);
-            } catch (Throwable failure) {
-                throw callFailure("FFM invalidateEntityPushEligibilityCache call failed", failure);
-            }
+            nativeContext.indexUpdates().invalidate(nativeId);
         }
     }
 
     public static void invalidatePushEligibilityCacheFields(Context nativeContext, int fieldsToInvalidate) {
         synchronized (nativeContext) {
-            nativeContext.ensureOpen();
-            try {
-                int status = (int) invalidatePushEligibilityCacheFields.invokeExact(
-                        nativeContext.address, fieldsToInvalidate);
-                checkStatus("invalidate native push eligibility fields", status);
-            } catch (Throwable failure) {
-                throw callFailure("FFM invalidatePushEligibilityCacheFields call failed", failure);
-            }
+            nativeContext.indexUpdates().invalidateFields(fieldsToInvalidate);
         }
     }
 
@@ -527,11 +462,9 @@ public final class FFMBackend {
         Linker linker = Linker.nativeLinker();
         nativeArena = Arena.global();
         SymbolLookup library = SymbolLookup.libraryLookup(extractedLibrary.getAbsolutePath(), nativeArena);
-        blockScan = linker.downcallHandle(library.find("scanCollisionBlocks").orElseThrow(() -> missingSymbol("scanCollisionBlocks")),
-                FunctionDescriptor.of(JAVA_INT, ADDRESS, ADDRESS, ADDRESS, JAVA_INT));
         createContextHandle = linker.downcallHandle(
                 library.find("createCollisionContext").orElseThrow(() -> missingSymbol("createCollisionContext")),
-                FunctionDescriptor.of(ADDRESS)
+                FunctionDescriptor.of(ADDRESS, ADDRESS)
         );
         lastNativeExceptionHandle = linker.downcallHandle(
                 library.find("lastNativeException").orElseThrow(() -> missingSymbol("lastNativeException")),
@@ -548,33 +481,8 @@ public final class FFMBackend {
         );
         removeEntity = linker.downcallHandle(library.find("removeCollisionEntity").orElseThrow(),
                 FunctionDescriptor.of(JAVA_INT, ADDRESS, JAVA_INT));
-        updateEntitySection = linker.downcallHandle(
-                library.find("updateCollisionEntitySection").orElseThrow(),
-                FunctionDescriptor.of(JAVA_INT, ADDRESS, JAVA_INT,
-                        JAVA_INT, JAVA_INT, JAVA_INT)
-        );
-        FunctionDescriptor updateEntityDescriptor = FunctionDescriptor.of(
-                JAVA_INT, ADDRESS, JAVA_INT, JAVA_INT, JAVA_INT,
-                JAVA_INT, JAVA_INT, JAVA_INT);
-        updateEntityState = linker.downcallHandle(
-                library.find("updateCollisionEntityState")
-                        .orElseThrow(() -> missingSymbol("updateCollisionEntityState")), updateEntityDescriptor);
-        updateEntityTeam = linker.downcallHandle(
-                library.find("updateCollisionEntityTeam").orElseThrow(() -> missingSymbol("updateCollisionEntityTeam")),
-                FunctionDescriptor.of(JAVA_INT, ADDRESS, JAVA_INT, JAVA_INT, JAVA_INT, JAVA_LONG));
-        updateEntityBounds = linker.downcallHandle(
-                library.find("updateCollisionEntityBounds").orElseThrow(),
-                FunctionDescriptor.of(JAVA_INT, ADDRESS, JAVA_INT, ADDRESS));
-        invalidateEntityPushEligibilityCache = linker.downcallHandle(
-                library.find("invalidateEntityPushEligibilityCache")
-                        .orElseThrow(() -> missingSymbol("invalidateEntityPushEligibilityCache")),
-                FunctionDescriptor.of(JAVA_INT, ADDRESS, JAVA_INT)
-        );
-        invalidatePushEligibilityCacheFields = linker.downcallHandle(
-                library.find("invalidatePushEligibilityCacheFields")
-                        .orElseThrow(() -> missingSymbol("invalidatePushEligibilityCacheFields")),
-                FunctionDescriptor.of(JAVA_INT, ADDRESS, JAVA_INT)
-        );
+        flushUpdates = linker.downcallHandle(library.find("flushCollisionUpdates").orElseThrow(),
+                FunctionDescriptor.of(JAVA_INT, ADDRESS));
         queryHard = linker.downcallHandle(
                 library.find("queryHardCollisionEntities")
                         .orElseThrow(() -> missingSymbol("queryHardCollisionEntities")),
@@ -695,15 +603,10 @@ public final class FFMBackend {
     private static void resetHandles() {
         CONTEXTS.clear();
         nativeArena = null;
-        blockScan = null;
         createContextHandle = null;
         destroyContextHandle = null;
         lastNativeExceptionHandle = null;
-        insertEntity = removeEntity = updateEntitySection = null;
-        updateEntityState = updateEntityTeam = null;
-        updateEntityBounds = null;
-        invalidateEntityPushEligibilityCache = null;
-        invalidatePushEligibilityCacheFields = null;
+        insertEntity = removeEntity = flushUpdates = null;
         queryHard = null;
         queryEntities = null;
         queryPushable = null;
@@ -714,6 +617,7 @@ public final class FFMBackend {
 
     public static final class Context implements AutoCloseable {
         private MemorySegment address;
+        private final IndexUpdates updates;
         private Arena outputArena;
         private MemorySegment outputBuffer = MemorySegment.NULL;
         private MemorySegment nativePushBuffer = MemorySegment.NULL;
@@ -722,8 +626,23 @@ public final class FFMBackend {
         private int outputCapacity;
         private final QueryResult queryResult = new QueryResult();
 
-        private Context(MemorySegment address) {
+        private Context(MemorySegment address, IndexUpdates updates) {
             this.address = address;
+            this.updates = updates;
+        }
+
+        private IndexUpdates indexUpdates() {
+            ensureOpen();
+            // Usually a query consumes the records. Bound memory even in worlds
+            // that keep changing entities without issuing any spatial queries.
+            if (updates.full()) {
+                try {
+                    checkStatus("flush shared index updates", (int) flushUpdates.invokeExact(address));
+                } catch (Throwable failure) {
+                    throw callFailure("FFM shared index publication failed", failure);
+                }
+            }
+            return updates;
         }
 
         private void ensureOpen() {
@@ -768,6 +687,7 @@ public final class FFMBackend {
             } catch (Throwable failure) {
                 throw callFailure("Failed to destroy an FFM collision context", failure);
             } finally {
+                updates.close();
                 if (outputArena != null) {
                     outputArena.close();
                     outputArena = null;
