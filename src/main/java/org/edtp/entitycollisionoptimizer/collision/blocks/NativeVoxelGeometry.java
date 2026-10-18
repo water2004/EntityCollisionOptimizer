@@ -1,6 +1,7 @@
 package org.edtp.entitycollisionoptimizer.collision.blocks;
 
 import net.minecraft.core.Direction;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.shapes.CubeVoxelShape;
 import net.minecraft.world.phys.shapes.DiscreteVoxelShape;
 import net.minecraft.world.phys.shapes.VoxelShape;
@@ -40,18 +41,18 @@ public final class NativeVoxelGeometry {
         return memory.asReadOnly();
     }
 
-    public static MemorySegment createCube(MemorySegment bounds) {
+    public static MemorySegment createCube(AABB bounds) {
         MemorySegment memory = Arena.ofAuto().allocate(16L + 7L * Double.BYTES, 8);
         memory.set(JAVA_INT, 0, 1);
         memory.set(JAVA_INT, 4, 1);
         memory.set(JAVA_INT, 8, 1);
         memory.set(JAVA_INT, 12, 2 | 4);
-        memory.set(JAVA_DOUBLE, 16, bounds.get(JAVA_DOUBLE, 0));
-        memory.set(JAVA_DOUBLE, 24, bounds.get(JAVA_DOUBLE, 24));
-        memory.set(JAVA_DOUBLE, 32, bounds.get(JAVA_DOUBLE, 8));
-        memory.set(JAVA_DOUBLE, 40, bounds.get(JAVA_DOUBLE, 32));
-        memory.set(JAVA_DOUBLE, 48, bounds.get(JAVA_DOUBLE, 16));
-        memory.set(JAVA_DOUBLE, 56, bounds.get(JAVA_DOUBLE, 40));
+        memory.set(JAVA_DOUBLE, 16, bounds.minX);
+        memory.set(JAVA_DOUBLE, 24, bounds.maxX);
+        memory.set(JAVA_DOUBLE, 32, bounds.minY);
+        memory.set(JAVA_DOUBLE, 40, bounds.maxY);
+        memory.set(JAVA_DOUBLE, 48, bounds.minZ);
+        memory.set(JAVA_DOUBLE, 56, bounds.maxZ);
         memory.set(JAVA_LONG, 64, 1L);
         return memory.asReadOnly();
     }

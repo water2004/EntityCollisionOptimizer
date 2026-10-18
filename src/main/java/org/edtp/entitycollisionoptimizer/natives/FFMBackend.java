@@ -54,7 +54,6 @@ public final class FFMBackend {
     }
 
     public static void solveMovement(
-            MemorySegment body,
             MemorySegment movementPacket,
             MemorySegment shapeReferences,
             int shapeCount,
@@ -63,7 +62,7 @@ public final class FFMBackend {
         ensureInitialized();
         try {
             int status = (int) movement.invokeExact(
-                    body, movementPacket, shapeReferences, shapeCount, movementPhase
+                    movementPacket, shapeReferences, shapeCount, movementPhase
             );
             checkStatus("solve native movement", status);
         } catch (Throwable failure) {
@@ -71,12 +70,12 @@ public final class FFMBackend {
         }
     }
 
-    public static void prepareMovement(MemorySegment entityBounds, MemorySegment movementPacket) {
+    public static void prepareMovement(MemorySegment movementPacket) {
         ensureInitialized();
         try {
             checkStatus(
                     "prepare native movement",
-                    (int) prepareMovement.invokeExact(entityBounds, movementPacket)
+                    (int) prepareMovement.invokeExact(movementPacket)
             );
         } catch (Throwable failure) {
             throw callFailure("FFM movement preparation failed", failure);
@@ -540,10 +539,10 @@ public final class FFMBackend {
         );
         movement = linker.downcallHandle(
                 library.find("solveMovement").orElseThrow(() -> missingSymbol("solveMovement")),
-                FunctionDescriptor.of(JAVA_INT, ADDRESS, ADDRESS, ADDRESS, JAVA_INT, JAVA_INT));
+                FunctionDescriptor.of(JAVA_INT, ADDRESS, ADDRESS, JAVA_INT, JAVA_INT));
         prepareMovement = linker.downcallHandle(
                 library.find("prepareMovement").orElseThrow(() -> missingSymbol("prepareMovement")),
-                FunctionDescriptor.of(JAVA_INT, ADDRESS, ADDRESS), Linker.Option.critical(false));
+                FunctionDescriptor.of(JAVA_INT, ADDRESS), Linker.Option.critical(false));
     }
 
     private static void checkStatus(String operation, int status) {

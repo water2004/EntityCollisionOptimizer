@@ -12,19 +12,13 @@ import org.edtp.entitycollisionoptimizer.natives.NativeShapeBatch;
 
 import java.util.List;
 
-/** Java supplies context-dependent shapes; native owns clipping, stepping and integration. */
+/** Java supplies context-dependent shapes; native owns clipping and stepping. */
 public final class EntityMovementCollision {
     private EntityMovementCollision() {}
 
     public static Vec3 collide(Entity entity, Vec3 requested) {
-        try (NativeMovement movement = solve(entity, requested)) { return movement.displacement(); }
-    }
-
-    /** Caller owns the transaction through movement publication, including exceptional exits. */
-    public static NativeMovement solve(Entity entity, Vec3 requested) {
         var level = entity.level();
-        NativeMovement movement = new NativeMovement(entity, requested, null, true);
-        try {
+        try (NativeMovement movement = new NativeMovement(entity, requested, null, true)) {
             AABB scan = movement.stepScan();
             // Like Lithium, test the supporting block before querying entities. With no
             // horizontal motion, a fully cancelled fall cannot need another collider or a step.
@@ -32,7 +26,7 @@ public final class EntityMovementCollision {
                 try (NativeShapeBatch support = new NativeShapeBatch()) {
                     if (OrderedBlockColliders.collectSupport(entity, movement.sourceBounds(), scan, requested.y, support)) {
                         movement.solve(support, false);
-                        if (movement.displacement().y == 0.0) return movement;
+                        if (movement.displacement().y == 0.0) return movement.displacement();
                     }
                 }
             }
@@ -46,10 +40,7 @@ public final class EntityMovementCollision {
                 movement.solve(shapes, false);
             }
             if (movement.needsStep()) collectStep(entity, hardIds, movement);
-            return movement;
-        } catch (RuntimeException failure) {
-            movement.close();
-            throw failure;
+            return movement.displacement();
         }
     }
 
