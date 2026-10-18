@@ -47,5 +47,6 @@ public final class MovementBoundsChecks {
             helper.assertTrue(entity.getBoundingBox() == current, "body detach leaves Java bounds untouched");
         }
         EntityCollisionOptimizer.LOGGER.info("ECO_MOVEMENT_BOUNDS authority=true snapshots=true growth=true transfer=true result=passed");
+        ShapeBatchChecks.verify(helper);
     }
 }
