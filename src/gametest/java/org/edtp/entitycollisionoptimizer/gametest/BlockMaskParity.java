@@ -63,9 +63,9 @@ final class BlockMaskParity {
 
     static void checkRow(GameTestHelper helper, PalettedContainer<BlockState> states, int y, int z) {
         var mask = (CollisionBlockMask) states;
-        long row = mask.entityCollisionOptimizer$collisionRow(y, z, 0, 0)
-                | ((long) mask.entityCollisionOptimizer$collisionRow(y, z, 1, 0) << 16)
-                | ((long) mask.entityCollisionOptimizer$collisionRow(y, z, 2, 0) << 32);
+        long row = row(mask, y, z, 0, 0)
+                | ((long) row(mask, y, z, 1, 0) << 16)
+                | ((long) row(mask, y, z, 2, 0) << 32);
         long expected = 0;
         for (int x = 0; x < 16; x++) {
             BlockState state = states.get(x, y, z);
@@ -85,9 +85,18 @@ final class BlockMaskParity {
                     if (!state.isAir() && edges != 3 && (edges != 1 || state.hasLargeCollisionShape())
                             && (edges != 2 || state.is(Blocks.MOVING_PISTON))) selected |= 1 << x;
                 }
-                helper.assertValueEqual(mask.entityCollisionOptimizer$collisionRow(y, z, edgesYZ, edgesX), selected,
+                helper.assertValueEqual(row(mask, y, z, edgesYZ, edgesX), selected,
                         "halo selection " + edgesYZ + "/" + edgesX);
             }
         }
+    }
+
+    static int row(CollisionBlockMask palette, int y, int z, int edgesYZ, int edgesX) {
+        var rows = palette.entityCollisionOptimizer$collisionRows(y, y, z, z);
+        long masks = rows.masks(y << 4 | z);
+        int selected = (int) (masks >>> (edgesYZ * 16)) & 0xffff;
+        if (edgesX == 0) return selected;
+        int boundary = edgesYZ == 2 ? 0 : (int) (masks >>> ((edgesYZ + 1) * 16)) & 0xffff;
+        return (selected & ~edgesX) | (boundary & edgesX);
     }
 }

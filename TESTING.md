@@ -20,6 +20,21 @@ With `-PcompatModsDir=<directory>` containing Lithium, the optional pushable-que
 checks its adapter against vanilla section traversal, including explicit query bounds, captured
 team rules, candidate order and custom-predicate callbacks. Without Lithium, this check is skipped.
 
+Block-intersection contracts use vanilla's block iterator as the oracle. They cover live collision
+contexts, palette updates and first-hit termination; with Lithium present they also exercise its
+bridge and verify that hard-entity, world-border and liquid checks remain the caller's responsibility.
+
+Shared index publications cover ordered bounds/section/metadata updates, all query boundaries,
+removal and ID reuse, bounded-buffer draining without queries, and per-level isolation. Metadata
+callback reentry is covered separately by `metadataReentryContract`.
+
+Block-mask cursor contracts use an independent per-block halo oracle, including negative
+coordinates, missing sections, nested scans and live palette changes between candidates.
+Packed-row updates cover every column and flag combination while checking untouched columns
+and planes; early-return reuse checks that pooled cursor progress starts afresh.
+Block-intersection tests also compare shape callback order after callback-driven palette writes
+and a nested query against Minecraft's iterator.
+
 ## Cross-process integration GameTests
 
 ```powershell
