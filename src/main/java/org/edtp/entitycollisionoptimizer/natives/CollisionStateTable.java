@@ -30,10 +30,15 @@ public final class CollisionStateTable implements AutoCloseable {
     private Arena arena;
     private MemorySegment memory = MemorySegment.NULL;
     private int size, borrowers;
+    private long ownershipTransferRevision;
     private final IdentityHashMap<Entity, Boolean> retired = new IdentityHashMap<>();
 
     int bindBody(Entity entity) {
-        retired.remove(entity);
+        if (!retired.isEmpty()) retired.remove(entity);
+        CollisionBodyAccess access = (CollisionBodyAccess) entity;
+        // Entity records its current owner/slot; only a first binding or transfer needs the map.
+        int boundSlot = access.eco$boundBodySlot(this);
+        if (boundSlot >= 0) return boundSlot;
         Integer existing = slots.get(entity);
         int slot;
         if (existing != null) slot = existing;
@@ -43,8 +48,8 @@ public final class CollisionStateTable implements AutoCloseable {
             entities[slot] = entity;
             slots.put(entity, slot);
         }
-        // Query metadata must never publish an unbound body slot. Rebinding also handles level transfer.
-        ((CollisionBodyAccess) entity).eco$bindBody(this, slot);
+        // Returning to a former owner reuses its retained row until retirement.
+        access.eco$bindBody(this, slot);
         return slot;
     }
 
@@ -111,6 +116,12 @@ public final class CollisionStateTable implements AutoCloseable {
 
     public void bind(int slot) { bound[slot] = true; pushStates.invalidate(slot); }
     public void unbind(int slot) { bound[slot] = false; }
+    /** A transferred body may still have a spatial ID here; invalidate its cached association. */
+    public void transferBodyOut(int slot) {
+        unbind(slot);
+        ownershipTransferRevision++;
+    }
+    long ownershipTransferRevision() { return ownershipTransferRevision; }
     boolean bound(int slot) { return bound[slot]; }
     int size() { return size; }
     public void invalidatePushState(int slot) { pushStates.invalidate(slot); }
@@ -119,8 +130,7 @@ public final class CollisionStateTable implements AutoCloseable {
     /** Returns a persistent source row when its lifetime is covered by the current batch lease. */
     int sourceSlot(Entity entity) {
         refreshPushStates();
-        Integer slot = slots.get(entity);
-        return slot != null && bound[slot] ? slot : -1;
+        return ((CollisionBodyAccess) entity).eco$boundBodySlot(this);
     }
 
     /** Materializes a source that was already removed before the batch began. */
@@ -142,9 +152,7 @@ public final class CollisionStateTable implements AutoCloseable {
                 | (entity.noPhysics ? CollisionCacheState.NO_PHYSICS : 0);
         destination.set(JAVA_INT, STATE_OFFSET, state);
         Entity root = entity.getRootVehicle();
-        Integer rootSlot = slots.get(root);
-        destination.set(JAVA_INT, ROOT_OFFSET,
-                rootSlot != null && bound[rootSlot] ? rootSlot : -1);
+        destination.set(JAVA_INT, ROOT_OFFSET, ((CollisionBodyAccess) root).eco$boundBodySlot(this));
         destination.set(JAVA_INT, SYNC_OFFSET, access.eco$readNeedsSync() ? 1 : 0);
     }
 

@@ -38,6 +38,8 @@ and a nested query against Minecraft's iterator.
 Movement contracts check Java-owned position/bounds, captured scan geometry and body ownership
 across table growth, transfer and retirement. Batched hard-collision geometry is compared with
 vanilla clipping across page growth, mixed shape references, nested calls and pooled-storage reuse.
+Body-slot checks cover owner-qualified reuse, nested-lease retirement cancellation and recycled slots.
+Spatial-to-body associations also cover ownership transfer, index growth and native-ID reuse during a lease.
 
 ## Cross-process integration GameTests
 
