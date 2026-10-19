@@ -65,12 +65,6 @@ public abstract class EntityMixin implements CollisionCacheState {
     }
 
     @Override
-    public void entityCollisionOptimizer$resetPushabilityCache() {
-        entityCollisionOptimizer$pushableEntityRevision = Long.MIN_VALUE;
-        ((CollisionBodyAccess) this).eco$invalidatePushState();
-    }
-
-    @Override
     public long entityCollisionOptimizer$collisionRevision() {
         return entityCollisionOptimizer$collisionRevision;
     }
