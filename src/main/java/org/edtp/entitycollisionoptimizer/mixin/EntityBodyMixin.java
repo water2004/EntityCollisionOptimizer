@@ -52,13 +52,17 @@ public abstract class EntityBodyMixin implements CollisionBodyAccess {
         if (eco$bodyTable != null) eco$bodyTable.invalidatePushState(eco$bodySlot);
     }
 
+    @Override public final int eco$boundBodySlot(CollisionStateTable table) {
+        return eco$bodyTable == table ? eco$bodySlot : -1;
+    }
+
     @Override public final void eco$bindBody(CollisionStateTable table, int slot) {
         if (eco$bodyTable != table || eco$bodySlot != slot) {
             // Also handles moving an entity between tables: read the former owner before rebinding.
             table.velocity(slot, eco$readVelocity());
             table.needsSync(slot, eco$readNeedsSync());
             table.position(slot, position);
-            if (eco$bodyTable != null) eco$bodyTable.unbind(eco$bodySlot);
+            if (eco$bodyTable != null) eco$bodyTable.transferBodyOut(eco$bodySlot);
             eco$bodyTable = table;
             eco$bodySlot = slot;
             table.bind(slot);
