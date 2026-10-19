@@ -7,7 +7,6 @@ import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.util.function.Consumer;
 
-
 /** A level-local, reentrant-safe snapshot; native scratch buffers never escape into the push loop. */
 public final class PushBatch implements AutoCloseable {
     private final FFMBackend.Context context;
@@ -45,8 +44,16 @@ public final class PushBatch implements AutoCloseable {
         result.copyPushCandidatesTo(bodySlots, nativePushFlags);
         // Only final candidates need body slots; pin them before any push callback can retire IDs.
         if (size != 0 && ids.contains(source)) bodies.bindBody(source);
+        // Resolve once per indexed entity, then snapshot slots before callbacks can remove/reuse IDs.
+        int[] bodySlotsByNativeId = ids.bodySlotsByNativeId(bodies);
         for (int index = 0; index < size; index++) {
-            bodySlots[index] = bodies.bindBody(ids.getEntity(bodySlots[index]));
+            int nativeId = bodySlots[index];
+            int bodySlot = bodySlotsByNativeId[nativeId];
+            if (bodySlot < 0) {
+                bodySlot = bodies.bindBody(ids.getEntity(nativeId));
+                bodySlotsByNativeId[nativeId] = bodySlot;
+            }
+            bodySlots[index] = bodySlot;
         }
     }
 
