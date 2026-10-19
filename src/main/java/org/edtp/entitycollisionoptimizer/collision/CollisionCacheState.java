@@ -24,6 +24,4 @@ public interface CollisionCacheState {
 
     /** Live revision-checked vanilla flags, shared by selection and ordinary push execution. */
     int entityCollisionOptimizer$pushState();
-
-    void entityCollisionOptimizer$resetPushabilityCache();
 }
