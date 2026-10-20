@@ -63,7 +63,7 @@ final class MixedCollisionChamber extends BenchmarkScenario {
                 entity.setUUID(new UUID(0xEC026200L, index + 1));
                 entity.getRandom().setSeed(0xEC0262L + index);
                 entity.setPos(135.5 + (random.nextDouble() - .5) * 2, 33, 135.5 + (random.nextDouble() - .5) * 2);
-                entity.setInvulnerable(true);
+                entity.setPermanentlyInvulnerable(true);
                 if (entity instanceof Mob mob) mob.setPersistenceRequired();
                 if (!level.addFreshEntity(entity)) throw new IllegalStateException("Failed to add mixed collision resident");
                 residents.add(entity);
