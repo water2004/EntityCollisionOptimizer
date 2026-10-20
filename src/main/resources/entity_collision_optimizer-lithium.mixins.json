@@ -8,7 +8,8 @@
     "BlockIntersectionMixin",
     "PushablePredicateMixin",
     "EntitySelectorMixin",
-    "WorldHelperMixin"
+    "WorldHelperMixin",
+    "SingleCellShapeMixin"
   ],
   "injectors": {
     "defaultRequire": 1

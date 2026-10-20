@@ -16,4 +16,9 @@ public interface EntityCollisionInvoker {
     static Vec3 eco$collideWithShapes(Vec3 movement, AABB box, List<VoxelShape> shapes) {
         throw new AssertionError("Mixin invoker was not applied");
     }
+
+    @Invoker("collectCandidateStepUpHeights")
+    static float[] eco$stepHeights(AABB box, List<VoxelShape> shapes, float maxStep, float clippedY) {
+        throw new AssertionError("Mixin invoker was not applied");
+    }
 }

@@ -7,17 +7,16 @@ import net.minecraft.world.entity.monster.zombie.Zombie;
 import net.minecraft.world.level.entity.EntityInLevelCallback;
 import net.minecraft.world.phys.Vec3;
 import org.edtp.entitycollisionoptimizer.EntityCollisionOptimizer;
-import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.List;
 
-/** Nested movement must not reuse its parent's packet; every exceptional exit releases its lease. */
-public final class MovementLeaseChecks {
+/** Nested and throwing world callbacks observe the same movement with and without a bound push body. */
+public final class MovementReentryChecks {
     public static void verify(GameTestHelper helper) {
-        List<Vec3> vanilla = run(helper, false);
-        List<Vec3> nativeResult = run(helper, true);
-        helper.assertTrue(nativeResult.equals(vanilla), "nested movement and exception publication match vanilla");
-        EntityCollisionOptimizer.LOGGER.info("ECO_MOVEMENT_LEASE nested_callback=true exception_release=true result=passed");
+        List<Vec3> unbound = run(helper, false);
+        List<Vec3> bound = run(helper, true);
+        helper.assertTrue(bound.equals(unbound), "nested movement and exception publication are independent of push-body ownership");
+        EntityCollisionOptimizer.LOGGER.info("ECO_MOVEMENT_REENTRY nested_callback=true exception_publication=true result=passed");
     }
 
     private static List<Vec3> run(GameTestHelper helper, boolean enabled) {
@@ -41,7 +40,6 @@ public final class MovementLeaseChecks {
         try (var table = new CollisionStateTable()) {
             if (enabled) table.bindBody(entity);
             entity.move(MoverType.SELF, new Vec3(.03, .01, .02));
-            int available = enabled ? availablePackets() : 0;
             for (int i = 0; i < 8; i++) {
                 fail[0] = true;
                 try {
@@ -50,7 +48,6 @@ public final class MovementLeaseChecks {
                 } catch (IllegalStateException failure) {
                     if (failure != marker) throw failure;
                 }
-                if (enabled) helper.assertValueEqual(availablePackets(), available, "exception returns all movement packets");
                 fail[0] = false;
                 entity.move(MoverType.SELF, new Vec3(.03, .01, .02));
                 observed.add(entity.position());
@@ -59,11 +56,4 @@ public final class MovementLeaseChecks {
         return observed;
     }
 
-    private static int availablePackets() {
-        try {
-            var field = NativeMovement.class.getDeclaredField("POOL");
-            field.setAccessible(true);
-            return ((ArrayDeque<?>) ((ThreadLocal<?>) field.get(null)).get()).size();
-        } catch (ReflectiveOperationException failure) { throw new AssertionError(failure); }
-    }
 }

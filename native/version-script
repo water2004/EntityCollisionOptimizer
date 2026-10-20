@@ -10,6 +10,5 @@
         queryEntitiesInBox;
         queryPushableEntities;
         executePushRun;
-        solveMovement;
     local: *;
 };

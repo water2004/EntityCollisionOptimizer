@@ -4,7 +4,13 @@ import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.entity.monster.zombie.Zombie;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.phys.shapes.CollisionContext;
+import net.minecraft.world.phys.shapes.Shapes;
 import org.edtp.entitycollisionoptimizer.EntityCollisionOptimizer;
+import org.edtp.entitycollisionoptimizer.collision.blocks.EntityMovementCollision;
+import org.edtp.entitycollisionoptimizer.gametest.mixin.EntityCollisionInvoker;
+
+import java.util.List;
 
 public final class MovementBoundsChecks {
     public static void verify(GameTestHelper helper) {
@@ -20,24 +26,16 @@ public final class MovementBoundsChecks {
             for (Vec3 request : new Vec3[]{new Vec3(-.5, -.1, .3), new Vec3(.5, .1, -.3),
                     new Vec3(-0.0, 0, -0.0), new Vec3(1e-8, -1e-7, 0)}) {
                 AABB captured = entity.getBoundingBox();
-                try (var movement = new NativeMovement(entity, request, captured, true)) {
-                    AABB scan = movement.stepScan();
-                    helper.assertTrue(scan.equals(captured.expandTowards(request)), "movement swept bounds");
-                    helper.assertTrue(movement.sourceBounds() == captured && movement.stepScan() == scan,
-                            "Java bounds are reused before solving");
-                    // Movement keeps its captured geometry despite callbacks changing the entity.
-                    entity.setBoundingBox(captured.move(4, 0, 0));
-                    for (int i = 0; i < 300; i++) table.bindBody(new Zombie(helper.getLevel()));
-                    try (var shapes = new NativeShapeBatch()) {
-                        shapes.add(net.minecraft.world.phys.shapes.Shapes.block());
-                        movement.solve(shapes, false);
-                        Vec3 expected = request.lengthSqr() == 0 ? request : org.edtp.entitycollisionoptimizer.gametest.mixin.EntityCollisionInvoker
-                                .eco$collideWithShapes(request, captured, java.util.List.of(net.minecraft.world.phys.shapes.Shapes.block()));
-                        helper.assertTrue(movement.displacement().equals(expected), "captured geometry request=" + request
-                                + " expected=" + expected + " actual=" + movement.displacement());
-                    }
-                    entity.setBoundingBox(captured);
-                }
+                // Explicit-box movement keeps its captured geometry, not the entity's later bounds.
+                entity.setBoundingBox(captured.move(4, 0, 0));
+                for (int i = 0; i < 300; i++) table.bindBody(new Zombie(helper.getLevel()));
+                var shapes = List.of(Shapes.block());
+                Vec3 expected = EntityCollisionInvoker.eco$collideWithShapes(request, captured, shapes);
+                Vec3 actual = EntityMovementCollision.collideBox(helper.getLevel(),
+                        CollisionContext.empty(), null, request, captured, shapes);
+                helper.assertTrue(actual.equals(expected), "captured geometry request=" + request
+                        + " expected=" + expected + " actual=" + actual);
+                entity.setBoundingBox(captured);
             }
             AABB current = entity.getBoundingBox();
             next.bindBody(entity);
@@ -47,6 +45,5 @@ public final class MovementBoundsChecks {
             helper.assertTrue(entity.getBoundingBox() == current, "body detach leaves Java bounds untouched");
         }
         EntityCollisionOptimizer.LOGGER.info("ECO_MOVEMENT_BOUNDS authority=true snapshots=true growth=true transfer=true result=passed");
-        ShapeBatchChecks.verify(helper);
     }
 }
