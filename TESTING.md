@@ -28,6 +28,14 @@ Shared index publications cover ordered bounds/section/metadata updates, all que
 removal and ID reuse, bounded-buffer draining without queries, and per-level isolation. Metadata
 callback reentry is covered separately by `metadataReentryContract`.
 
+Untyped entity queries use independent section traversal as the oracle. Ordinary typed class
+queries inspect existing collections until the first matching section: empty queries stop,
+selective queries retain Java traversal, and dense queries use one native batch. This is a
+query-plan estimate, not a guarantee about the remaining sections. Exact/custom tests stay in
+Java. Contracts cover subclasses, custom filters, order, nested queries, selective/empty dispatch,
+Java cross-section abort and native callback limits. Native probes detect omissions/reordering;
+typed expectations use fixture classes and untyped section order, not the same typed path.
+
 Block-mask cursor contracts use an independent per-block halo oracle, including negative
 coordinates, missing sections, nested scans and live palette changes between candidates.
 Packed-row updates cover every column and flag combination while checking untouched columns
