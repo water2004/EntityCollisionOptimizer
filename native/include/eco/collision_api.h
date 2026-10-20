@@ -83,9 +83,4 @@ ECO_EXPORT int queryPushableEntities(
 ECO_EXPORT int executePushRun(void* sourceBodyPointer, void* targetBodiesPointer,
                              int targetCapacity, const int* targetSlots, int targetCount);
 
-// Movement collision solving.
-ECO_EXPORT int solveMovement(double* movementData,
-                             const void* shapeReferencesPointer, int shapeCount,
-                             int movementPhase);
-
 }

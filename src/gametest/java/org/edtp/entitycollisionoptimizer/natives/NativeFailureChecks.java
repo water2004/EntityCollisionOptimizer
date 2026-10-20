@@ -12,11 +12,11 @@ import java.lang.reflect.Field;
 public final class NativeFailureChecks {
     public static void verify(GameTestHelper helper) {
         try (Arena arena = Arena.ofConfined()) {
-            Field movement = handleField("movement");
+            Field query = handleField("queryHard");
             Field create = handleField("createContextHandle");
             Field detail = handleField("lastNativeExceptionHandle");
             Field flush = handleField("flushUpdates");
-            MethodHandle originalMovement = (MethodHandle) movement.get(null);
+            MethodHandle originalQuery = (MethodHandle) query.get(null);
             MethodHandle originalCreate = (MethodHandle) create.get(null);
             MethodHandle originalDetail = (MethodHandle) detail.get(null);
             MethodHandle originalFlush = (MethodHandle) flush.get(null);
@@ -38,41 +38,43 @@ public final class NativeFailureChecks {
                             "shared publication failure is fatal and retains native diagnostics");
                 }
                 flush.set(null, originalFlush);
-                movement.set(null, withArguments(MethodHandles.constant(int.class, -100), originalMovement));
-                Error nativeFailure = expectError(helper, NativeFailureChecks::solve);
-                helper.assertTrue(nativeFailure.getMessage().contains("std::bad_alloc: failure fixture"),
-                        "native exception details reach Java");
-                helper.assertTrue(nativeFailure.getMessage().contains("solve native movement"),
-                        "native exception identifies its operation");
+                try (var context = FFMBackend.createContext()) {
+                    query.set(null, withArguments(MethodHandles.constant(int.class, -100), originalQuery));
+                    Error nativeFailure = expectError(helper, () -> query(context));
+                    helper.assertTrue(nativeFailure.getMessage().contains("std::bad_alloc: failure fixture"),
+                            "native exception details reach Java");
+                    helper.assertTrue(nativeFailure.getMessage().contains("query hard collision entities"),
+                            "native exception identifies its operation");
 
-                create.set(null, withArguments(
-                        MethodHandles.constant(MemorySegment.class, MemorySegment.NULL), originalCreate));
-                Error creationFailure = expectError(helper, FFMBackend::createContext);
-                helper.assertTrue(creationFailure.getMessage().contains("std::bad_alloc: failure fixture"),
-                        "context creation preserves native exception details");
+                    create.set(null, withArguments(
+                            MethodHandles.constant(MemorySegment.class, MemorySegment.NULL), originalCreate));
+                    Error creationFailure = expectError(helper, FFMBackend::createContext);
+                    helper.assertTrue(creationFailure.getMessage().contains("std::bad_alloc: failure fixture"),
+                            "context creation preserves native exception details");
 
-                Error fatal = new AssertionError("fatal fixture");
-                movement.set(null, withArguments(
-                        MethodHandles.throwException(int.class, Error.class).bindTo(fatal), originalMovement));
-                helper.assertTrue(expectError(helper, NativeFailureChecks::solve) == fatal,
-                        "fatal Java error propagates unchanged");
+                    Error fatal = new AssertionError("fatal fixture");
+                    query.set(null, withArguments(
+                            MethodHandles.throwException(int.class, Error.class).bindTo(fatal), originalQuery));
+                    helper.assertTrue(expectError(helper, () -> query(context)) == fatal,
+                            "fatal Java error propagates unchanged");
 
-                RuntimeException recoverable = new IllegalArgumentException("recoverable fixture");
-                movement.set(null, withArguments(MethodHandles.throwException(int.class, RuntimeException.class)
-                        .bindTo(recoverable), originalMovement));
-                try {
-                    solve();
-                    helper.fail("expected recoverable exception");
-                } catch (IllegalStateException failure) {
-                    helper.assertTrue(failure.getCause() == recoverable, "Java exception retains its cause");
+                    RuntimeException recoverable = new IllegalArgumentException("recoverable fixture");
+                    query.set(null, withArguments(MethodHandles.throwException(int.class, RuntimeException.class)
+                            .bindTo(recoverable), originalQuery));
+                    try {
+                        query(context);
+                        helper.fail("expected recoverable exception");
+                    } catch (IllegalStateException failure) {
+                        helper.assertTrue(failure.getCause() == recoverable, "Java exception retains its cause");
+                    }
+
+                    // A successful downcall must not consult the diagnostic handle at all.
+                    query.set(null, withArguments(MethodHandles.constant(int.class, 0), originalQuery));
+                    detail.set(null, MethodHandles.throwException(MemorySegment.class, Error.class).bindTo(fatal));
+                    query(context);
                 }
-
-                // A successful downcall must not consult the diagnostic handle at all.
-                movement.set(null, withArguments(MethodHandles.constant(int.class, 0), originalMovement));
-                detail.set(null, MethodHandles.throwException(MemorySegment.class, Error.class).bindTo(fatal));
-                solve();
             } finally {
-                movement.set(null, originalMovement);
+                query.set(null, originalQuery);
                 create.set(null, originalCreate);
                 detail.set(null, originalDetail);
                 flush.set(null, originalFlush);
@@ -92,8 +94,8 @@ public final class NativeFailureChecks {
         return MethodHandles.dropArguments(replacement, 0, original.type().parameterList());
     }
 
-    private static void solve() {
-        FFMBackend.solveMovement(MemorySegment.NULL, MemorySegment.NULL, 0, 0);
+    private static void query(FFMBackend.Context context) {
+        FFMBackend.queryHard(context, new net.minecraft.world.phys.AABB(0, 0, 0, 1, 1, 1), -1, true, 1);
     }
 
     private static Error expectError(GameTestHelper helper, Runnable action) {

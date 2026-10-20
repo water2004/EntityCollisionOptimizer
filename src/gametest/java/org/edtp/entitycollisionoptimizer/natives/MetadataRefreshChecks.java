@@ -40,15 +40,15 @@ public final class MetadataRefreshChecks {
                 helper.assertValueEqual(batch.size(), 0, "unpushable target omitted");
             }
             unbound(helper, source, target, remote);
-            try (var shapes = new NativeShapeBatch();
-                 var movement = new NativeMovement(null, new Vec3(1, 0, 0),
-                         target.getBoundingBox().move(-1, 0, 0), false)) {
-                fixture.frame.addHardCubes(new int[]{fixture.ids.getNativeId(target)}, shapes);
-                movement.solve(shapes, false);
+            {
+                var shapes = new org.edtp.entitycollisionoptimizer.collision.blocks.MovementColliders();
+                fixture.frame.collectHardColliders(new int[]{fixture.ids.getNativeId(target)}, shapes);
                 Vec3 expected = org.edtp.entitycollisionoptimizer.gametest.mixin.EntityCollisionInvoker.eco$collideWithShapes(
                         new Vec3(1, 0, 0), target.getBoundingBox().move(-1, 0, 0),
                         List.of(net.minecraft.world.phys.shapes.Shapes.create(target.getBoundingBox())));
-                helper.assertValueEqual(movement.displacement(), expected, "hard cube uses current Java bounds");
+                helper.assertValueEqual(shapes.clip(
+                        new Vec3(1, 0, 0), target.getBoundingBox().move(-1, 0, 0)),
+                        expected, "hard collider uses current Java bounds");
             }
             unbound(helper, source, target, remote); // Hard geometry needs no pushing body either.
 

@@ -77,7 +77,7 @@ final class BlockMovementParity {
     }
 
     private static int compare(GameTestHelper helper, Entity entity, Vec3 requested, String label) {
-        Vec3 expected = ((EntityMovementTestInvoker) entity).eco$collide(requested);
+        Vec3 expected = VanillaMovementReference.collide(entity, requested);
         MovementTakeoverCoverage.begin();
         Vec3 actual;
         try {

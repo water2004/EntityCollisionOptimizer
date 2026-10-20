@@ -62,15 +62,14 @@ public final class CollisionContractGameTests {
     }
 
     @GameTest(maxTicks = 200, padding = 48)
-    public void nativeMovementContract(GameTestHelper helper) {
+    public void movementContract(GameTestHelper helper) {
         MovementShortCircuitChecks.verify(helper);
-        NativeVoxelParity.edges(helper);
+        MovementClippingParity.edges(helper);
         SingleCellParity.verify(helper);
         org.edtp.entitycollisionoptimizer.natives.MovementPublicationChecks.verify(helper);
         org.edtp.entitycollisionoptimizer.natives.MovementBoundsChecks.verify(helper);
         org.edtp.entitycollisionoptimizer.collision.blocks.BlockMaskScanChecks.verify(helper);
-        org.edtp.entitycollisionoptimizer.natives.MovementLeaseChecks.verify(helper);
-        org.edtp.entitycollisionoptimizer.natives.NativeFailureChecks.verify(helper);
+        org.edtp.entitycollisionoptimizer.natives.MovementReentryChecks.verify(helper);
         helper.succeed();
     }
 
@@ -92,6 +91,7 @@ public final class CollisionContractGameTests {
     @GameTest(maxTicks = 200, padding = 48)
     public void sharedIndexPublicationContract(GameTestHelper helper) {
         org.edtp.entitycollisionoptimizer.natives.IndexUpdateChecks.verify(helper);
+        org.edtp.entitycollisionoptimizer.natives.NativeFailureChecks.verify(helper);
         helper.succeed();
     }
 

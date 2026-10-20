@@ -11,7 +11,6 @@ import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
 import org.edtp.entitycollisionoptimizer.natives.CollisionFrame;
-import org.edtp.entitycollisionoptimizer.natives.NativeShapeBatch;
 
 import java.util.List;
 
@@ -20,36 +19,35 @@ public final class OrderedBlockColliders {
     private OrderedBlockColliders() {}
 
     /** A live support shape, not a cached result; missing chunks do not get loaded by this probe. */
-    static boolean collectSupport(Entity entity, AABB bounds, AABB scan, double requestedY, NativeShapeBatch result) {
+    static VoxelShape support(Entity entity, AABB bounds, AABB scan, double requestedY) {
         Level level = entity.level();
         BlockPos pos = entity.mainSupportingBlockPos.orElseGet(() -> BlockPos.containing(
                 bounds.minX + (bounds.maxX - bounds.minX) / 2, bounds.minY,
                 bounds.minZ + (bounds.maxZ - bounds.minZ) / 2));
-        if (level.isOutsideBuildHeight(pos.getY())) return false;
+        if (level.isOutsideBuildHeight(pos.getY())) return null;
         var chunk = level.getChunk(pos.getX() >> 4, pos.getZ() >> 4, ChunkStatus.FULL, false);
-        if (chunk == null) return false;
+        if (chunk == null) return null;
         VoxelShape shape = CollisionContext.of(entity).getCollisionShape(chunk.getBlockState(pos), level, pos);
         // In particular, do not snap sub-1e-7 movement against a shape outside the scan.
         if (shape.isEmpty() || (requestedY > -1e-7 && !Shapes.joinIsNotEmpty(
-                shape.move(pos.getX(), pos.getY(), pos.getZ()), Shapes.create(scan), BooleanOp.AND))) return false;
-        result.addTranslated(shape, pos.getX(), pos.getY(), pos.getZ());
-        return true;
+                shape.move(pos.getX(), pos.getY(), pos.getZ()), Shapes.create(scan), BooleanOp.AND))) return null;
+        return shape.move(pos.getX(), pos.getY(), pos.getZ());
     }
 
-    public static void collectNative(Level level, CollisionContext context, Entity entity,
-                                     AABB box, List<VoxelShape> entityShapes, NativeShapeBatch result) {
+    public static void collect(Level level, CollisionContext context, Entity entity,
+                               AABB box, List<VoxelShape> entityShapes, MovementColliders result) {
         for (VoxelShape shape : entityShapes) result.add(shape);
         collectWorld(level, context, entity, box, result);
     }
 
-    public static void collectNative(Level level, CollisionContext context, Entity entity,
-                                     AABB box, int[] hardIds, NativeShapeBatch result) {
-        CollisionFrame.addHardCubes(entity, hardIds, result);
+    public static void collect(Level level, CollisionContext context, Entity entity,
+                               AABB box, int[] hardIds, MovementColliders result) {
+        CollisionFrame.collectHardColliders(entity, hardIds, result);
         collectWorld(level, context, entity, box, result);
     }
 
     private static void collectWorld(Level level, CollisionContext context, Entity entity,
-                                     AABB box, NativeShapeBatch result) {
+                                     AABB box, MovementColliders result) {
         var border = level.getWorldBorder();
         if (entity != null && border.isInsideCloseToBorder(entity, box)) result.add(border.getCollisionShape());
         new Scan(level, context, box, result).run();
@@ -59,15 +57,14 @@ public final class OrderedBlockColliders {
         private final Level level;
         private final CollisionContext context;
         private final AABB box;
-        private final VoxelShape boxShape;
-        private final NativeShapeBatch result;
+        private VoxelShape boxShape;
+        private final MovementColliders result;
         private final BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
 
-        private Scan(Level level, CollisionContext context, AABB box, NativeShapeBatch result) {
+        private Scan(Level level, CollisionContext context, AABB box, MovementColliders result) {
             this.level = level;
             this.context = context;
             this.box = box;
-            this.boxShape = Shapes.create(box);
             this.result = result;
         }
 
@@ -86,11 +83,13 @@ public final class OrderedBlockColliders {
             VoxelShape shape = context.getCollisionShape(state, level, pos);
             if (shape == Shapes.block()) {
                 if (box.intersects(x, y, z, x + 1.0, y + 1.0, z + 1.0)) {
-                    result.addTranslated(shape, x, y, z);
+                    result.addBlock(x, y, z);
                 }
             } else {
                 VoxelShape moved = shape.move(x, y, z);
-                if (!moved.isEmpty() && Shapes.joinIsNotEmpty(moved, boxShape, BooleanOp.AND)) result.addTranslated(shape, x, y, z);
+                if (moved.isEmpty()) return;
+                if (boxShape == null) boxShape = Shapes.create(box);
+                if (Shapes.joinIsNotEmpty(moved, boxShape, BooleanOp.AND)) result.add(moved);
             }
         }
 

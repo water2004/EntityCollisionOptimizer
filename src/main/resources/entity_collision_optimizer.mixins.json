@@ -14,7 +14,6 @@
     "EntityBodyMixin",
     "EntitySectionStorageMixin",
     "EntityMovementMixin",
-    "VoxelGeometryMixin",
     "LevelMixin",
     "LivingEntityMixin",
     "LivingEntityStateMixin",
@@ -24,7 +23,8 @@
     "ServerPlayerMixin",
     "PersistentEntitySectionManagerAccessor",
     "ServerLevelAccessor",
-    "ServerLevelMixin"
+    "ServerLevelMixin",
+    "SingleCellShapeMixin"
   ],
   "injectors": {
     "defaultRequire": 1

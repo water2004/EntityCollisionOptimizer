@@ -3,6 +3,7 @@ package org.edtp.entitycollisionoptimizer.natives;
 import org.edtp.entitycollisionoptimizer.collision.CollisionCacheEpochs;
 import org.edtp.entitycollisionoptimizer.collision.CollisionCacheState;
 import org.edtp.entitycollisionoptimizer.collision.VanillaMethodDetector;
+import org.edtp.entitycollisionoptimizer.collision.blocks.MovementColliders;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.SectionPos;
 import net.minecraft.server.level.ServerLevel;
@@ -174,13 +175,13 @@ final class LevelCollisionFrame {
                 : (count == matches.length ? matches : Arrays.copyOf(matches, count));
     }
 
-    synchronized void addHardCubes(int[] hardIds, NativeShapeBatch shapes) {
+    synchronized void collectHardColliders(int[] hardIds, MovementColliders shapes) {
         for (int nativeId : hardIds) {
             Entity target = ids.getEntity(nativeId);
             if (target == null) {
                 throw new IllegalStateException("Native hard collision cube requested unknown entity " + nativeId);
             }
-            shapes.addCube(target.getBoundingBox());
+            shapes.addBounds(target.getBoundingBox());
         }
     }
 

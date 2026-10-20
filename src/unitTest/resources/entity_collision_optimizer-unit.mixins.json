@@ -5,8 +5,8 @@
   "compatibilityLevel": "JAVA_25",
   "mixins": [
     "HardQueryObservationMixin",
-    "NativeShapeBatchCaptureMixin",
-    "VanillaEntityQueryMixin"
+    "VanillaEntityQueryMixin",
+    "MovementColliderCaptureMixin"
   ],
   "injectors": {
     "defaultRequire": 1
