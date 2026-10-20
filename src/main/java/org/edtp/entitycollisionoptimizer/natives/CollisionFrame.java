@@ -10,6 +10,7 @@ import net.minecraft.world.phys.shapes.VoxelShape;
 import net.minecraft.world.scores.PlayerTeam;
 import net.minecraft.world.scores.Team;
 import org.edtp.entitycollisionoptimizer.collision.EntitySectionStorageLevelBinding;
+import org.edtp.entitycollisionoptimizer.collision.blocks.MovementColliders;
 import org.edtp.entitycollisionoptimizer.collision.CollisionCacheState;
 import org.edtp.entitycollisionoptimizer.mixin.PersistentEntitySectionManagerAccessor;
 import org.edtp.entitycollisionoptimizer.mixin.ServerLevelAccessor;
@@ -135,8 +136,8 @@ public final class CollisionFrame {
         return frameFor(source).hardCollisionIds(source, scan);
     }
 
-    public static void addHardCubes(Entity source, int[] hardIds, NativeShapeBatch shapes) {
-        frameFor(source).addHardCubes(hardIds, shapes);
+    public static void collectHardColliders(Entity source, int[] hardIds, MovementColliders shapes) {
+        if (hardIds.length != 0) frameFor(source).collectHardColliders(hardIds, shapes);
     }
 
     public static List<VoxelShape> getEntityCollisions(ServerLevel level, Entity entity, AABB box) {

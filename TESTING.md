@@ -36,8 +36,11 @@ Block-intersection tests also compare shape callback order after callback-driven
 and a nested query against Minecraft's iterator.
 
 Movement contracts check Java-owned position/bounds, captured scan geometry and body ownership
-across table growth, transfer and retirement. Batched hard-collision geometry is compared with
-vanilla clipping across page growth, mixed shape references, nested calls and pooled-storage reuse.
+across table growth, transfer and retirement. Java clipping is compared with vanilla's unreplaced
+geometry primitive across block states, custom voxel grids, translated shapes and signed-zero edges.
+Numeric block/bounds colliders also cover mixed candidate order, storage growth/reuse and exact
+step-height planes; subdivided and custom shapes retain the general voxel path.
+Movement publication, nested callbacks, support short-circuiting and step attempts retain separate coverage.
 Body-slot checks cover owner-qualified reuse, nested-lease retirement cancellation and recycled slots.
 Spatial-to-body associations also cover ownership transfer, index growth and native-ID reuse during a lease.
 
