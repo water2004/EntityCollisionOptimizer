@@ -2,6 +2,7 @@ package org.edtp.entitycollisionoptimizer.natives;
 
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.entity.monster.zombie.Zombie;
+import net.minecraft.world.level.BlockCollisions;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.CollisionContext;
@@ -10,6 +11,7 @@ import org.edtp.entitycollisionoptimizer.EntityCollisionOptimizer;
 import org.edtp.entitycollisionoptimizer.collision.blocks.EntityMovementCollision;
 import org.edtp.entitycollisionoptimizer.gametest.mixin.EntityCollisionInvoker;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public final class MovementBoundsChecks {
@@ -30,7 +32,12 @@ public final class MovementBoundsChecks {
                 entity.setBoundingBox(captured.move(4, 0, 0));
                 for (int i = 0; i < 300; i++) table.bindBody(new Zombie(helper.getLevel()));
                 var shapes = List.of(Shapes.block());
-                Vec3 expected = EntityCollisionInvoker.eco$collideWithShapes(request, captured, shapes);
+                var expectedShapes = new ArrayList<>(shapes);
+                // collideBox also scans the world; the origin need not be empty in a mod stack.
+                new BlockCollisions<>(helper.getLevel(), CollisionContext.empty(),
+                        captured.expandTowards(request), false, (pos, shape) -> shape)
+                        .forEachRemaining(expectedShapes::add);
+                Vec3 expected = EntityCollisionInvoker.eco$collideWithShapes(request, captured, expectedShapes);
                 Vec3 actual = EntityMovementCollision.collideBox(helper.getLevel(),
                         CollisionContext.empty(), null, request, captured, shapes);
                 helper.assertTrue(actual.equals(expected), "captured geometry request=" + request
