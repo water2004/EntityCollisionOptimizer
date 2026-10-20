@@ -6,7 +6,6 @@ import net.minecraft.util.AbortableIterationConsumer;
 import net.minecraft.world.level.entity.EntityAccess;
 import net.minecraft.world.level.entity.EntitySection;
 import net.minecraft.world.level.entity.EntitySectionStorage;
-import net.minecraft.world.level.entity.EntityTypeTest;
 import net.minecraft.world.phys.AABB;
 import org.edtp.entitycollisionoptimizer.gametest.VanillaEntityQueries;
 import org.spongepowered.asm.mixin.Mixin;
@@ -26,16 +25,6 @@ public abstract class VanillaEntityQueryMixin<T extends EntityAccess> {
             forEachAccessibleNonEmptySection(box, section -> section.getEntities(box, consumer));
         } else {
             original.call(box, consumer);
-        }
-    }
-
-    @WrapMethod(method = "getEntities(Lnet/minecraft/world/level/entity/EntityTypeTest;Lnet/minecraft/world/phys/AABB;Lnet/minecraft/util/AbortableIterationConsumer;)V")
-    private <U extends T> void eco$vanillaTypedQuery(EntityTypeTest<T, U> type, AABB box,
-                                                   AbortableIterationConsumer<U> consumer, Operation<Void> original) {
-        if (VanillaEntityQueries.active()) {
-            forEachAccessibleNonEmptySection(box, section -> section.getEntities(type, box, consumer));
-        } else {
-            original.call(type, box, consumer);
         }
     }
 }

@@ -185,17 +185,14 @@ final class LevelCollisionFrame {
         }
     }
 
-    /** EntitySectionStorage.getEntities via the native index. */
-    @SuppressWarnings({"unchecked", "rawtypes"})
-    synchronized void getEntities(EntityTypeTest type, AABB box, AbortableIterationConsumer consumer) {
-        FFMBackend.QueryResult result = FFMBackend.queryEntities(nativeContext, box, ids.nativeIdCapacity());
+    synchronized <T extends Entity> void getEntities(
+            EntityTypeTest<Entity, T> type, AABB box, AbortableIterationConsumer<T> consumer) {
+        var result = FFMBackend.queryEntities(nativeContext, box, ids.nativeIdCapacity());
         int count = result.size();
         int[] snapshot = snapshot(result);
         try {
             for (int index = 0; index < count; index++) {
-                int nativeId = snapshot[index];
-                Entity entity = requireEntity(nativeId);
-                Object candidate = type.tryCast(entity);
+                T candidate = type.tryCast(requireEntity(snapshot[index]));
                 if (candidate != null && consumer.accept(candidate).shouldAbort()) break;
             }
         } finally {
