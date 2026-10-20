@@ -3,7 +3,7 @@ package org.edtp.entitycollisionoptimizer.gametest;
 import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.EntityTypes;
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.Shapes;
@@ -26,7 +26,7 @@ public final class MovementShortCircuitChecks {
     static void verify(GameTestHelper helper) {
         BlockPos support = new BlockPos(1, 0, 1);
         var entity = CollisionTestSupport.spawnZombie(helper, new Vec3(1.5, 1, 1.5));
-        var boat = helper.spawn(EntityTypes.OAK_BOAT, new Vec3(1.5, 1, 1.5));
+        var boat = helper.spawn(EntityType.OAK_BOAT, new Vec3(1.5, 1, 1.5));
         try {
             helper.setBlock(support, Blocks.STONE);
             entity.mainSupportingBlockPos = Optional.of(helper.absolutePos(support));

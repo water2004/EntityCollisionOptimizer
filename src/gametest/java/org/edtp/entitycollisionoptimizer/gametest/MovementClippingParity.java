@@ -76,7 +76,7 @@ final class MovementClippingParity {
                 colliders.addBounds(cube);
                 expected.add(Shapes.create(cube));
             }
-            VoxelShape planes = new net.minecraft.world.phys.shapes.CubeVoxelShape(
+            VoxelShape planes = org.edtp.entitycollisionoptimizer.gametest.mixin.CubeVoxelShapeInvoker.eco$create(
                     net.minecraft.world.phys.shapes.BitSetDiscreteVoxelShape.withFilledBounds(4, 4, 4, 0, 0, 0, 4, 4, 4));
             colliders.add(planes);
             expected.add(planes);

@@ -5,7 +5,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.EntityTypes;
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.level.BlockCollisions;
 import net.minecraft.world.level.CollisionGetter;
 import net.minecraft.world.level.Level;
@@ -34,7 +34,7 @@ final class BlockIntersectionParity {
     static void verify(GameTestHelper helper) {
         var level = helper.getLevel();
         var entity = CollisionTestSupport.spawnZombie(helper, new Vec3(3.5, 3, 3.5));
-        var cart = CollisionTestSupport.spawnEntity(helper, EntityTypes.MINECART, new Vec3(3.5, 3, 3.5));
+        var cart = CollisionTestSupport.spawnEntity(helper, EntityType.MINECART, new Vec3(3.5, 3, 3.5));
         BlockPos pos = helper.absolutePos(new BlockPos(3, 2, 3));
         int cases = 0;
         try (var blocks = new ChunkFixtureBlocks()) {
@@ -48,7 +48,7 @@ final class BlockIntersectionParity {
                             new AABB(pos).move(0, 1 - 1e-8, 0), new AABB(pos).move(.9, .9, .9))) {
                         for (CollisionContext context : List.of(CollisionContext.empty(),
                                 CollisionContext.emptyWithFluidCollisions(), CollisionContext.of(entity),
-                                CollisionContext.of(cart), CollisionContext.positionContext(pos.getY() + 1))) {
+                                CollisionContext.of(cart), CollisionContext.withPosition(entity, pos.getY() + 1))) {
                             boolean expected = reference(level, context, box);
                             helper.assertValueEqual(BlockCollisionQuery.intersects(level, context, box), expected,
                                     "block intersection " + block + " descending=" + descending);
@@ -78,7 +78,7 @@ final class BlockIntersectionParity {
             helper.assertTrue(!BlockCollisionQuery.intersects(level, CollisionContext.of(cart), cart.getBoundingBox()),
                     "block query must not include the source or other entities");
             blocks.set(level, pos.east(), Blocks.AIR.defaultBlockState(), Block.UPDATE_SKIP_ALL_SIDEEFFECTS);
-            Entity boat = CollisionTestSupport.spawnEntity(helper, EntityTypes.OAK_BOAT, new Vec3(3.5, 2.1, 3.5));
+            Entity boat = CollisionTestSupport.spawnEntity(helper, EntityType.OAK_BOAT, new Vec3(3.5, 2.1, 3.5));
             try {
                 AABB boatBox = boat.getBoundingBox();
                 helper.assertTrue(!BlockCollisionQuery.intersects(level, CollisionContext.of(entity), boatBox),

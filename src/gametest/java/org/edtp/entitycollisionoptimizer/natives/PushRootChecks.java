@@ -3,7 +3,7 @@ package org.edtp.entitycollisionoptimizer.natives;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.EntityTypes;
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.monster.zombie.Zombie;
 
 import static java.lang.foreign.ValueLayout.JAVA_INT;
@@ -51,7 +51,7 @@ public final class PushRootChecks {
     private static final class RootProbe extends Zombie {
         Entity root;
         int rootReads;
-        RootProbe(ServerLevel level) { super(EntityTypes.ZOMBIE, level); }
+        RootProbe(ServerLevel level) { super(EntityType.ZOMBIE, level); }
         @Override public Entity getRootVehicle() { rootReads++; return root == null ? this : root; }
     }
 }

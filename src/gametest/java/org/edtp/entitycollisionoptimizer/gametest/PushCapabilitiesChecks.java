@@ -3,7 +3,7 @@ package org.edtp.entitycollisionoptimizer.gametest;
 import net.minecraft.gametest.framework.GameTestHelper;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.EntityTypes;
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.monster.zombie.Zombie;
 import net.minecraft.world.phys.Vec3;
 import org.edtp.entitycollisionoptimizer.collision.VanillaMethodDetector;
@@ -12,7 +12,7 @@ import org.edtp.entitycollisionoptimizer.collision.VanillaMethodDetector;
 final class PushCapabilitiesChecks {
     static void verify(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
-        Zombie ordinary = new Zombie(EntityTypes.ZOMBIE, level);
+        Zombie ordinary = new Zombie(EntityType.ZOMBIE, level);
         expect(helper, ordinary, true, true);
         expect(helper, new EntityPushOverride(level), false, true);
         expect(helper, new InheritedPushOverride(level), false, true);
@@ -28,7 +28,7 @@ final class PushCapabilitiesChecks {
         ordinary.setHealth(1);
         ordinary.noPhysics = true;
         helper.assertTrue(capabilities == VanillaMethodDetector.pushCapabilities(ordinary), "state does not recreate capabilities");
-        helper.assertTrue(capabilities == VanillaMethodDetector.pushCapabilities(new Zombie(EntityTypes.ZOMBIE, level)),
+        helper.assertTrue(capabilities == VanillaMethodDetector.pushCapabilities(new Zombie(EntityType.ZOMBIE, level)),
                 "capabilities are shared by class, not allocated per entity");
     }
 
@@ -40,26 +40,26 @@ final class PushCapabilitiesChecks {
     }
 
     private static class EntityPushOverride extends Zombie {
-        EntityPushOverride(ServerLevel level) { super(EntityTypes.ZOMBIE, level); }
+        EntityPushOverride(ServerLevel level) { super(EntityType.ZOMBIE, level); }
         @Override public void push(Entity entity) { super.push(entity); }
     }
     private static final class InheritedPushOverride extends EntityPushOverride {
         InheritedPushOverride(ServerLevel level) { super(level); }
     }
     private static final class VectorPushOverride extends Zombie {
-        VectorPushOverride(ServerLevel level) { super(EntityTypes.ZOMBIE, level); }
+        VectorPushOverride(ServerLevel level) { super(EntityType.ZOMBIE, level); }
         @Override public void push(double x, double y, double z) { super.push(x, y, z); }
     }
     private static final class VelocityGetterOverride extends Zombie {
-        VelocityGetterOverride(ServerLevel level) { super(EntityTypes.ZOMBIE, level); }
+        VelocityGetterOverride(ServerLevel level) { super(EntityType.ZOMBIE, level); }
         @Override public Vec3 getDeltaMovement() { return super.getDeltaMovement(); }
     }
     private static final class VelocitySetterOverride extends Zombie {
-        VelocitySetterOverride(ServerLevel level) { super(EntityTypes.ZOMBIE, level); }
+        VelocitySetterOverride(ServerLevel level) { super(EntityType.ZOMBIE, level); }
         @Override public void setDeltaMovement(Vec3 velocity) { super.setDeltaMovement(velocity); }
     }
     private static final class DoPushOverride extends Zombie {
-        DoPushOverride(ServerLevel level) { super(EntityTypes.ZOMBIE, level); }
+        DoPushOverride(ServerLevel level) { super(EntityType.ZOMBIE, level); }
         @Override protected void doPush(Entity entity) { super.doPush(entity); }
     }
 }

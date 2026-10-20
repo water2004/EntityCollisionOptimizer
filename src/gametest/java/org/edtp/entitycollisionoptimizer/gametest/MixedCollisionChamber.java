@@ -8,7 +8,7 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntitySpawnReason;
-import net.minecraft.world.entity.EntityTypes;
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
@@ -57,8 +57,8 @@ final class MixedCollisionChamber extends BenchmarkScenario {
         if (residents.isEmpty()) {
             Random random = new Random(0xEC0262L);
             for (int index = 0; index < PIGLINS + BOATS; index++) {
-                Entity entity = index < PIGLINS ? EntityTypes.ZOMBIFIED_PIGLIN.create(level, EntitySpawnReason.COMMAND)
-                        : EntityTypes.OAK_BOAT.create(level, EntitySpawnReason.COMMAND);
+                Entity entity = index < PIGLINS ? EntityType.ZOMBIFIED_PIGLIN.create(level, EntitySpawnReason.COMMAND)
+                        : EntityType.OAK_BOAT.create(level, EntitySpawnReason.COMMAND);
                 if (entity == null) throw new IllegalStateException("Failed to create mixed collision resident");
                 entity.setUUID(new UUID(0xEC026200L, index + 1));
                 entity.getRandom().setSeed(0xEC0262L + index);

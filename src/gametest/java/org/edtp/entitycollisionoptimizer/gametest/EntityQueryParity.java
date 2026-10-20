@@ -34,7 +34,7 @@ final class EntityQueryParity {
     static void verify(GameTestHelper helper) {
         ServerLevel level = helper.getLevel();
         List<Entity> fixtures = List.of(
-                spawnEntity(helper, EntityTypes.HUSK, new Vec3(34.25, 2.0, 3.25)),
+                spawnEntity(helper, EntityType.HUSK, new Vec3(34.25, 2.0, 3.25)),
                 spawnZombie(helper, new Vec3(2.25, 2.0, 3.25)),
                 spawnEntity(helper, EntityType.ARMOR_STAND, new Vec3(18.25, 2.0, 3.25)),
                 spawnZombie(helper, new Vec3(18.75, 2.0, 3.25)),
