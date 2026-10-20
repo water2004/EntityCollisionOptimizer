@@ -78,10 +78,9 @@ public final class CollisionFrame {
         LEVEL_FRAMES.clear();
     }
 
-    /** EntitySectionStorage.getEntities through the native index. */
-    @SuppressWarnings({"unchecked", "rawtypes"})
-    public static void getEntities(ServerLevel level, EntityTypeTest type, AABB box,
-            AbortableIterationConsumer consumer) {
+    public static <T extends Entity> void getEntities(
+            ServerLevel level, EntityTypeTest<Entity, T> type, AABB box,
+            AbortableIterationConsumer<T> consumer) {
         frameFor(level).getEntities(type, box, consumer);
     }
 

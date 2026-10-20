@@ -4,11 +4,13 @@ import java.lang.foreign.MemorySegment;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.List;
 
 import static java.lang.foreign.ValueLayout.JAVA_INT;
 
-/** Scoped mutation of actual native query results, without changing the index or production code. */
-public final class NativeEntityQueryFaults implements AutoCloseable {
+/** Scoped observation or mutation of actual native queries, without production test hooks. */
+public final class NativeEntityQueryProbe implements AutoCloseable {
     public enum Fault { EMPTY, OMIT_FIRST, REVERSE }
 
     private final Field handle;
@@ -16,28 +18,33 @@ public final class NativeEntityQueryFaults implements AutoCloseable {
     private final Thread owner = Thread.currentThread();
     private final Fault fault;
     private int calls;
+    private final List<Integer> resultSizes = new ArrayList<>();
 
-    public NativeEntityQueryFaults(Fault fault) {
+    public NativeEntityQueryProbe() { this(null); }
+
+    public NativeEntityQueryProbe(Fault fault) {
         this.fault = fault;
         try {
             handle = FFMBackend.class.getDeclaredField("queryEntities");
             handle.setAccessible(true);
             original = (MethodHandle) handle.get(null);
             handle.set(null, MethodHandles.lookup().findVirtual(
-                    NativeEntityQueryFaults.class, "query", original.type()).bindTo(this));
+                    NativeEntityQueryProbe.class, "query", original.type()).bindTo(this));
         } catch (ReflectiveOperationException failure) {
             throw new AssertionError(failure);
         }
     }
 
     public int calls() { return calls; }
+    public List<Integer> resultSizes() { return List.copyOf(resultSizes); }
 
     private int query(MemorySegment context, double minX, double minY, double minZ,
                       double maxX, double maxY, double maxZ, MemorySegment output, int capacity) throws Throwable {
         int count = (int) original.invokeExact(context, minX, minY, minZ, maxX, maxY, maxZ, output, capacity);
         if (Thread.currentThread() != owner) return count;
         calls++;
-        if (count <= 0) return count;
+        resultSizes.add(count);
+        if (count <= 0 || fault == null) return count;
         return switch (fault) {
             case EMPTY -> 0;
             case OMIT_FIRST -> {
