@@ -350,7 +350,7 @@ final class LevelCollisionFrame {
         FFMBackend.QueryResult result = queryPushable(source, sourceTeam, sourceRule, sourceUsesVanillaDoPush);
         PushBatch batch = batchPool.pollFirst();
         if (batch == null) {
-            batch = new PushBatch(nativeContext, bodies, this::recycle);
+            batch = new PushBatch(this, nativeContext, bodies);
         }
         try {
             batch.prepare(result, ids, source);
@@ -361,7 +361,8 @@ final class LevelCollisionFrame {
         }
     }
 
-    private synchronized void recycle(PushBatch batch) {
+    // PushBatch.close holds this frame's monitor through release and pool return.
+    void recycle(PushBatch batch) {
         batchPool.addFirst(batch);
     }
 

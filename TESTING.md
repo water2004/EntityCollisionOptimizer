@@ -51,6 +51,8 @@ step-height planes; subdivided and custom shapes retain the general voxel path.
 Movement publication, nested callbacks, support short-circuiting and step attempts retain separate coverage.
 Body-slot checks cover owner-qualified reuse, nested-lease retirement cancellation and recycled slots.
 Spatial-to-body associations also cover ownership transfer, index growth and native-ID reuse during a lease.
+Batch ownership checks cover frame-serialized release, deferred retirement, pool reuse and native
+execution after another lease grows the table. These contracts do not establish Async compatibility.
 
 ## Cross-process integration GameTests
 
