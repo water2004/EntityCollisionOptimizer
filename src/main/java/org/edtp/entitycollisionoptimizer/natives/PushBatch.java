@@ -5,13 +5,12 @@ import net.minecraft.world.entity.LivingEntity;
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
-import java.util.function.Consumer;
 
 /** A level-local, reentrant-safe snapshot; native scratch buffers never escape into the push loop. */
 public final class PushBatch implements AutoCloseable {
+    private final LevelCollisionFrame owner;
     private final FFMBackend.Context context;
     private final CollisionStateTable bodies;
-    private final Consumer<PushBatch> recycler;
     private final Arena sourceArena = Arena.ofShared();
     private final MemorySegment detachedSourceBody = sourceArena.allocate(
             CollisionStateTable.STRIDE_BYTES,
@@ -24,10 +23,10 @@ public final class PushBatch implements AutoCloseable {
     private int nonPassengerCount;
     private boolean borrowed;
 
-    PushBatch(FFMBackend.Context context, CollisionStateTable bodies, Consumer<PushBatch> recycler) {
+    PushBatch(LevelCollisionFrame owner, FFMBackend.Context context, CollisionStateTable bodies) {
+        this.owner = owner;
         this.context = context;
         this.bodies = bodies;
-        this.recycler = recycler;
     }
 
     void prepare(FFMBackend.QueryResult result, PersistentEntityIds ids, LivingEntity source) {
@@ -67,26 +66,33 @@ public final class PushBatch implements AutoCloseable {
     public void applyNativeRun(LivingEntity source, int from, int to) {
         if (from < 0 || to < from || to > size) throw new IndexOutOfBoundsException("Invalid push run range");
         if (from == to) return;
-        int sourceSlot = bodies.sourceSlot(source);
-        MemorySegment sourceBody;
-        if (sourceSlot >= 0) {
-            sourceBody = bodies.row(sourceSlot);
-        } else {
-            bodies.snapshotDetachedSource(source, detachedSourceBody);
-            sourceBody = detachedSourceBody;
+        // Keep row resolution and the downcall mutually exclusive with table growth.
+        // This protects batch storage, not arbitrary parallel entity-field accesses.
+        synchronized (owner) {
+            int sourceSlot = bodies.sourceSlot(source);
+            MemorySegment sourceBody;
+            if (sourceSlot >= 0) {
+                sourceBody = bodies.row(sourceSlot);
+            } else {
+                bodies.snapshotDetachedSource(source, detachedSourceBody);
+                sourceBody = detachedSourceBody;
+            }
+            FFMBackend.executePushRun(context, sourceBody, bodies.memory(), bodies.capacity(),
+                    bodySlots, from, to - from);
+            if (sourceSlot < 0) bodies.publishDetachedSource(source, sourceBody);
         }
-        FFMBackend.executePushRun(context, sourceBody, bodies.memory(), bodies.capacity(),
-                bodySlots, from, to - from);
-        if (sourceSlot < 0) bodies.publishDetachedSource(source, sourceBody);
     }
 
     @Override
     public void close() {
-        if (borrowed) {
-            bodies.release();
-            size = 0;
-            borrowed = false;
-            recycler.accept(this);
+        // The existing pool lock must also cover lease release and deferred retirement.
+        synchronized (owner) {
+            if (borrowed) {
+                bodies.release();
+                size = 0;
+                borrowed = false;
+                owner.recycle(this);
+            }
         }
     }
 

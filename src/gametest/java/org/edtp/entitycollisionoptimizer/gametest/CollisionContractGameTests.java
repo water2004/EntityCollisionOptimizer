@@ -113,6 +113,18 @@ public final class CollisionContractGameTests {
         helper.succeed();
     }
 
+    @GameTest(maxTicks = 100)
+    public void pushBatchReleaseOwnership(GameTestHelper helper) throws ReflectiveOperationException {
+        org.edtp.entitycollisionoptimizer.natives.PushBatchLeaseChecks.release(helper);
+        helper.succeed();
+    }
+
+    @GameTest(maxTicks = 100)
+    public void pushBatchNativeOwnership(GameTestHelper helper) throws ReflectiveOperationException {
+        org.edtp.entitycollisionoptimizer.natives.PushBatchLeaseChecks.nativeRun(helper);
+        helper.succeed();
+    }
+
     @GameTest(maxTicks = 200, padding = 48)
     public void playerInteractions(GameTestHelper helper) {
         PlayerInteractionParity.verify(helper);
