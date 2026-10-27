@@ -103,6 +103,7 @@ Minecraft 按区段存储实体。一次碰撞查询需要遍历相关区段、�
 - 本模组有意忽略 Carpet 的 `maxEntityCollisions` 上限；限制碰撞候选数量不属于本项目的职责。原版 `maxEntityCramming` 挤压伤害规则仍然生效。
 - 不修改存档格式，也不注册需要同步到客户端的内容。
 - 当前以原版实体为兼容目标，不保证其他模组自定义实体或直接替换同一碰撞路径的实现能够正常工作。
+- 不保证与 Async 的兼容性，也不承诺安装 Async 后的性能收益。
 
 如遇到可以稳定复现的问题，请通过 [Issue Tracker](https://github.com/water2004/EntityCollisionOptimizer/issues) 报告。
 
