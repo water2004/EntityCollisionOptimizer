@@ -103,6 +103,7 @@ Use `/eco` to check whether the FFM backend initialized successfully. The mod ha
 - Carpet's `maxEntityCollisions` limit is intentionally ignored. Limiting the number of collision candidates is outside this mod's scope. Vanilla's `maxEntityCramming` damage rule still applies.
 - The mod does not change the save format or register content that must be synchronized to clients.
 - Vanilla entities are the compatibility target. Custom entities or mods that directly replace the same collision paths are not currently guaranteed to work.
+- Compatibility and performance benefits with Async are not guaranteed.
 
 Please report reproducible problems through the [issue tracker](https://github.com/water2004/EntityCollisionOptimizer/issues).
 
